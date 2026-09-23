@@ -20,10 +20,16 @@ frontend/dist/
 # Runtime data
 storage/*
 !storage/.gitkeep
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firebase-export/
+backend/secrets/
+*firebase-admin*.json
+*-firebase-adminsdk-*.json
 
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-

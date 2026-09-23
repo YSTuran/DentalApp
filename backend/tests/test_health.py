@@ -24,6 +24,7 @@ def test_liveness() -> None:
 def test_readiness_when_dependencies_are_available(monkeypatch) -> None:
     monkeypatch.setattr(health, "check_database", lambda: True)
     monkeypatch.setattr(health, "check_redis", lambda: True)
+    monkeypatch.setattr(health, "check_firebase", lambda: True)
 
     response = client.get("/api/health")
 
@@ -32,6 +33,7 @@ def test_readiness_when_dependencies_are_available(monkeypatch) -> None:
         "api": "ok",
         "database": "ok",
         "redis": "ok",
+        "firebase": "ok",
         "demo_mode": True,
     }
 
@@ -39,6 +41,7 @@ def test_readiness_when_dependencies_are_available(monkeypatch) -> None:
 def test_readiness_returns_503_when_a_dependency_is_unavailable(monkeypatch) -> None:
     monkeypatch.setattr(health, "check_database", lambda: False)
     monkeypatch.setattr(health, "check_redis", lambda: True)
+    monkeypatch.setattr(health, "check_firebase", lambda: True)
 
     response = client.get("/api/health")
 

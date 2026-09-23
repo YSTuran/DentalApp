@@ -11,3 +11,4 @@ class LivenessResponse(BaseModel):
 class HealthResponse(LivenessResponse):
     database: Literal["ok", "error"]
     redis: Literal["ok", "error"]
+    firebase: Literal["ok", "error"]

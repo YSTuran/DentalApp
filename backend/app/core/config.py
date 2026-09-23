@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     storage_path: Path = BACKEND_DIR.parent / "storage"
 
+    firebase_project_id: str = "demo-dentalapp"
+    firebase_credentials_path: Path | None = None
+    firebase_use_emulator: bool = True
+    firebase_auth_emulator_host: str = "127.0.0.1:9099"
+    firebase_session_days: int = 5
+    firebase_session_cookie_name: str = "dentalapp_session"
+    csrf_cookie_name: str = "dentalapp_csrf"
+    cookie_secure: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -11,6 +11,7 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - PostgreSQL için SQLAlchemy bağlantı katmanı
 - Redis ve Celery bağlantı katmanı
 - Alembic migration altyapısı
+- Firebase Authentication ve yerel Authentication Emulator desteği
 - Liveness ve readiness endpoint'leri
 - Pytest başlangıç testleri
 
@@ -33,7 +34,33 @@ API belgeleri: `http://127.0.0.1:8000/docs`
 Sağlık kontrolleri:
 
 - `GET /api/health/live`: API sürecinin çalıştığını gösterir.
-- `GET /api/health`: PostgreSQL ve Redis bağlantılarını da kontrol eder.
+- `GET /api/health`: PostgreSQL, Redis ve Firebase bağlantılarını kontrol eder.
+
+## Firebase Authentication Emulator
+
+Proje kökünde ayrı bir terminal açın:
+
+```powershell
+npx firebase emulators:start --only auth
+```
+
+- Emulator UI: `http://127.0.0.1:4000`
+- Authentication Emulator: `http://127.0.0.1:9099`
+
+İlk sistem yöneticisini emulator çalışırken oluşturmak için:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m app.cli.create_admin
+```
+
+Authentication endpoint'leri:
+
+- `GET /api/auth/csrf`
+- `POST /api/auth/session`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
 
 ## Test
 
@@ -53,4 +80,3 @@ cd backend
 alembic revision --autogenerate -m "initial schema"
 alembic upgrade head
 ```
-
