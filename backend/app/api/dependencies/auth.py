@@ -82,3 +82,13 @@ def get_current_user(
         )
 
     return load_active_user_by_firebase_uid(db, firebase_uid)
+
+
+def get_optional_current_user(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+) -> User | None:
+    try:
+        return get_current_user(request, db)
+    except HTTPException:
+        return None

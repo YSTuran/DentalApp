@@ -12,6 +12,8 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Redis ve Celery bağlantı katmanı
 - Alembic migration altyapısı
 - Firebase Authentication ve yerel Authentication Emulator desteği
+- Klinik kapsamlı rol/yetki kontrol katmanı
+- PostgreSQL seviyesinde değiştirilemez audit kayıtları
 - Liveness ve readiness endpoint'leri
 - Pytest başlangıç testleri
 
@@ -78,6 +80,37 @@ Authentication endpoint'leri:
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 
+Başarılı oturum açma ve kapatma işlemleri audit kaydı oluşturur.
+
+## Audit ve yetkilendirme
+
+Audit kayıtları yalnızca eklenebilir; PostgreSQL trigger'ı `UPDATE`, `DELETE` ve
+`TRUNCATE` işlemlerini reddeder. Global audit listesini yalnızca `system_admin`
+rolü görüntüleyebilir:
+
+- `GET /api/audit-events`
+
+Endpoint; `action`, `entity_type`, `entity_id`, `actor_user_id` ve `clinic_id`
+filtreleri ile `limit`/`offset` sayfalamasını destekler.
+
+Backend yetki katmanı global rol, herhangi bir rol, klinik erişimi ve klinik rolü
+kontrollerini ayrı ayrı uygular. Sistem yöneticisi klinik rolü gerektiren işlemleri
+yalnızca ilgili kontrol açıkça izin veriyorsa devralabilir.
+
+## Klinik API
+
+- `GET /api/clinics`: sistem yöneticisi tüm klinikleri, klinik yöneticisi yalnızca
+  aktif rol ataması bulunan klinikleri görür.
+- `GET /api/clinics/{clinic_id}`: sistem yöneticisi veya ilgili kliniğin yöneticisi.
+- `POST /api/clinics`: yalnızca sistem yöneticisi.
+- `PATCH /api/clinics/{clinic_id}`: yalnızca sistem yöneticisi.
+- `POST /api/clinics/{clinic_id}/deactivate`: yalnızca sistem yöneticisi, gerekçe zorunlu.
+- `POST /api/clinics/{clinic_id}/reactivate`: yalnızca sistem yöneticisi, gerekçe zorunlu.
+
+Klinik silme endpoint'i yoktur. Yazma işlemleri CSRF korumalıdır ve klinik değişikliği
+ile `clinic.created`, `clinic.updated`, `clinic.deactivated` veya `clinic.reactivated`
+audit olayı aynı PostgreSQL transaction'ında kaydedilir.
+
 ## Frontend
 
 Firebase Emulator, FastAPI ve React geliştirme sunucusunu birlikte başlatmak için
@@ -114,6 +147,13 @@ cd backend
 pytest
 ```
 
+PostgreSQL trigger entegrasyon testlerini ayrıca çalıştırmak için:
+
+```powershell
+$env:RUN_DATABASE_INTEGRATION_TESTS='1'
+pytest tests/integration/test_audit_immutability.py tests/integration/test_clinic_api.py
+```
+
 ## Migration
 
 PostgreSQL bağlantı bilgileri `backend/.env` içinde ayarlandıktan sonra:
@@ -121,6 +161,5 @@ PostgreSQL bağlantı bilgileri `backend/.env` içinde ayarlandıktan sonra:
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
-alembic revision --autogenerate -m "initial schema"
 alembic upgrade head
 ```

@@ -2,7 +2,9 @@ from app.models import Base, RoleCode
 
 
 def test_identity_tables_are_registered() -> None:
-    assert {"clinics", "users", "user_role_assignments"}.issubset(Base.metadata.tables)
+    assert {"audit_events", "clinics", "users", "user_role_assignments"}.issubset(
+        Base.metadata.tables
+    )
 
 
 def test_only_system_admin_and_technician_are_global_roles() -> None:

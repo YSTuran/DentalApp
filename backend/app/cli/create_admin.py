@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.firebase import get_firebase_app
 from app.db.session import SessionLocal
 from app.models import RoleCode, User, UserRoleAssignment
+from app.services.audit import record_audit_event
 
 
 def prompt_non_empty(label: str) -> str:
@@ -129,6 +130,18 @@ def main() -> None:
                     role=RoleCode.SYSTEM_ADMIN,
                     clinic_id=None,
                 )
+            )
+            record_audit_event(
+                session,
+                action="system.bootstrap_admin_created",
+                entity_type="user",
+                entity_id=user.id,
+                after={
+                    "email": user.email,
+                    "full_name": user.full_name,
+                    "roles": [RoleCode.SYSTEM_ADMIN],
+                },
+                context={"source": "cli"},
             )
     except Exception:
         auth.delete_user(firebase_user.uid, app=get_firebase_app())

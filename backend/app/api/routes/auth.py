@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import (
     get_current_user,
+    get_optional_current_user,
     load_active_user_by_firebase_uid,
     require_csrf,
 )
@@ -20,6 +21,7 @@ from app.schemas.auth import (
     LogoutResponse,
     SessionRequest,
 )
+from app.services.audit import record_audit_event
 from app.services.firebase_auth import (
     FirebaseAuthenticationError,
     FirebaseServiceError,
@@ -104,6 +106,17 @@ def create_session(
     user = load_active_user_by_firebase_uid(db, firebase_uid)
     settings = get_settings()
     max_age = int(timedelta(days=settings.firebase_session_days).total_seconds())
+    record_audit_event(
+        db,
+        action="auth.session_created",
+        entity_type="user",
+        entity_id=user.id,
+        actor=user,
+        after={"status": "authenticated"},
+        context={"provider": "firebase"},
+        request=request,
+    )
+    db.commit()
     response.set_cookie(
         key=settings.firebase_session_cookie_name,
         value=session_cookie,
@@ -124,9 +137,27 @@ def current_user(
 
 
 @router.post("/logout", response_model=LogoutResponse)
-def logout(request: Request, response: Response) -> LogoutResponse:
+def logout(
+    request: Request,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User | None, Depends(get_optional_current_user)],
+) -> LogoutResponse:
     require_csrf(request)
     settings = get_settings()
+    if user is not None:
+        record_audit_event(
+            db,
+            action="auth.session_ended",
+            entity_type="user",
+            entity_id=user.id,
+            actor=user,
+            before={"status": "authenticated"},
+            after={"status": "signed_out"},
+            context={"provider": "firebase"},
+            request=request,
+        )
+        db.commit()
     response.delete_cookie(
         key=settings.firebase_session_cookie_name,
         path="/",
