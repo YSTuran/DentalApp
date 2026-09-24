@@ -55,12 +55,56 @@ cd backend
 python -m app.cli.create_admin
 ```
 
+Emulator verileri ilk kez kaydedilecekse emulator açıkken başka bir terminalde:
+
+```powershell
+npx firebase emulators:export .\firebase-export --only auth --force
+```
+
+Sonraki çalıştırmalarda kayıtlı kullanıcıları yüklemek ve kapanışta tekrar kaydetmek için:
+
+```powershell
+npx firebase emulators:start --only auth --import=.\firebase-export --export-on-exit
+```
+
+PostgreSQL'deki sistem yöneticisi duruyor ancak emulator kullanıcısı silinmişse
+`python -m app.cli.create_admin` komutunu tekrar çalıştırın. Komut mevcut kaydın
+`firebase_uid` değerini koruyarak emulator hesabını yeniden oluşturur.
+
 Authentication endpoint'leri:
 
 - `GET /api/auth/csrf`
 - `POST /api/auth/session`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
+
+## Frontend
+
+Firebase Emulator, FastAPI ve React geliştirme sunucusunu birlikte başlatmak için
+proje kökünde:
+
+```powershell
+npm run dev
+```
+
+Loglar aynı terminalde `FIREBASE`, `API` ve `WEB` etiketleriyle gösterilir. `Ctrl+C`
+üç servisi de kapatır; Firebase kullanıcıları temiz kapanışta `firebase-export` klasörüne
+kaydedilir. PostgreSQL servisinin ve Redis konteynerinin önceden çalışıyor olması gerekir.
+
+Yalnızca React, TypeScript ve Vite tabanlı frontend'i çalıştırmak için:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Uygulamayı `http://localhost:5173` adresinden açın. Geliştirme ortamı ayarları
+`frontend/.env.local` dosyasından okunur; örnek değerler `frontend/.env.example`
+içindedir. Firebase servis hesabı dosyası frontend'e eklenmez.
+
+Giriş sırasında Firebase Auth Emulator'dan alınan ID token FastAPI'ye gönderilir.
+FastAPI doğrulamadan sonra CSRF korumalı, HttpOnly bir oturum çerezi üretir.
 
 ## Test
 

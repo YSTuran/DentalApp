@@ -4,6 +4,10 @@
   "description": "Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve teslim süreçlerini yöneten demo uygulaması.",
   "main": "index.js",
   "scripts": {
+    "dev": "concurrently --names FIREBASE,API,WEB --prefix-colors yellow,cyan,green --kill-others-on-fail \"npm:dev:firebase\" \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:firebase": "firebase emulators:start --only auth --import=./firebase-export --export-on-exit --project dentalapp-7b131",
+    "dev:api": "backend\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --reload-dir backend --app-dir backend",
+    "dev:web": "npm --prefix frontend run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,6 +23,7 @@
   },
   "homepage": "https://github.com/YSTuran/DentalApp#readme",
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "firebase-tools": "^15.30.2"
   }
 }

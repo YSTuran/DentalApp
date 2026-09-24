@@ -1,0 +1,573 @@
+:root {
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  color: #173934;
+  background: #eff7f5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #173934;
+  --muted: #687c78;
+  --primary: #087e70;
+  --primary-dark: #05665b;
+  --line: #d7e6e2;
+  --surface: #ffffff;
+  --danger: #b42318;
+  --danger-bg: #fff1ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #eff7f5;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 38px;
+  padding: 0.55rem 1rem;
+  color: #794900;
+  background: #fff3d6;
+  border-bottom: 1px solid #f1d391;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.demo-badge {
+  padding: 0.2rem 0.45rem;
+  color: #fff;
+  background: #b66d00;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.05fr);
+  min-height: 100vh;
+}
+
+.auth-intro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  padding: clamp(3rem, 7vw, 7rem);
+  color: #f7fffd;
+  background:
+    radial-gradient(circle at 12% 20%, rgb(128 225 204 / 28%), transparent 27%),
+    radial-gradient(circle at 85% 82%, rgb(2 66 59 / 35%), transparent 33%),
+    linear-gradient(145deg, #0b8c7c 0%, #05685e 56%, #034a45 100%);
+}
+
+.auth-intro::after {
+  position: absolute;
+  right: -110px;
+  bottom: -110px;
+  width: 340px;
+  height: 340px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 55px rgb(255 255 255 / 4%), 0 0 0 110px rgb(255 255 255 / 3%);
+  content: "";
+}
+
+.brand-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 2.5rem;
+  place-items: center;
+  color: #076f64;
+  background: #e9fffa;
+  border-radius: 17px 17px 17px 5px;
+  box-shadow: 0 16px 40px rgb(0 43 39 / 25%);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+}
+
+.auth-intro .eyebrow {
+  color: #a9e5d9;
+}
+
+.auth-intro h1 {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(2.8rem, 6vw, 5.6rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.auth-intro-copy {
+  max-width: 520px;
+  margin: 1.6rem 0 2.6rem;
+  color: #d6f4ed;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  line-height: 1.7;
+}
+
+.flow-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #e8faf6;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.flow-preview i {
+  width: 36px;
+  height: 1px;
+  background: rgb(255 255 255 / 42%);
+}
+
+.auth-panel {
+  display: grid;
+  padding: 2rem;
+  place-items: center;
+  background:
+    linear-gradient(rgb(255 255 255 / 82%), rgb(255 255 255 / 82%)),
+    repeating-linear-gradient(45deg, #e9f3f0 0, #e9f3f0 1px, transparent 1px, transparent 12px);
+}
+
+.auth-card {
+  width: min(100%, 460px);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid rgb(11 126 112 / 12%);
+  border-radius: 20px;
+  box-shadow: 0 28px 70px rgb(24 68 61 / 12%);
+}
+
+.auth-card-heading,
+.login-form,
+.auth-footnote {
+  margin-right: clamp(1.5rem, 5vw, 3rem);
+  margin-left: clamp(1.5rem, 5vw, 3rem);
+}
+
+.auth-card-heading {
+  margin-top: 2.5rem;
+}
+
+.auth-card-heading .eyebrow,
+.card-label,
+.welcome-card .eyebrow {
+  color: var(--primary);
+}
+
+.auth-card-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 2rem;
+  letter-spacing: -0.035em;
+}
+
+.auth-card-heading > p:last-child {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+}
+
+.login-form {
+  display: grid;
+  margin-top: 2rem;
+}
+
+.login-form label {
+  margin: 0 0 0.5rem;
+  color: #365650;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.login-form input {
+  width: 100%;
+  height: 50px;
+  margin-bottom: 1.25rem;
+  padding: 0 0.95rem;
+  color: var(--ink);
+  background: #fbfdfc;
+  border: 1px solid #cadbd7;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.login-form input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgb(8 126 112 / 11%);
+}
+
+.login-form input::placeholder {
+  color: #a4b3b0;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 48px;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.primary-button {
+  margin-top: 0.3rem;
+  color: #fff;
+  background: var(--primary);
+  border: 0;
+  box-shadow: 0 10px 20px rgb(8 126 112 / 18%);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  padding: 0 1.15rem;
+  color: var(--primary-dark);
+  background: #fff;
+  border: 1px solid #bdd7d1;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #eff9f7;
+}
+
+.form-error {
+  margin-bottom: 1rem;
+  padding: 0.8rem 0.9rem;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid #ffc9c2;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.auth-footnote {
+  margin-top: 1.5rem;
+  margin-bottom: 2.5rem;
+  color: #82938f;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.loading-screen {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  place-items: center;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid #cfe3de;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dashboard-shell {
+  min-height: 100vh;
+  background: #f3f8f7;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 78px;
+  padding: 0 5vw;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-inline > div:last-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.brand-inline strong {
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.brand-inline span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.brand-mark-small {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 11px 11px 11px 4px;
+  box-shadow: none;
+  font-size: 1.1rem;
+}
+
+.dashboard-content {
+  width: min(1180px, 90vw);
+  margin: 0 auto;
+  padding: 3.2rem 0 5rem;
+}
+
+.welcome-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(1.6rem, 4vw, 2.8rem);
+  color: #fff;
+  background: linear-gradient(125deg, #087e70, #075e57);
+  border-radius: 20px;
+  box-shadow: 0 18px 40px rgb(24 68 61 / 13%);
+}
+
+.welcome-card .eyebrow {
+  color: #afe6da;
+}
+
+.welcome-card h1 {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(1.65rem, 4vw, 2.45rem);
+  letter-spacing: -0.04em;
+}
+
+.welcome-card p:last-child {
+  margin: 0.75rem 0 0;
+  color: #d3f1eb;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pill i {
+  width: 7px;
+  height: 7px;
+  background: #7ff0c8;
+  border-radius: 50%;
+}
+
+.dashboard-error {
+  margin: 1rem 0 0;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.info-card {
+  padding: 1.6rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+}
+
+.card-label {
+  margin: 0 0 1.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.info-card dl,
+.info-card dd {
+  margin: 0;
+}
+
+.info-card dl > div {
+  display: grid;
+  grid-template-columns: 115px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #edf2f1;
+}
+
+.info-card dl > div:last-child {
+  border-bottom: 0;
+}
+
+.info-card dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.info-card dd {
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.technical-value {
+  overflow: hidden;
+  font-family: ui-monospace, monospace;
+  font-size: 0.74rem !important;
+  text-overflow: ellipsis;
+}
+
+.role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.role-list span {
+  padding: 0.5rem 0.7rem;
+  color: #096c60;
+  background: #eaf8f5;
+  border: 1px solid #c8e9e1;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.scope-note {
+  margin: 1.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.next-step-card {
+  grid-column: 1 / -1;
+  background: linear-gradient(115deg, #fff, #f1faf8);
+}
+
+.next-step-card h2 {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 1.25rem;
+}
+
+.next-step-card > p:last-child {
+  max-width: 720px;
+  margin: 0.7rem 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+@media (max-width: 860px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-intro {
+    min-height: 320px;
+    padding: 3rem 8vw;
+  }
+
+  .brand-mark {
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-intro h1 {
+    font-size: 3rem;
+  }
+
+  .auth-intro-copy {
+    margin: 1rem 0 1.5rem;
+  }
+
+  .auth-panel {
+    min-height: 620px;
+    padding: 2rem 1rem;
+  }
+}
+
+@media (max-width: 650px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-card {
+    flex-direction: column;
+  }
+
+  .topbar {
+    padding: 0 1rem;
+  }
+
+  .dashboard-content {
+    width: calc(100% - 2rem);
+    padding-top: 1.5rem;
+  }
+
+  .secondary-button {
+    min-height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
