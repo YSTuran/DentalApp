@@ -330,3 +330,70 @@ def test_user_creation_validates_role_scope_before_calling_firebase(
     assert response.status_code == 422
     assert response.json()["detail"] == "clinic_role_requires_clinic"
     assert firebase_called is False
+
+
+def test_system_admin_role_cannot_be_created_or_assigned_through_api(
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    admin = create_user(session_factory, (RoleCode.SYSTEM_ADMIN, None))
+    target = create_user(session_factory, (RoleCode.TECHNICIAN, None))
+    app.dependency_overrides[get_current_user] = lambda: admin
+    firebase_called = False
+
+    def fake_create_identity(**_kwargs):
+        nonlocal firebase_called
+        firebase_called = True
+        return uuid4().hex
+
+    monkeypatch.setattr(user_service, "create_identity", fake_create_identity)
+
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        create_response = client.post(
+            "/api/users",
+            headers=headers,
+            json={
+                "email": f"admin-{uuid4().hex}@example.invalid",
+                "full_name": "Forbidden Admin",
+                "role": "system_admin",
+                "clinic_id": None,
+            },
+        )
+        assign_response = client.post(
+            f"/api/users/{target.id}/roles",
+            headers=headers,
+            json={"role": "system_admin", "clinic_id": None},
+        )
+
+    assert create_response.status_code == 422
+    assert create_response.json()["detail"] == "system_admin_assignment_not_allowed"
+    assert assign_response.status_code == 422
+    assert assign_response.json()["detail"] == "system_admin_assignment_not_allowed"
+    assert firebase_called is False
+
+
+def test_system_admin_cannot_deactivate_own_account(
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    admin = create_user(session_factory, (RoleCode.SYSTEM_ADMIN, None))
+    app.dependency_overrides[get_current_user] = lambda: admin
+    firebase_called = False
+
+    def fake_disable(*_args, **_kwargs):
+        nonlocal firebase_called
+        firebase_called = True
+
+    monkeypatch.setattr(user_service, "set_identity_disabled", fake_disable)
+
+    with TestClient(app) as client:
+        response = client.post(
+            f"/api/users/{admin.id}/deactivate",
+            headers=csrf_headers(client),
+            json={"reason": "Kendi hesabını kapatma denemesi"},
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "cannot_deactivate_self"
+    assert firebase_called is False

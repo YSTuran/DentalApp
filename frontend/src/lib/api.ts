@@ -67,13 +67,16 @@ export async function csrfRequest<T>(path: string, init: RequestInit): Promise<T
   });
 }
 
-export async function createSession(idToken: string): Promise<CurrentUser> {
+export async function createSession(
+  idToken: string,
+  rememberMe: boolean,
+): Promise<CurrentUser> {
   return csrfRequest<CurrentUser>("/api/auth/session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ id_token: idToken }),
+    body: JSON.stringify({ id_token: idToken, remember_me: rememberMe }),
   });
 }
 
@@ -83,6 +86,12 @@ export function getCurrentUser(): Promise<CurrentUser> {
 
 export async function destroySession(): Promise<void> {
   await csrfRequest<{ status: string }>("/api/auth/logout", {
+    method: "POST",
+  });
+}
+
+export async function recordPasswordChanged(): Promise<void> {
+  await csrfRequest<{ status: string }>("/api/auth/password-changed", {
     method: "POST",
   });
 }

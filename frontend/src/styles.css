@@ -235,6 +235,29 @@ input:disabled {
   color: #a4b3b0;
 }
 
+.login-form .remember-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: fit-content;
+  margin: -0.25rem 0 1.25rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-form .remember-option input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.login-form .remember-option span {
+  color: #49645f;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
 .primary-button,
 .secondary-button {
   min-height: 48px;
@@ -686,7 +709,10 @@ input:disabled {
 .search-form input,
 .filter-select select,
 .management-form input,
-.management-form textarea {
+.management-form textarea,
+.management-form select,
+.audit-filters input,
+.audit-filters select {
   width: 100%;
   color: var(--ink);
   background: #fbfdfc;
@@ -697,7 +723,10 @@ input:disabled {
 
 .search-form input,
 .filter-select select,
-.management-form input {
+.management-form input,
+.management-form select,
+.audit-filters input,
+.audit-filters select {
   min-height: 44px;
   padding: 0 0.8rem;
 }
@@ -710,7 +739,10 @@ input:disabled {
 .search-form input:focus,
 .filter-select select:focus,
 .management-form input:focus,
-.management-form textarea:focus {
+.management-form textarea:focus,
+.management-form select:focus,
+.audit-filters input:focus,
+.audit-filters select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgb(8 126 112 / 10%);
 }
@@ -895,6 +927,362 @@ input:disabled {
   font-weight: 700;
 }
 
+.brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.management-topbar {
+  gap: 1.5rem;
+}
+
+.management-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.management-nav a {
+  padding: 0.65rem 0.8rem;
+  color: #617571;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.management-nav a:hover,
+.management-nav a.active {
+  color: var(--primary-dark);
+  background: #eaf7f4;
+}
+
+.dashboard-management-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1.1rem;
+  margin-top: 1rem;
+}
+
+.user-filters {
+  flex-wrap: wrap;
+}
+
+.user-filters .search-form {
+  flex: 1 1 330px;
+}
+
+.user-filters .filter-select {
+  grid-template-columns: auto minmax(125px, 170px);
+}
+
+.assignment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 460px;
+  white-space: normal;
+}
+
+.assignment-list span {
+  padding: 0.32rem 0.48rem;
+  color: #096c60;
+  background: #eaf8f5;
+  border: 1px solid #c8e9e1;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.assignment-list span.inactive {
+  color: #7b8583;
+  background: #f1f3f2;
+  border-color: #dde2e1;
+  text-decoration: line-through;
+}
+
+.current-account-label {
+  color: #6d7f7b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.form-hint {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  color: #55706a;
+  background: #f0f8f6;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.credential-warning {
+  padding: 0.85rem;
+  color: #7e4b08;
+  background: #fff4dc;
+  border: 1px solid #f2d18f;
+  border-radius: 9px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.credential-fields,
+.credential-fields dd {
+  margin: 0;
+}
+
+.credential-fields {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.credential-fields > div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.credential-fields dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.credential-fields dd {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.temporary-password {
+  padding: 0.8rem;
+  background: #f3f6f5;
+  border-radius: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
+.credential-copy-message {
+  margin-top: 0.8rem;
+  margin-bottom: 0;
+}
+
+.immutable-badge {
+  padding: 0.55rem 0.75rem;
+  color: #566a66;
+  background: #e8efed;
+  border: 1px solid #d1ddda;
+  border-radius: 100px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+  align-items: end;
+  gap: 0.8rem;
+  padding: 1.2rem;
+  border-bottom: 1px solid #e7efed;
+}
+
+.audit-filters label {
+  display: grid;
+  gap: 0.4rem;
+  color: #526b66;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.audit-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.audit-filter-actions .primary-button {
+  margin: 0;
+}
+
+.action-chip {
+  display: inline-flex;
+  padding: 0.34rem 0.5rem;
+  color: #12675d;
+  background: #e9f6f3;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.audit-entity-id,
+.reason-preview {
+  max-width: 220px !important;
+}
+
+.reason-preview {
+  display: block;
+  overflow: hidden;
+  color: #617571;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-detail-modal {
+  width: min(100%, 920px);
+}
+
+.audit-metadata,
+.audit-metadata dd {
+  margin: 0;
+}
+
+.audit-metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 1.2rem;
+  border: 1px solid #e3ebe9;
+  border-radius: 10px;
+}
+
+.audit-metadata > div {
+  min-width: 0;
+  padding: 0.75rem;
+  border-bottom: 1px solid #edf2f1;
+}
+
+.audit-metadata dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.audit-metadata dd {
+  overflow-wrap: anywhere;
+  margin-top: 0.25rem;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.audit-json-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.audit-json-grid section:last-child {
+  grid-column: 1 / -1;
+}
+
+.audit-json-grid h3 {
+  margin: 0 0 0.45rem;
+  color: #526b66;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.audit-json-grid pre {
+  overflow: auto;
+  min-height: 120px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0.8rem;
+  color: #d7f1eb;
+  background: #173b36;
+  border-radius: 9px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.73rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.settings-content {
+  width: min(980px, 92vw);
+  margin: 0 auto;
+  padding: 3rem 0 5rem;
+}
+
+.settings-heading {
+  align-items: flex-start;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.5fr);
+  gap: 1rem;
+}
+
+.settings-card {
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgb(24 68 61 / 6%);
+}
+
+.account-summary dl,
+.account-summary dd {
+  margin: 0;
+}
+
+.account-summary dl {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-summary dl > div {
+  display: grid;
+  gap: 0.3rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #edf2f1;
+}
+
+.account-summary dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.account-summary dd {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.password-card h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.035em;
+}
+
+.password-card > p:not(.card-label) {
+  margin: 0.55rem 0 1.3rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.password-form {
+  max-width: 520px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.confirmation-dialog > p {
+  margin-bottom: 1.4rem;
+}
+
 .optional-label {
   color: #899995;
   font-size: 0.72rem;
@@ -933,8 +1321,38 @@ input:disabled {
     grid-template-columns: auto 1fr;
   }
 
-  .topbar-actions .text-link {
+  .management-topbar .topbar-actions .text-link:first-child {
     display: none;
+  }
+
+  .management-topbar {
+    flex-wrap: wrap;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+  }
+
+  .management-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .management-nav a {
+    white-space: nowrap;
+  }
+
+  .audit-filters,
+  .audit-metadata,
+  .audit-json-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-json-grid section:last-child {
+    grid-column: auto;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
   }
 
   .management-content {

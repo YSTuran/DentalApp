@@ -7,6 +7,7 @@ from app.models.enums import RoleCode
 
 class SessionRequest(BaseModel):
     id_token: str = Field(min_length=20)
+    remember_me: bool = False
 
 
 class CsrfResponse(BaseModel):

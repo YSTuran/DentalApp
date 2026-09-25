@@ -3,7 +3,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import auth as auth_dependencies
-from app.api.dependencies.auth import get_optional_current_user
+from app.api.dependencies.auth import get_current_user, get_optional_current_user
 from app.api.routes import auth as auth_routes
 from app.main import app
 from app.models import RoleCode, User, UserRoleAssignment
@@ -81,7 +81,38 @@ def test_session_sets_http_only_cookie(monkeypatch) -> None:
     assert response.json()["global_roles"] == ["system_admin"]
     assert "dentalapp_session=" in response.headers["set-cookie"]
     assert "HttpOnly" in response.headers["set-cookie"]
+    assert "Max-Age" not in response.headers["set-cookie"]
     assert recorded_events[0]["action"] == "auth.session_created"
+    assert recorded_events[0]["context"] == {
+        "provider": "firebase",
+        "remember_me": False,
+    }
+
+
+def test_remembered_session_sets_persistent_cookie(monkeypatch) -> None:
+    user = build_user()
+    monkeypatch.setattr(
+        auth_routes,
+        "create_session_cookie",
+        lambda _token: ("signed-session-cookie", {"uid": user.firebase_uid}),
+    )
+    monkeypatch.setattr(
+        auth_routes,
+        "load_active_user_by_firebase_uid",
+        lambda _db, _uid: user,
+    )
+    monkeypatch.setattr(auth_routes, "record_audit_event", lambda *_args, **_kwargs: None)
+
+    with TestClient(app) as client:
+        csrf_response = client.get("/api/auth/csrf")
+        response = client.post(
+            "/api/auth/session",
+            json={"id_token": "x" * 40, "remember_me": True},
+            headers={"X-CSRF-Token": csrf_response.json()["csrf_token"]},
+        )
+
+    assert response.status_code == 200
+    assert "Max-Age=432000" in response.headers["set-cookie"]
 
 
 def test_me_rejects_missing_session() -> None:
@@ -135,3 +166,36 @@ def test_logout_records_audit_for_authenticated_user(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert recorded_events[0]["action"] == "auth.session_ended"
+
+
+def test_password_change_confirmation_records_audit_without_passwords(monkeypatch) -> None:
+    user = build_user()
+    recorded_events = []
+    app.dependency_overrides[get_current_user] = lambda: user
+    monkeypatch.setattr(
+        auth_routes,
+        "record_audit_event",
+        lambda _db, **kwargs: recorded_events.append(kwargs),
+    )
+
+    try:
+        with TestClient(app) as client:
+            csrf_response = client.get("/api/auth/csrf")
+            response = client.post(
+                "/api/auth/password-changed",
+                headers={"X-CSRF-Token": csrf_response.json()["csrf_token"]},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert recorded_events == [
+        {
+            "action": "account.password_changed",
+            "entity_type": "user",
+            "entity_id": user.id,
+            "actor": user,
+            "context": {"provider": "firebase", "source": "self_service"},
+            "request": recorded_events[0]["request"],
+        }
+    ]

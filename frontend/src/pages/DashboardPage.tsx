@@ -52,9 +52,12 @@ export function DashboardPage() {
             <span>Operasyon paneli</span>
           </div>
         </div>
-        <button className="secondary-button" onClick={handleLogout} disabled={loggingOut}>
-          {loggingOut ? "Çıkış yapılıyor…" : "Çıkış yap"}
-        </button>
+        <div className="topbar-actions">
+          <Link className="text-link" to="/ayarlar">Ayarlar</Link>
+          <button className="secondary-button" onClick={handleLogout} disabled={loggingOut}>
+            {loggingOut ? "Çıkış yapılıyor…" : "Çıkış yap"}
+          </button>
+        </div>
       </header>
 
       <main className="dashboard-content">
@@ -111,13 +114,17 @@ export function DashboardPage() {
           </section>
 
           <section className="info-card next-step-card">
-            <p className="card-label">SONRAKİ MODÜL</p>
-            <h2>Klinik yönetimi</h2>
+            <p className="card-label">SİSTEM YÖNETİMİ</p>
+            <h2>Klinik, kullanıcı ve audit yönetimi</h2>
             <p>
-              Klinik kayıtlarını oluşturun, bilgilerini güncelleyin ve şube durumlarını yönetin.
+              Klinik kayıtlarını, personel hesaplarını ve değiştirilemez işlem geçmişini yönetin.
             </p>
             {user.global_roles.includes("system_admin") && (
-              <Link className="primary-link inline-link" to="/yonetim/klinikler">Klinikleri yönet</Link>
+              <div className="dashboard-management-links">
+                <Link className="primary-link" to="/yonetim/klinikler">Klinikler</Link>
+                <Link className="primary-link" to="/yonetim/kullanicilar">Kullanıcılar</Link>
+                <Link className="primary-link" to="/yonetim/audit-kayitlari">Audit kayıtları</Link>
+              </div>
             )}
           </section>
         </div>

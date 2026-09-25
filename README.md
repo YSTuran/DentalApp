@@ -118,6 +118,26 @@ Sistem yöneticisi giriş yaptıktan sonra klinik yönetimi ekranına
 aktif/pasif filtreleme, sayfalama, klinik ekleme, düzenleme ve gerekçeli durum
 değişikliği yapılabilir.
 
+Frontend sistem yönetimi ekranları:
+
+- `http://localhost:5173/yonetim/klinikler`: klinik yönetimi.
+- `http://localhost:5173/yonetim/kullanicilar`: personel hesabı oluşturma,
+  kullanıcı/rol görüntüleme ve kullanıcıyı pasifleştirme veya etkinleştirme.
+- `http://localhost:5173/yonetim/audit-kayitlari`: işlem, kayıt türü, klinik ve
+  kayıt kimliğine göre filtrelenebilen değiştirilemez denetim kayıtları.
+- `http://localhost:5173/ayarlar`: bütün kullanıcıların mevcut parolalarını
+  doğrulayarak kendi Firebase parolalarını değiştirebildiği hesap ayarları.
+
+Yeni kullanıcı oluşturulduğunda Firebase geçici parolası ekranda yalnızca bir kez
+gösterilir. Pencere kapatılmadan önce parola güvenli biçimde kaydedilip kullanıcıya
+iletilmelidir.
+
+Giriş ekranındaki **Oturumu açık tut** seçeneği işaretlenirse Firebase tarayıcı
+oturumu ve FastAPI HttpOnly oturum çerezi kalıcı oluşturulur. Seçenek işaretlenmezse
+oturum çerezi tarayıcı oturumu sona erdiğinde silinir. Normal kullanıcı yönetimi API'si
+üzerinden `system_admin` rolü oluşturulamaz veya atanamaz; ilk sistem yöneticisi CLI
+kurulum akışıyla yönetilir.
+
 ## Kullanıcı ve rol API'si
 
 - `GET /api/users`: sistem yöneticisi tüm kullanıcıları görür. Klinik yöneticisi

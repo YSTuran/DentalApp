@@ -105,7 +105,11 @@ def create_session(
 
     user = load_active_user_by_firebase_uid(db, firebase_uid)
     settings = get_settings()
-    max_age = int(timedelta(days=settings.firebase_session_days).total_seconds())
+    max_age = (
+        int(timedelta(days=settings.firebase_session_days).total_seconds())
+        if payload.remember_me
+        else None
+    )
     record_audit_event(
         db,
         action="auth.session_created",
@@ -113,7 +117,7 @@ def create_session(
         entity_id=user.id,
         actor=user,
         after={"status": "authenticated"},
-        context={"provider": "firebase"},
+        context={"provider": "firebase", "remember_me": payload.remember_me},
         request=request,
     )
     db.commit()
@@ -127,6 +131,26 @@ def create_session(
         path="/",
     )
     return serialize_user(user)
+
+
+@router.post("/password-changed", response_model=LogoutResponse)
+def password_changed(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> LogoutResponse:
+    require_csrf(request)
+    record_audit_event(
+        db,
+        action="account.password_changed",
+        entity_type="user",
+        entity_id=user.id,
+        actor=user,
+        context={"provider": "firebase", "source": "self_service"},
+        request=request,
+    )
+    db.commit()
+    return LogoutResponse()
 
 
 @router.get("/me", response_model=CurrentUserResponse)

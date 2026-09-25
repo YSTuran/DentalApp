@@ -1,8 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
+import { ManagementHeader } from "../components/ManagementHeader";
 import {
   changeClinicStatus,
   clinicErrorMessage,
@@ -32,7 +31,6 @@ function formatDate(value: string): string {
 }
 
 export function ClinicsPage() {
-  const { logout } = useAuth();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -148,16 +146,7 @@ export function ClinicsPage() {
   return (
     <div className="dashboard-shell">
       <DemoBanner />
-      <header className="topbar">
-        <div className="brand-inline">
-          <div className="brand-mark brand-mark-small" aria-hidden="true">D</div>
-          <div><strong>DentalApp</strong><span>Sistem yönetimi</span></div>
-        </div>
-        <nav className="topbar-actions" aria-label="Yönetim navigasyonu">
-          <Link className="text-link" to="/">Kontrol paneli</Link>
-          <button className="secondary-button" onClick={() => void logout()}>Çıkış yap</button>
-        </nav>
-      </header>
+      <ManagementHeader />
 
       <main className="management-content">
         <div className="page-heading">

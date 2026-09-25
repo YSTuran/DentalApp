@@ -9,6 +9,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,7 +19,7 @@ export function LoginPage() {
     setSubmitting(true);
 
     try {
-      await login(email.trim().toLowerCase(), password);
+      await login(email.trim().toLowerCase(), password, rememberMe);
       navigate("/", { replace: true });
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Giriş yapılamadı.");
@@ -84,6 +85,16 @@ export function LoginPage() {
               disabled={submitting}
               required
             />
+
+            <label className="remember-option">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+                disabled={submitting}
+              />
+              <span>Oturumu açık tut</span>
+            </label>
 
             {error !== null && (
               <div className="form-error" role="alert">

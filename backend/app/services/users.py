@@ -104,6 +104,11 @@ def _validate_role_scope(
     return clinic
 
 
+def _reject_system_admin_assignment(role: RoleCode) -> None:
+    if role == RoleCode.SYSTEM_ADMIN:
+        raise UserValidationError("system_admin_assignment_not_allowed")
+
+
 def _active_system_admin_count(db: Session) -> int:
     return (
         db.scalar(
@@ -246,6 +251,7 @@ def create_user(
     request: Request,
 ) -> tuple[User, str]:
     _require_system_admin(actor)
+    _reject_system_admin_assignment(payload.role)
     _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
     if db.scalar(select(User.id).where(func.lower(User.email) == payload.email.lower())):
         raise UserConflictError("user_email_exists")
@@ -436,6 +442,7 @@ def assign_role(
     user = _load_user(db, user_id)
     if not user.is_active:
         raise UserConflictError("user_inactive")
+    _reject_system_admin_assignment(payload.role)
     _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
 
     existing = db.scalar(
