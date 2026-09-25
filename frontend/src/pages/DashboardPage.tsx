@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
@@ -111,11 +112,13 @@ export function DashboardPage() {
 
           <section className="info-card next-step-card">
             <p className="card-label">SONRAKİ MODÜL</p>
-            <h2>Klinik ve kullanıcı yönetimi</h2>
+            <h2>Klinik yönetimi</h2>
             <p>
-              Kimlik doğrulama tamamlandı. Bir sonraki aşamada kliniklerin, kullanıcıların ve
-              rol atamalarının yönetileceği ekranlar eklenecek.
+              Klinik kayıtlarını oluşturun, bilgilerini güncelleyin ve şube durumlarını yönetin.
             </p>
+            {user.global_roles.includes("system_admin") && (
+              <Link className="primary-link inline-link" to="/yonetim/klinikler">Klinikleri yönet</Link>
+            )}
           </section>
         </div>
       </main>

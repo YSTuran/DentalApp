@@ -34,7 +34,7 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, detail);
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
@@ -52,33 +52,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function getCsrfToken(): Promise<string> {
-  const response = await request<{ csrf_token: string }>("/api/auth/csrf");
+  const response = await apiRequest<{ csrf_token: string }>("/api/auth/csrf");
   return response.csrf_token;
 }
 
-export async function createSession(idToken: string): Promise<CurrentUser> {
+export async function csrfRequest<T>(path: string, init: RequestInit): Promise<T> {
   const csrfToken = await getCsrfToken();
+  return apiRequest<T>(path, {
+    ...init,
+    headers: {
+      "X-CSRF-Token": csrfToken,
+      ...init.headers,
+    },
+  });
+}
 
-  return request<CurrentUser>("/api/auth/session", {
+export async function createSession(idToken: string): Promise<CurrentUser> {
+  return csrfRequest<CurrentUser>("/api/auth/session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken,
     },
     body: JSON.stringify({ id_token: idToken }),
   });
 }
 
 export function getCurrentUser(): Promise<CurrentUser> {
-  return request<CurrentUser>("/api/auth/me");
+  return apiRequest<CurrentUser>("/api/auth/me");
 }
 
 export async function destroySession(): Promise<void> {
-  const csrfToken = await getCsrfToken();
-  await request<{ status: string }>("/api/auth/logout", {
+  await csrfRequest<{ status: string }>("/api/auth/logout", {
     method: "POST",
-    headers: {
-      "X-CSRF-Token": csrfToken,
-    },
   });
 }

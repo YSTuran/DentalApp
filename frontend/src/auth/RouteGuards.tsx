@@ -22,3 +22,13 @@ export function PublicOnlyRoute() {
 
   return status === "unauthenticated" ? <Outlet /> : <Navigate to="/" replace />;
 }
+
+export function SystemAdminRoute() {
+  const { user } = useAuth();
+
+  return user?.global_roles.includes("system_admin") ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/yetkisiz" replace />
+  );
+}

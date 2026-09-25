@@ -13,8 +13,45 @@ from app.core.firebase import get_firebase_app
 from app.db.session import engine, get_db
 from app.main import app
 from app.models import AuditEvent, RoleCode, User, UserRoleAssignment
+from app.services.firebase_identity import (
+    create_identity,
+    delete_identity,
+    set_identity_disabled,
+    update_identity_name,
+)
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.skipif(
+    getenv("RUN_FIREBASE_EMULATOR_TESTS") != "1",
+    reason="Set RUN_FIREBASE_EMULATOR_TESTS=1 to run emulator integration tests.",
+)
+def test_firebase_identity_lifecycle() -> None:
+    email = f"identity-{uuid4().hex}@example.invalid"
+    firebase_uid = create_identity(
+        email=email,
+        full_name="Identity Test User",
+        password="Identity-Test-Password-123!",
+    )
+
+    try:
+        firebase_user = auth.get_user(firebase_uid, app=get_firebase_app())
+        assert firebase_user.email == email
+        assert firebase_user.display_name == "Identity Test User"
+        assert firebase_user.disabled is False
+
+        update_identity_name(firebase_uid, "Identity Test User Updated")
+        set_identity_disabled(firebase_uid, disabled=True)
+
+        firebase_user = auth.get_user(firebase_uid, app=get_firebase_app())
+        assert firebase_user.display_name == "Identity Test User Updated"
+        assert firebase_user.disabled is True
+    finally:
+        delete_identity(firebase_uid)
+
+    with pytest.raises(auth.UserNotFoundError):
+        auth.get_user(firebase_uid, app=get_firebase_app())
 
 
 @pytest.mark.skipif(

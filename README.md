@@ -14,6 +14,8 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Firebase Authentication ve yerel Authentication Emulator desteği
 - Klinik kapsamlı rol/yetki kontrol katmanı
 - PostgreSQL seviyesinde değiştirilemez audit kayıtları
+- Sistem yöneticisi için klinik yönetimi ekranı
+- Firebase ile PostgreSQL'i birlikte yöneten kullanıcı ve rol API'si
 - Liveness ve readiness endpoint'leri
 - Pytest başlangıç testleri
 
@@ -111,6 +113,31 @@ Klinik silme endpoint'i yoktur. Yazma işlemleri CSRF korumalıdır ve klinik de
 ile `clinic.created`, `clinic.updated`, `clinic.deactivated` veya `clinic.reactivated`
 audit olayı aynı PostgreSQL transaction'ında kaydedilir.
 
+Sistem yöneticisi giriş yaptıktan sonra klinik yönetimi ekranına
+`http://localhost:5173/yonetim/klinikler` adresinden ulaşabilir. Burada arama,
+aktif/pasif filtreleme, sayfalama, klinik ekleme, düzenleme ve gerekçeli durum
+değişikliği yapılabilir.
+
+## Kullanıcı ve rol API'si
+
+- `GET /api/users`: sistem yöneticisi tüm kullanıcıları görür. Klinik yöneticisi
+  yalnızca sorumlu olduğu kliniklerdeki hekim ve yönetici hekimleri görür; diğer
+  kliniklere ait rol atamaları yanıtta gösterilmez.
+- `GET /api/users/{user_id}`: aynı görünürlük kurallarıyla kullanıcı detayı.
+- `POST /api/users`: Firebase hesabını, PostgreSQL kullanıcısını ve ilk rolü oluşturur.
+- `PATCH /api/users/{user_id}`: ad-soyad bilgisini Firebase ve PostgreSQL'de günceller.
+- `POST /api/users/{user_id}/deactivate` ve `reactivate`: hesabı iki sistemde birlikte
+  pasifleştirir veya etkinleştirir; gerekçe zorunludur.
+- `POST /api/users/{user_id}/roles`: yeni rol atar.
+- `POST /api/users/{user_id}/roles/{assignment_id}/deactivate` ve `reactivate`:
+  rol atamasının durumunu değiştirir; gerekçe zorunludur.
+
+Kullanıcı silme endpoint'i yoktur. Kullanıcı oluşturmada üretilen geçici parola
+yalnızca başarılı `POST /api/users` yanıtında bir kez döner ve audit kaydına yazılmaz.
+Firebase işlemi sonrasında PostgreSQL/audit işlemi başarısız olursa yapılan Firebase
+değişikliği telafi edilir. Son aktif sistem yöneticisi veya oturumdaki yöneticinin
+kendi hesabı pasifleştirilemez.
+
 ## Frontend
 
 Firebase Emulator, FastAPI ve React geliştirme sunucusunu birlikte başlatmak için
@@ -151,7 +178,7 @@ PostgreSQL trigger entegrasyon testlerini ayrıca çalıştırmak için:
 
 ```powershell
 $env:RUN_DATABASE_INTEGRATION_TESTS='1'
-pytest tests/integration/test_audit_immutability.py tests/integration/test_clinic_api.py
+pytest tests/integration/test_audit_immutability.py tests/integration/test_clinic_api.py tests/integration/test_user_management_api.py
 ```
 
 ## Migration
