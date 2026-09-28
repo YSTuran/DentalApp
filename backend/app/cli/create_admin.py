@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from getpass import getpass
 
 from firebase_admin import auth
@@ -80,9 +81,51 @@ def restore_emulator_admin(user: User) -> None:
     print(f"Sistem yöneticisi zaten eşleşmiş durumda: {user.email}")
 
 
+def reset_emulator_admin_password(user: User) -> None:
+    settings = get_settings()
+    if not settings.firebase_use_emulator:
+        raise SystemExit(
+            "Gerçek Firebase yöneticisinin parolası bu yerel komutla sıfırlanamaz. "
+            "Firebase Console veya güvenli parola sıfırlama akışını kullanın."
+        )
+
+    firebase_app = get_firebase_app()
+    try:
+        firebase_user = auth.get_user(user.firebase_uid, app=firebase_app)
+    except auth.UserNotFoundError:
+        restore_emulator_admin(user)
+        return
+
+    if firebase_user.email != user.email:
+        raise SystemExit(
+            "Firebase UID mevcut ancak e-posta PostgreSQL kaydıyla eşleşmiyor. "
+            "Parola değiştirilmedi."
+        )
+
+    password = prompt_password()
+    auth.update_user(
+        user.firebase_uid,
+        password=password,
+        disabled=False,
+        app=firebase_app,
+    )
+    print(f"Emülatör sistem yöneticisi parolası yenilendi: {user.email}")
+
+
 def main() -> None:
-    print("DentalApp ilk sistem yöneticisi")
-    email = prompt_non_empty("E-posta: ").lower()
+    parser = ArgumentParser(
+        description="DentalApp sistem yöneticisi oluşturma ve yerel hesap kurtarma aracı."
+    )
+    parser.add_argument("--email", help="İşlem yapılacak sistem yöneticisi e-postası.")
+    parser.add_argument(
+        "--reset-password",
+        action="store_true",
+        help="Mevcut Firebase Emulator yöneticisinin parolasını güvenli biçimde yeniler.",
+    )
+    args = parser.parse_args()
+
+    print("DentalApp sistem yöneticisi oluşturma / kurtarma")
+    email = (args.email or prompt_non_empty("E-posta: ")).strip().lower()
 
     with SessionLocal() as session:
         existing = session.scalar(select(User).where(func.lower(User.email) == email))
@@ -101,8 +144,17 @@ def main() -> None:
                 )
 
     if existing is not None:
+        if args.reset_password:
+            reset_emulator_admin_password(existing)
+            return
         restore_emulator_admin(existing)
         return
+
+    if args.reset_password:
+        raise SystemExit(
+            "Parolası sıfırlanacak sistem yöneticisi PostgreSQL'de bulunamadı. "
+            "Yeni yönetici oluşturmak için --reset-password kullanmayın."
+        )
 
     full_name = prompt_non_empty("Ad soyad: ")
     password = prompt_password()

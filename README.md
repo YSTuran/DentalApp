@@ -27,9 +27,11 @@ cd backend
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
-Copy-Item .env.example .env
 uvicorn app.main:app --reload
 ```
+
+Yerel ayarlar doğrudan `backend/.env` dosyasından okunur. Bu dosya veritabanı
+parolası ve uygulama anahtarı içerebildiği için Git'e eklenmez.
 
 Uygulama: `http://127.0.0.1:8000`
 
@@ -58,6 +60,16 @@ cd backend
 .\.venv\Scripts\Activate.ps1
 python -m app.cli.create_admin
 ```
+
+Aynı komut farklı bir e-posta ile tekrar çalıştırılarak kontrollü biçimde ikinci
+bir sistem yöneticisi oluşturulabilir. Mevcut ve aktif bir yöneticinin yerel emulator
+parolası unutulursa şu kurtarma komutu kullanılır:
+
+```powershell
+python -m app.cli.create_admin --email admin@example.test --reset-password
+```
+
+Parola sıfırlama seçeneği güvenlik nedeniyle gerçek Firebase ortamında çalışmaz.
 
 Emulator verileri ilk kez kaydedilecekse emulator açıkken başka bir terminalde:
 
@@ -180,18 +192,20 @@ npm run dev
 ```
 
 Uygulamayı `http://localhost:5173` adresinden açın. Geliştirme ortamı ayarları
-`frontend/.env.local` dosyasından okunur; örnek değerler `frontend/.env.example`
-içindedir. Firebase servis hesabı dosyası frontend'e eklenmez.
+`frontend/.env` dosyasından okunur. Projede backend ve frontend için birer yerel
+`.env` dosyası bulunur; bu dosyalar Git'e eklenmez. Firebase servis hesabı dosyası
+frontend'e eklenmez.
 
 Giriş sırasında Firebase Auth Emulator'dan alınan ID token FastAPI'ye gönderilir.
 FastAPI doğrulamadan sonra CSRF korumalı, HttpOnly bir oturum çerezi üretir.
 
 ## Test
 
+Backend birim testleri ile frontend bileşen testlerini birlikte çalıştırmak için
+proje kökünde:
+
 ```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-pytest
+npm test
 ```
 
 PostgreSQL trigger entegrasyon testlerini ayrıca çalıştırmak için:
@@ -200,6 +214,13 @@ PostgreSQL trigger entegrasyon testlerini ayrıca çalıştırmak için:
 $env:RUN_DATABASE_INTEGRATION_TESTS='1'
 pytest tests/integration/test_audit_immutability.py tests/integration/test_clinic_api.py tests/integration/test_user_management_api.py
 ```
+
+## Vaka iş akışı
+
+MVP vaka durumları, rol yetkileri, iki zorunlu onay, sorumlu hekim kuralı ve iade
+kararları `docs/case-workflow.md` belgesinde tanımlanmıştır. Bu kuralların çalışan
+karşılığı `backend/app/domain/case_workflow.py` dosyasıdır. Vaka tabloları ve API'leri
+sonraki aşamada bu durum makinesini kaynak kabul ederek oluşturulacaktır.
 
 ## Migration
 

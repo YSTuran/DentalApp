@@ -12,11 +12,11 @@ htmlcov/
 backend/.venv/
 .env
 backend/.env
+frontend/.env
 
 # Node
 node_modules/
 frontend/dist/
-frontend/.env.local
 frontend/.env.*.local
 
 # Runtime data

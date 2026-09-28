@@ -8,7 +8,9 @@
     "dev:firebase": "firebase emulators:start --only auth --import=./firebase-export --export-on-exit --project dentalapp-7b131",
     "dev:api": "backend\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --reload-dir backend --app-dir backend",
     "dev:web": "npm --prefix frontend run dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pyproject.toml backend\\tests",
+    "test:frontend": "npm --prefix frontend test"
   },
   "repository": {
     "type": "git",

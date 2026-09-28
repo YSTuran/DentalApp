@@ -60,3 +60,55 @@ def test_restore_emulator_admin_is_disabled_for_real_firebase(monkeypatch) -> No
 
     with pytest.raises(SystemExit, match="Gerçek Firebase"):
         create_admin.restore_emulator_admin(user)
+
+
+def test_reset_emulator_admin_password_updates_password_and_enables_user(monkeypatch) -> None:
+    user = SimpleNamespace(
+        firebase_uid="firebase-admin-uid",
+        email="admin@example.test",
+        full_name="Demo Admin",
+    )
+    firebase_app = object()
+    updated_user: dict[str, object] = {}
+    monkeypatch.setattr(
+        create_admin,
+        "get_settings",
+        lambda: SimpleNamespace(firebase_use_emulator=True),
+    )
+    monkeypatch.setattr(create_admin, "get_firebase_app", lambda: firebase_app)
+    monkeypatch.setattr(create_admin, "prompt_password", lambda: "new-strong-password")
+    monkeypatch.setattr(
+        create_admin.auth,
+        "get_user",
+        lambda *_args, **_kwargs: SimpleNamespace(email=user.email),
+    )
+    monkeypatch.setattr(
+        create_admin.auth,
+        "update_user",
+        lambda uid, **kwargs: updated_user.update({"uid": uid, **kwargs}),
+    )
+
+    create_admin.reset_emulator_admin_password(user)
+
+    assert updated_user == {
+        "uid": user.firebase_uid,
+        "password": "new-strong-password",
+        "disabled": False,
+        "app": firebase_app,
+    }
+
+
+def test_reset_emulator_admin_password_is_disabled_for_real_firebase(monkeypatch) -> None:
+    user = SimpleNamespace(
+        firebase_uid="firebase-admin-uid",
+        email="admin@example.test",
+        full_name="Demo Admin",
+    )
+    monkeypatch.setattr(
+        create_admin,
+        "get_settings",
+        lambda: SimpleNamespace(firebase_use_emulator=False),
+    )
+
+    with pytest.raises(SystemExit, match="Gerçek Firebase"):
+        create_admin.reset_emulator_admin_password(user)
