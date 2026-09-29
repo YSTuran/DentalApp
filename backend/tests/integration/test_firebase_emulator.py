@@ -58,7 +58,7 @@ def test_firebase_identity_lifecycle() -> None:
     getenv("RUN_FIREBASE_EMULATOR_TESTS") != "1",
     reason="Set RUN_FIREBASE_EMULATOR_TESTS=1 to run emulator integration tests.",
 )
-def test_firebase_login_session_and_logout() -> None:
+def test_firebase_login_password_change_session_refresh_and_logout() -> None:
     settings = get_settings()
     suffix = uuid4().hex
     email = f"integration-{suffix}@example.invalid"
@@ -126,6 +126,31 @@ def test_firebase_login_session_and_logout() -> None:
                     assert me_response.status_code == 200
                     assert me_response.json()["global_roles"] == ["system_admin"]
 
+                    password_response = requests.post(
+                        "http://"
+                        f"{settings.firebase_auth_emulator_host}"
+                        "/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key",
+                        json={
+                            "idToken": id_token,
+                            "password": "Integration-Test-New-Password-123!",
+                            "returnSecureToken": True,
+                        },
+                        timeout=5,
+                    )
+                    password_response.raise_for_status()
+                    refreshed_id_token = password_response.json()["idToken"]
+
+                    password_changed_response = client.post(
+                        "/api/auth/password-changed",
+                        json={"id_token": refreshed_id_token, "remember_me": True},
+                        headers={"X-CSRF-Token": csrf_token},
+                    )
+                    assert password_changed_response.status_code == 200
+                    assert password_changed_response.json()["email"] == email
+
+                    refreshed_me_response = client.get("/api/auth/me")
+                    assert refreshed_me_response.status_code == 200
+
                     logout_response = client.post(
                         "/api/auth/logout",
                         headers={"X-CSRF-Token": csrf_token},
@@ -139,7 +164,11 @@ def test_firebase_login_session_and_logout() -> None:
                         .where(AuditEvent.actor_user_id == local_user.id)
                         .order_by(AuditEvent.created_at)
                     ).all()
-                assert actions == ["auth.session_created", "auth.session_ended"]
+                assert actions == [
+                    "auth.session_created",
+                    "account.password_changed",
+                    "auth.session_ended",
+                ]
             finally:
                 app.dependency_overrides.pop(get_db, None)
                 outer_transaction.rollback()

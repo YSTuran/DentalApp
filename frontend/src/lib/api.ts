@@ -90,8 +90,15 @@ export async function destroySession(): Promise<void> {
   });
 }
 
-export async function recordPasswordChanged(): Promise<void> {
-  await csrfRequest<{ status: string }>("/api/auth/password-changed", {
+export function recordPasswordChanged(
+  idToken: string,
+  rememberMe: boolean,
+): Promise<CurrentUser> {
+  return csrfRequest<CurrentUser>("/api/auth/password-changed", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id_token: idToken, remember_me: rememberMe }),
   });
 }

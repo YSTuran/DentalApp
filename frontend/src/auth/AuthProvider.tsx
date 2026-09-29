@@ -22,6 +22,28 @@ import { firebaseAuth } from "../lib/firebase";
 import type { CurrentUser } from "../types/auth";
 import { AuthContext, type AuthStatus } from "./AuthContext";
 
+const REMEMBER_SESSION_KEY = "dentalapp.remember_session";
+
+function shouldRememberSession(): boolean {
+  try {
+    return window.localStorage.getItem(REMEMBER_SESSION_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function storeRememberSession(rememberMe: boolean): void {
+  try {
+    if (rememberMe) {
+      window.localStorage.setItem(REMEMBER_SESSION_KEY, "true");
+    } else {
+      window.localStorage.removeItem(REMEMBER_SESSION_KEY);
+    }
+  } catch {
+    // Firebase persistence still works when browser storage access is restricted.
+  }
+}
+
 function friendlyAuthError(error: unknown): Error {
   if (error instanceof ApiError) {
     const messages: Record<string, string> = {
@@ -93,6 +115,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
       const idToken = await credential.user.getIdToken(true);
       const currentUser = await createSession(idToken, rememberMe);
+      storeRememberSession(rememberMe);
       setUser(currentUser);
       setStatus("authenticated");
     } catch (error) {
@@ -107,6 +130,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (user === null) {
       throw new Error("Parola değiştirmek için oturum açmalısınız.");
     }
+
+    let passwordWasUpdated = false;
 
     try {
       await firebaseAuth.authStateReady();
@@ -125,8 +150,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       await updatePassword(firebaseUser, newPassword);
-      await recordPasswordChanged();
+      passwordWasUpdated = true;
+      const idToken = await firebaseUser.getIdToken(true);
+      const currentUser = await recordPasswordChanged(
+        idToken,
+        shouldRememberSession(),
+      );
+      setUser(currentUser);
+      setStatus("authenticated");
     } catch (error) {
+      if (passwordWasUpdated) {
+        throw new Error(
+          "Parola değiştirildi ancak güvenli oturum yenilenemedi. " +
+            "Sayfayı yenileyip yeni parolanızla tekrar giriş yapın.",
+          { cause: error },
+        );
+      }
       if (error instanceof FirebaseError) {
         const messages: Record<string, string> = {
           "auth/invalid-credential": "Eski parola hatalı.",
@@ -139,12 +178,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         throw new Error(messages[error.code] ?? "Parola değiştirilemedi.", {
           cause: error,
         });
-      }
-      if (error instanceof ApiError) {
-        throw new Error(
-          "Parola Firebase üzerinde değiştirildi ancak audit kaydı doğrulanamadı.",
-          { cause: error },
-        );
       }
       throw error instanceof Error ? error : new Error("Parola değiştirilemedi.");
     }

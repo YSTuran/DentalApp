@@ -54,30 +54,7 @@ def serialize_user(user: User) -> CurrentUserResponse:
     )
 
 
-@router.get("/csrf", response_model=CsrfResponse)
-def issue_csrf_token(response: Response) -> CsrfResponse:
-    settings = get_settings()
-    csrf_token = token_urlsafe(32)
-    response.set_cookie(
-        key=settings.csrf_cookie_name,
-        value=csrf_token,
-        httponly=False,
-        secure=settings.cookie_secure,
-        samesite="strict",
-        path="/",
-    )
-    return CsrfResponse(csrf_token=csrf_token)
-
-
-@router.post("/session", response_model=CurrentUserResponse)
-def create_session(
-    payload: SessionRequest,
-    request: Request,
-    response: Response,
-    db: Annotated[Session, Depends(get_db)],
-) -> CurrentUserResponse:
-    require_csrf(request)
-
+def establish_session(payload: SessionRequest, db: Session) -> tuple[str, User]:
     try:
         session_cookie, claims = create_session_cookie(payload.id_token)
     except RecentSignInRequiredError as exc:
@@ -103,13 +80,54 @@ def create_session(
             detail="invalid_firebase_token",
         )
 
-    user = load_active_user_by_firebase_uid(db, firebase_uid)
+    return session_cookie, load_active_user_by_firebase_uid(db, firebase_uid)
+
+
+def set_session_cookie(
+    response: Response,
+    session_cookie: str,
+    *,
+    remember_me: bool,
+) -> None:
     settings = get_settings()
     max_age = (
-        int(timedelta(days=settings.firebase_session_days).total_seconds())
-        if payload.remember_me
-        else None
+        int(timedelta(days=settings.firebase_session_days).total_seconds()) if remember_me else None
     )
+    response.set_cookie(
+        key=settings.firebase_session_cookie_name,
+        value=session_cookie,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path="/",
+    )
+
+
+@router.get("/csrf", response_model=CsrfResponse)
+def issue_csrf_token(response: Response) -> CsrfResponse:
+    settings = get_settings()
+    csrf_token = token_urlsafe(32)
+    response.set_cookie(
+        key=settings.csrf_cookie_name,
+        value=csrf_token,
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite="strict",
+        path="/",
+    )
+    return CsrfResponse(csrf_token=csrf_token)
+
+
+@router.post("/session", response_model=CurrentUserResponse)
+def create_session(
+    payload: SessionRequest,
+    request: Request,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+) -> CurrentUserResponse:
+    require_csrf(request)
+    session_cookie, user = establish_session(payload, db)
     record_audit_event(
         db,
         action="auth.session_created",
@@ -121,36 +139,36 @@ def create_session(
         request=request,
     )
     db.commit()
-    response.set_cookie(
-        key=settings.firebase_session_cookie_name,
-        value=session_cookie,
-        max_age=max_age,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
-        path="/",
-    )
+    set_session_cookie(response, session_cookie, remember_me=payload.remember_me)
     return serialize_user(user)
 
 
-@router.post("/password-changed", response_model=LogoutResponse)
+@router.post("/password-changed", response_model=CurrentUserResponse)
 def password_changed(
+    payload: SessionRequest,
     request: Request,
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
-) -> LogoutResponse:
+) -> CurrentUserResponse:
     require_csrf(request)
+    session_cookie, user = establish_session(payload, db)
     record_audit_event(
         db,
         action="account.password_changed",
         entity_type="user",
         entity_id=user.id,
         actor=user,
-        context={"provider": "firebase", "source": "self_service"},
+        context={
+            "provider": "firebase",
+            "source": "self_service",
+            "session_refreshed": True,
+            "remember_me": payload.remember_me,
+        },
         request=request,
     )
     db.commit()
-    return LogoutResponse()
+    set_session_cookie(response, session_cookie, remember_me=payload.remember_me)
+    return serialize_user(user)
 
 
 @router.get("/me", response_model=CurrentUserResponse)

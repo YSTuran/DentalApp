@@ -34,6 +34,12 @@ export interface UserCreateInput {
   reason: string;
 }
 
+export interface RoleAssignmentUpdateInput {
+  role: RoleCode;
+  clinic_id: string;
+  reason: string;
+}
+
 export interface UserCreatedResponse {
   user: ManagedUser;
   temporary_password: string;

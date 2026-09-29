@@ -206,6 +206,73 @@ def test_system_admin_can_manage_user_roles_and_status_with_audit(
     assert [call[2] for call in firebase_calls if call[0] == "disable"] == [True, False]
 
 
+def test_system_admin_can_replace_role_and_clinic_without_deleting_history(
+    session_factory: sessionmaker[Session],
+) -> None:
+    source_clinic = create_clinic(session_factory, "SOURCE")
+    target_clinic = create_clinic(session_factory, "TARGET")
+    admin = create_user(session_factory, (RoleCode.SYSTEM_ADMIN, None))
+    doctor = create_user(
+        session_factory,
+        (RoleCode.MANAGING_DENTIST, source_clinic.id),
+        full_name="Role Change Doctor",
+    )
+    other_manager = create_user(
+        session_factory,
+        (RoleCode.MANAGING_DENTIST, source_clinic.id),
+        full_name="Other Managing Dentist",
+    )
+    original_assignment_id = doctor.role_assignments[0].id
+    app.dependency_overrides[get_current_user] = lambda: admin
+
+    with TestClient(app) as client:
+        response = client.patch(
+            f"/api/users/{doctor.id}/roles/{original_assignment_id}",
+            headers=csrf_headers(client),
+            json={
+                "role": "dentist",
+                "clinic_id": str(target_clinic.id),
+                "reason": "Hekim başka kliniğe görevlendirildi",
+            },
+        )
+
+    assert response.status_code == 200
+    replacement_id = response.json()["id"]
+    assert response.json()["role"] == "dentist"
+    assert response.json()["clinic_id"] == str(target_clinic.id)
+    assert response.json()["is_active"] is True
+
+    with session_factory() as session:
+        original_assignment = session.get(UserRoleAssignment, original_assignment_id)
+        replacement = session.get(UserRoleAssignment, replacement_id)
+        active_source_managers = session.scalar(
+            select(func.count())
+            .select_from(UserRoleAssignment)
+            .where(
+                UserRoleAssignment.clinic_id == source_clinic.id,
+                UserRoleAssignment.role == RoleCode.MANAGING_DENTIST,
+                UserRoleAssignment.is_active.is_(True),
+            )
+        )
+        event = session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.action == "user.role_changed",
+                AuditEvent.entity_id == str(original_assignment_id),
+            )
+        )
+
+    assert original_assignment is not None
+    assert original_assignment.is_active is False
+    assert replacement is not None
+    assert replacement.user_id == doctor.id
+    assert active_source_managers == 1
+    assert other_manager.id != doctor.id
+    assert event is not None
+    assert event.reason == "Hekim başka kliniğe görevlendirildi"
+    assert event.before_data["role"] == "managing_dentist"
+    assert event.after_data["role"] == "dentist"
+
+
 def test_clinic_manager_only_sees_own_clinic_doctors(
     session_factory: sessionmaker[Session],
 ) -> None:
@@ -365,11 +432,22 @@ def test_system_admin_role_cannot_be_created_or_assigned_through_api(
             headers=headers,
             json={"role": "system_admin", "clinic_id": None},
         )
+        change_response = client.patch(
+            f"/api/users/{target.id}/roles/{target.role_assignments[0].id}",
+            headers=headers,
+            json={
+                "role": "system_admin",
+                "clinic_id": None,
+                "reason": "Yetkisiz sistem yöneticisi atama denemesi",
+            },
+        )
 
     assert create_response.status_code == 422
     assert create_response.json()["detail"] == "system_admin_assignment_not_allowed"
     assert assign_response.status_code == 422
     assert assign_response.json()["detail"] == "system_admin_assignment_not_allowed"
+    assert change_response.status_code == 422
+    assert change_response.json()["detail"] == "system_admin_assignment_not_allowed"
     assert firebase_called is False
 
 

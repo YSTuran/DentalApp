@@ -3,7 +3,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import auth as auth_dependencies
-from app.api.dependencies.auth import get_current_user, get_optional_current_user
+from app.api.dependencies.auth import get_optional_current_user
 from app.api.routes import auth as auth_routes
 from app.main import app
 from app.models import RoleCode, User, UserRoleAssignment
@@ -171,31 +171,46 @@ def test_logout_records_audit_for_authenticated_user(monkeypatch) -> None:
 def test_password_change_confirmation_records_audit_without_passwords(monkeypatch) -> None:
     user = build_user()
     recorded_events = []
-    app.dependency_overrides[get_current_user] = lambda: user
+    monkeypatch.setattr(
+        auth_routes,
+        "create_session_cookie",
+        lambda _token: ("renewed-session-cookie", {"uid": user.firebase_uid}),
+    )
+    monkeypatch.setattr(
+        auth_routes,
+        "load_active_user_by_firebase_uid",
+        lambda _db, _uid: user,
+    )
     monkeypatch.setattr(
         auth_routes,
         "record_audit_event",
         lambda _db, **kwargs: recorded_events.append(kwargs),
     )
 
-    try:
-        with TestClient(app) as client:
-            csrf_response = client.get("/api/auth/csrf")
-            response = client.post(
-                "/api/auth/password-changed",
-                headers={"X-CSRF-Token": csrf_response.json()["csrf_token"]},
-            )
-    finally:
-        app.dependency_overrides.clear()
+    with TestClient(app) as client:
+        csrf_response = client.get("/api/auth/csrf")
+        response = client.post(
+            "/api/auth/password-changed",
+            json={"id_token": "x" * 40, "remember_me": True},
+            headers={"X-CSRF-Token": csrf_response.json()["csrf_token"]},
+        )
 
     assert response.status_code == 200
+    assert response.json()["email"] == user.email
+    assert "dentalapp_session=renewed-session-cookie" in response.headers["set-cookie"]
+    assert "Max-Age=432000" in response.headers["set-cookie"]
     assert recorded_events == [
         {
             "action": "account.password_changed",
             "entity_type": "user",
             "entity_id": user.id,
             "actor": user,
-            "context": {"provider": "firebase", "source": "self_service"},
+            "context": {
+                "provider": "firebase",
+                "source": "self_service",
+                "session_refreshed": True,
+                "remember_me": True,
+            },
             "request": recorded_events[0]["request"],
         }
     ]

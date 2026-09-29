@@ -5,6 +5,7 @@ import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
 import { listClinics } from "../lib/clinics-api";
 import {
+  changeRoleAssignment,
   changeUserStatus,
   createUser,
   listUsers,
@@ -12,7 +13,12 @@ import {
 } from "../lib/users-api";
 import type { RoleCode } from "../types/auth";
 import type { Clinic } from "../types/clinic";
-import type { ManagedUser, UserCreateInput } from "../types/user-management";
+import type {
+  ManagedUser,
+  RoleAssignment,
+  RoleAssignmentUpdateInput,
+  UserCreateInput,
+} from "../types/user-management";
 
 const PAGE_SIZE = 10;
 const GLOBAL_ROLES = new Set<RoleCode>(["technician"]);
@@ -38,6 +44,17 @@ const FILTER_ROLE_OPTIONS: Array<{ value: RoleCode; label: string }> = [
 const EMPTY_FORM: UserCreateInput = {
   email: "",
   full_name: "",
+  role: "dentist",
+  clinic_id: "",
+  reason: "",
+};
+
+interface RoleChangeForm extends RoleAssignmentUpdateInput {
+  assignment_id: string;
+}
+
+const EMPTY_ROLE_CHANGE_FORM: RoleChangeForm = {
+  assignment_id: "",
   role: "dentist",
   clinic_id: "",
   reason: "",
@@ -75,6 +92,8 @@ export function UsersPage() {
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [statusTarget, setStatusTarget] = useState<ManagedUser | null>(null);
   const [statusReason, setStatusReason] = useState("");
+  const [roleTarget, setRoleTarget] = useState<ManagedUser | null>(null);
+  const [roleForm, setRoleForm] = useState<RoleChangeForm>(EMPTY_ROLE_CHANGE_FORM);
   const [submitting, setSubmitting] = useState(false);
 
   const clinicNames = useMemo(
@@ -183,6 +202,62 @@ export function UsersPage() {
     }
   }
 
+  function editableAssignments(user: ManagedUser): RoleAssignment[] {
+    return user.role_assignments.filter(
+      (assignment) => assignment.is_active && assignment.role !== "system_admin",
+    );
+  }
+
+  function openRoleForm(user: ManagedUser) {
+    const assignment = editableAssignments(user)[0];
+    if (assignment === undefined) return;
+    setRoleTarget(user);
+    setRoleForm({
+      assignment_id: assignment.id,
+      role: assignment.role,
+      clinic_id: assignment.clinic_id ?? "",
+      reason: "",
+    });
+    setError(null);
+    setNotice(null);
+  }
+
+  function selectRoleAssignment(assignmentId: string) {
+    if (roleTarget === null) return;
+    const assignment = editableAssignments(roleTarget).find(
+      (candidate) => candidate.id === assignmentId,
+    );
+    if (assignment === undefined) return;
+    setRoleForm({
+      assignment_id: assignment.id,
+      role: assignment.role,
+      clinic_id: assignment.clinic_id ?? "",
+      reason: roleForm.reason,
+    });
+  }
+
+  async function submitRoleChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (roleTarget === null) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await changeRoleAssignment(roleTarget.id, roleForm.assignment_id, {
+        role: roleForm.role,
+        clinic_id: roleForm.clinic_id,
+        reason: roleForm.reason,
+      });
+      setNotice(`${roleTarget.full_name} için rol ve klinik ataması güncellendi.`);
+      setRoleTarget(null);
+      setRoleForm(EMPTY_ROLE_CHANGE_FORM);
+      await loadUsers();
+    } catch (roleError) {
+      setError(userErrorMessage(roleError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function copyTemporaryPassword() {
     if (temporaryPassword === null) return;
     try {
@@ -194,6 +269,7 @@ export function UsersPage() {
   }
 
   const requiresClinic = !GLOBAL_ROLES.has(form.role);
+  const changedRoleRequiresClinic = !GLOBAL_ROLES.has(roleForm.role);
   const pageStart = total === 0 ? 0 : offset + 1;
   const pageEnd = Math.min(offset + PAGE_SIZE, total);
 
@@ -261,7 +337,10 @@ export function UsersPage() {
               <table className="data-table user-table">
                 <thead><tr><th>Kullanıcı</th><th>Roller</th><th>Durum</th><th>Oluşturulma</th><th /></tr></thead>
                 <tbody>
-                  {users.map((managedUser) => (
+                  {users.map((managedUser) => {
+                    const canChangeRole =
+                      managedUser.is_active && editableAssignments(managedUser).length > 0;
+                    return (
                     <tr key={managedUser.id}>
                       <td><strong>{managedUser.full_name}</strong><small>{managedUser.email}</small></td>
                       <td>
@@ -281,17 +360,25 @@ export function UsersPage() {
                           {managedUser.id === currentUser?.id ? (
                             <span className="current-account-label">Mevcut hesap</span>
                           ) : (
-                            <button
-                              className={managedUser.is_active ? "danger-action" : "success-action"}
-                              onClick={() => { setStatusTarget(managedUser); setStatusReason(""); setError(null); }}
-                            >
-                              {managedUser.is_active ? "Pasife al" : "Etkinleştir"}
-                            </button>
+                            <>
+                              {canChangeRole && (
+                                <button onClick={() => openRoleForm(managedUser)}>
+                                  Rol/Klinik düzenle
+                                </button>
+                              )}
+                              <button
+                                className={managedUser.is_active ? "danger-action" : "success-action"}
+                                onClick={() => { setStatusTarget(managedUser); setStatusReason(""); setError(null); }}
+                              >
+                                {managedUser.is_active ? "Pasife al" : "Etkinleştir"}
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -356,6 +443,61 @@ export function UsersPage() {
             </dl>
             {copyMessage !== null && <div className="success-message credential-copy-message" role="status">{copyMessage}</div>}
             <div className="modal-actions"><button className="secondary-button" onClick={() => void copyTemporaryPassword()}>Parolayı kopyala</button><button className="primary-button compact-button" onClick={() => setTemporaryPassword(null)}>Kaydettim, kapat</button></div>
+          </section>
+        </div>
+      )}
+
+      {roleTarget !== null && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="role-change-title">
+            <div className="modal-heading">
+              <div><p className="eyebrow">YETKİ ATAMASI</p><h2 id="role-change-title">Rol ve klinik düzenle</h2></div>
+              <button className="icon-button" onClick={() => setRoleTarget(null)} aria-label="Pencereyi kapat">×</button>
+            </div>
+            <p><strong>{roleTarget.full_name}</strong> için seçilen aktif atama değiştirilecektir. Eski atama silinmez; geçmişte pasif olarak saklanır.</p>
+            <form className="management-form" onSubmit={submitRoleChange}>
+              {error !== null && <div className="form-error" role="alert">{error}</div>}
+              <label>Değiştirilecek atama
+                <select value={roleForm.assignment_id} onChange={(event) => selectRoleAssignment(event.target.value)}>
+                  {editableAssignments(roleTarget).map((assignment) => (
+                    <option key={assignment.id} value={assignment.id}>
+                      {ROLE_LABELS[assignment.role]}
+                      {assignment.clinic_id !== null && ` · ${clinicNames.get(assignment.clinic_id) ?? "Bilinmeyen klinik"}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>Yeni rol
+                <select
+                  value={roleForm.role}
+                  onChange={(event) => {
+                    const role = event.target.value as RoleCode;
+                    setRoleForm({
+                      ...roleForm,
+                      role,
+                      clinic_id: GLOBAL_ROLES.has(role)
+                        ? ""
+                        : (roleForm.clinic_id || activeClinics[0]?.id || ""),
+                    });
+                  }}
+                >
+                  {ASSIGNABLE_ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              {changedRoleRequiresClinic && (
+                <label>Yeni klinik
+                  <select value={roleForm.clinic_id} onChange={(event) => setRoleForm({ ...roleForm, clinic_id: event.target.value })} required>
+                    <option value="" disabled>Klinik seçiniz</option>
+                    {activeClinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}
+                  </select>
+                </label>
+              )}
+              <label>Değişiklik gerekçesi
+                <textarea value={roleForm.reason} onChange={(event) => setRoleForm({ ...roleForm, reason: event.target.value })} minLength={3} maxLength={2000} rows={3} required />
+              </label>
+              <p className="form-hint">Değişiklik tek işlem olarak uygulanır ve audit kaydına yazılır. Sistem yöneticisi rolü bu ekrandan atanamaz.</p>
+              <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setRoleTarget(null)}>Vazgeç</button><button className="primary-button compact-button" disabled={submitting}>{submitting ? "Güncelleniyor…" : "Değişikliği uygula"}</button></div>
+            </form>
           </section>
         </div>
       )}

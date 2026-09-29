@@ -1109,11 +1109,130 @@ input:disabled {
   margin: 0;
 }
 
+.audit-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  padding: 0.7rem 1.2rem;
+  color: #667b76;
+  background: #fbfcfc;
+  border-bottom: 1px solid #e7efed;
+  font-size: 0.72rem;
+}
+
+.audit-legend-title {
+  margin-right: 0.15rem;
+  color: #526b66;
+  font-weight: 800;
+}
+
+.audit-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.audit-legend-item > span {
+  width: 0.62rem;
+  height: 0.62rem;
+  background: var(--audit-accent);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px var(--audit-soft);
+}
+
+.audit-tone-session {
+  --audit-accent: #2879c7;
+  --audit-ink: #1f5e9b;
+  --audit-soft: #eaf4ff;
+  --audit-row: #f7fbff;
+  --audit-row-hover: #edf6ff;
+}
+
+.audit-tone-security {
+  --audit-accent: #7756c5;
+  --audit-ink: #6042a8;
+  --audit-soft: #f1edff;
+  --audit-row: #fbf9ff;
+  --audit-row-hover: #f4f0ff;
+}
+
+.audit-tone-clinic {
+  --audit-accent: #078777;
+  --audit-ink: #066b60;
+  --audit-soft: #e4f7f3;
+  --audit-row: #f6fcfa;
+  --audit-row-hover: #eaf8f5;
+}
+
+.audit-tone-user {
+  --audit-accent: #4169b2;
+  --audit-ink: #34568f;
+  --audit-soft: #eaf0fb;
+  --audit-row: #f8faff;
+  --audit-row-hover: #eef3fc;
+}
+
+.audit-tone-role {
+  --audit-accent: #c07116;
+  --audit-ink: #96550d;
+  --audit-soft: #fff0dc;
+  --audit-row: #fffaf3;
+  --audit-row-hover: #fff2df;
+}
+
+.audit-tone-case {
+  --audit-accent: #0085a3;
+  --audit-ink: #006a82;
+  --audit-soft: #e3f7fb;
+  --audit-row: #f5fcfe;
+  --audit-row-hover: #e9f8fb;
+}
+
+.audit-tone-production {
+  --audit-accent: #9b4a9f;
+  --audit-ink: #7a357e;
+  --audit-soft: #f8eafa;
+  --audit-row: #fdf8fd;
+  --audit-row-hover: #faeefb;
+}
+
+.audit-tone-delivery {
+  --audit-accent: #b35f31;
+  --audit-ink: #8f4824;
+  --audit-soft: #fcece3;
+  --audit-row: #fff9f6;
+  --audit-row-hover: #fdf0e8;
+}
+
+.audit-tone-system {
+  --audit-accent: #667773;
+  --audit-ink: #4e605c;
+  --audit-soft: #e9eeed;
+  --audit-row: #fafbfb;
+  --audit-row-hover: #f0f3f2;
+}
+
+.audit-row td {
+  background: var(--audit-row);
+  transition: background-color 140ms ease;
+}
+
+.audit-row td:first-child {
+  box-shadow: inset 4px 0 0 var(--audit-accent);
+}
+
+.audit-row:hover td {
+  background: var(--audit-row-hover);
+}
+
 .action-chip {
   display: inline-flex;
   padding: 0.34rem 0.5rem;
-  color: #12675d;
-  background: #e9f6f3;
+  color: var(--audit-ink, #4e605c);
+  background: var(--audit-soft, #e9eeed);
+  border: 1px solid color-mix(in srgb, var(--audit-accent, #667773) 25%, transparent);
   border-radius: 6px;
   font-size: 0.74rem;
   font-weight: 700;
@@ -1134,6 +1253,7 @@ input:disabled {
 
 .audit-detail-modal {
   width: min(100%, 920px);
+  border-top: 5px solid var(--audit-accent, #667773);
 }
 
 .audit-metadata,

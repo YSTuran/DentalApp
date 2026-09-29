@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import Clinic, RoleCode, User, UserRoleAssignment
 from app.schemas.user_management import (
     RoleAssignmentCreateRequest,
+    RoleAssignmentUpdateRequest,
     UserCreateRequest,
     UserUpdateRequest,
 )
@@ -493,6 +494,111 @@ def assign_role(
 
     db.refresh(assignment)
     return assignment
+
+
+def replace_role_assignment(
+    db: Session,
+    *,
+    user_id: UUID,
+    assignment_id: UUID,
+    payload: RoleAssignmentUpdateRequest,
+    actor: User,
+    request: Request,
+) -> UserRoleAssignment:
+    _require_system_admin(actor)
+    user = _load_user(db, user_id)
+    if not user.is_active:
+        raise UserConflictError("user_inactive")
+
+    current_assignment = db.scalar(
+        select(UserRoleAssignment)
+        .where(
+            UserRoleAssignment.id == assignment_id,
+            UserRoleAssignment.user_id == user.id,
+        )
+        .with_for_update()
+    )
+    if current_assignment is None:
+        raise RoleAssignmentNotFoundError
+    if not current_assignment.is_active:
+        raise UserConflictError("role_assignment_inactive")
+    if current_assignment.role == RoleCode.SYSTEM_ADMIN:
+        raise UserValidationError("system_admin_assignment_not_allowed")
+
+    _reject_system_admin_assignment(payload.role)
+    _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
+    if (
+        current_assignment.role == payload.role
+        and current_assignment.clinic_id == payload.clinic_id
+    ):
+        raise UserConflictError("role_assignment_no_changes")
+
+    replacement = db.scalar(
+        select(UserRoleAssignment)
+        .where(
+            UserRoleAssignment.user_id == user.id,
+            UserRoleAssignment.role == payload.role,
+            UserRoleAssignment.clinic_id.is_(payload.clinic_id)
+            if payload.clinic_id is None
+            else UserRoleAssignment.clinic_id == payload.clinic_id,
+        )
+        .with_for_update()
+    )
+    previous_replacement_status = replacement.is_active if replacement is not None else None
+    before = {
+        "assignment_id": current_assignment.id,
+        "role": current_assignment.role,
+        "clinic_id": current_assignment.clinic_id,
+        "is_active": True,
+    }
+
+    try:
+        current_assignment.is_active = False
+        if replacement is None:
+            replacement = UserRoleAssignment(
+                user_id=user.id,
+                role=payload.role,
+                clinic_id=payload.clinic_id,
+                is_active=True,
+            )
+            db.add(replacement)
+        else:
+            replacement.is_active = True
+
+        db.flush()
+        record_audit_event(
+            db,
+            action="user.role_changed",
+            entity_type="user_role_assignment",
+            entity_id=current_assignment.id,
+            actor=actor,
+            clinic_id=payload.clinic_id,
+            reason=payload.reason,
+            before=before,
+            after={
+                "assignment_id": replacement.id,
+                "role": replacement.role,
+                "clinic_id": replacement.clinic_id,
+                "is_active": True,
+            },
+            context={
+                "source": "api",
+                "user_id": user.id,
+                "replacement_reactivated": previous_replacement_status is False,
+                "replacement_already_active": previous_replacement_status is True,
+            },
+            request=request,
+        )
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        raise UserConflictError("role_assignment_exists") from error
+    except Exception:
+        db.rollback()
+        raise
+
+    db.refresh(replacement)
+    return replacement
 
 
 def change_role_status(

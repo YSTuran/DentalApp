@@ -161,6 +161,8 @@ kurulum akışıyla yönetilir.
 - `POST /api/users/{user_id}/deactivate` ve `reactivate`: hesabı iki sistemde birlikte
   pasifleştirir veya etkinleştirir; gerekçe zorunludur.
 - `POST /api/users/{user_id}/roles`: yeni rol atar.
+- `PATCH /api/users/{user_id}/roles/{assignment_id}`: aktif bir rolün rol veya klinik
+  kapsamını değiştirir; eski atama silinmeden pasif tutulur ve gerekçe audit kaydına yazılır.
 - `POST /api/users/{user_id}/roles/{assignment_id}/deactivate` ve `reactivate`:
   rol atamasının durumunu değiştirir; gerekçe zorunludur.
 

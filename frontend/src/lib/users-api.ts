@@ -2,6 +2,8 @@ import type { RoleCode } from "../types/auth";
 import type {
   ManagedUser,
   ManagedUserListResponse,
+  RoleAssignment,
+  RoleAssignmentUpdateInput,
   UserCreatedResponse,
   UserCreateInput,
 } from "../types/user-management";
@@ -60,6 +62,22 @@ export function changeUserStatus(
   });
 }
 
+export function changeRoleAssignment(
+  userId: string,
+  assignmentId: string,
+  input: RoleAssignmentUpdateInput,
+): Promise<RoleAssignment> {
+  const isGlobalRole = input.role === "system_admin" || input.role === "technician";
+  return csrfRequest<RoleAssignment>(`/api/users/${userId}/roles/${assignmentId}`, {
+    method: "PATCH",
+    ...jsonBody({
+      role: input.role,
+      clinic_id: isGlobalRole ? null : input.clinic_id,
+      reason: input.reason,
+    }),
+  });
+}
+
 export function userErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const messages: Record<string, string> = {
@@ -73,6 +91,11 @@ export function userErrorMessage(error: unknown): string {
       user_not_found: "Kullanıcı bulunamadı.",
       user_already_active: "Kullanıcı zaten aktif durumda.",
       user_already_inactive: "Kullanıcı zaten pasif durumda.",
+      user_inactive: "Pasif bir kullanıcının rolü değiştirilemez.",
+      role_assignment_inactive: "Seçilen rol ataması artık aktif değil.",
+      role_assignment_no_changes: "Rol veya klinik bilgisinde bir değişiklik yapmadınız.",
+      role_assignment_exists: "Bu rol ve klinik ataması kullanıcıda zaten bulunuyor.",
+      role_assignment_not_found: "Değiştirilecek rol ataması bulunamadı.",
       cannot_deactivate_self: "Oturum açtığınız hesabı pasifleştiremezsiniz.",
       last_system_admin: "Sistemde en az bir aktif sistem yöneticisi kalmalıdır.",
       firebase_service_unavailable: "Firebase hizmetine ulaşılamadı. Tekrar deneyin.",

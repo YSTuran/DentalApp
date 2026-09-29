@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 import { listClinics } from "../lib/clinics-api";
-import { listUsers } from "../lib/users-api";
+import { changeRoleAssignment, listUsers } from "../lib/users-api";
 import { UsersPage } from "../pages/UsersPage";
 import type { CurrentUser } from "../types/auth";
 
@@ -16,6 +16,7 @@ vi.mock("../lib/clinics-api", () => ({
 vi.mock("../lib/users-api", () => ({
   listUsers: vi.fn(),
   createUser: vi.fn(),
+  changeRoleAssignment: vi.fn(),
   changeUserStatus: vi.fn(),
   userErrorMessage: vi.fn(() => "İşlem tamamlanamadı."),
 }));
@@ -40,6 +41,7 @@ afterEach(cleanup);
 
 describe("kullanıcı yönetimi güvenlik davranışları", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(listClinics).mockResolvedValue({ items: [], total: 0, limit: 100, offset: 0 });
     vi.mocked(listUsers).mockResolvedValue({
       items: [
@@ -97,6 +99,94 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     expect(
       within(dialog).queryByRole("option", { name: "Sistem yöneticisi" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("aktif rolü ve kliniği tek işlemle değiştirebilir", async () => {
+    const clinicA = {
+      id: "9acfa1ce-cb10-4e29-9bb3-aebdd62f823f",
+      code: "K001",
+      name: "Birinci Klinik",
+      address: null,
+      phone: null,
+      is_active: true,
+      created_at: "2026-09-28T10:00:00Z",
+      updated_at: "2026-09-28T10:00:00Z",
+    };
+    const clinicB = {
+      ...clinicA,
+      id: "15b403b9-079b-422d-b666-c3333789eb83",
+      code: "K002",
+      name: "İkinci Klinik",
+    };
+    const assignmentId = "654925b2-ab70-40e5-9e7c-d7fda9a5789a";
+    const managedUserId = "26ae89c7-8f4a-40f9-8502-8def51e134fd";
+    vi.mocked(listClinics).mockResolvedValue({
+      items: [clinicA, clinicB],
+      total: 2,
+      limit: 100,
+      offset: 0,
+    });
+    vi.mocked(listUsers).mockResolvedValue({
+      items: [
+        {
+          id: managedUserId,
+          email: "manager@example.test",
+          full_name: "Demo Yönetici Hekim",
+          is_active: true,
+          created_at: "2026-09-28T10:00:00Z",
+          updated_at: "2026-09-28T10:00:00Z",
+          role_assignments: [
+            {
+              id: assignmentId,
+              role: "managing_dentist",
+              clinic_id: clinicA.id,
+              is_active: true,
+              created_at: "2026-09-28T10:00:00Z",
+              updated_at: "2026-09-28T10:00:00Z",
+            },
+          ],
+        },
+      ],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    });
+    vi.mocked(changeRoleAssignment).mockResolvedValue({
+      id: "0cd987e0-44f8-4906-a6ac-99e7a70d1417",
+      role: "dentist",
+      clinic_id: clinicB.id,
+      is_active: true,
+      created_at: "2026-09-28T10:05:00Z",
+      updated_at: "2026-09-28T10:05:00Z",
+    });
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/yonetim/kullanicilar"]}>
+        <AuthContext.Provider value={authValue}>
+          <UsersPage />
+        </AuthContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Demo Yönetici Hekim")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Rol/Klinik düzenle" }));
+    const dialog = screen.getByRole("dialog", { name: "Rol ve klinik düzenle" });
+    await user.selectOptions(within(dialog).getByLabelText("Yeni rol"), "dentist");
+    await user.selectOptions(within(dialog).getByLabelText("Yeni klinik"), clinicB.id);
+    await user.type(
+      within(dialog).getByLabelText("Değişiklik gerekçesi"),
+      "Görev yeri değişti",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Değişikliği uygula" }));
+
+    await waitFor(() => {
+      expect(changeRoleAssignment).toHaveBeenCalledWith(managedUserId, assignmentId, {
+        role: "dentist",
+        clinic_id: clinicB.id,
+        reason: "Görev yeri değişti",
+      });
+    });
   });
 });
 

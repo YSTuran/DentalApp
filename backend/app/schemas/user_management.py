@@ -83,6 +83,17 @@ class RoleAssignmentCreateRequest(BaseModel):
         return _optional_reason(value)
 
 
+class RoleAssignmentUpdateRequest(BaseModel):
+    role: RoleCode
+    clinic_id: UUID | None = None
+    reason: str = Field(min_length=3, max_length=2000)
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str) -> str:
+        return _required_text(value, "Gerekçe")
+
+
 class RoleAssignmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

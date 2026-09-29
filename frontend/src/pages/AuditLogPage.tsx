@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react
 
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
+import { AUDIT_LEGEND, auditToneFor } from "../lib/audit-colors";
 import { type AuditFilters, auditErrorMessage, listAuditEvents } from "../lib/audit-api";
 import { listClinics } from "../lib/clinics-api";
 import type { AuditEvent } from "../types/audit";
@@ -28,6 +29,7 @@ const ACTION_LABELS: Record<string, string> = {
   "user.deactivated": "Kullanıcı pasifleştirildi",
   "user.reactivated": "Kullanıcı etkinleştirildi",
   "user.role_assigned": "Rol atandı",
+  "user.role_changed": "Rol veya klinik değiştirildi",
   "user.role_deactivated": "Rol pasifleştirildi",
   "user.role_reactivated": "Rol etkinleştirildi",
 };
@@ -174,6 +176,15 @@ export function AuditLogPage() {
             </div>
           </form>
 
+          <div className="audit-legend" aria-label="Audit kayıt renkleri">
+            <span className="audit-legend-title">Renk anahtarı</span>
+            {AUDIT_LEGEND.map((item) => (
+              <span className={`audit-legend-item audit-tone-${item.tone}`} key={item.tone}>
+                <span aria-hidden="true" />{item.label}
+              </span>
+            ))}
+          </div>
+
           {loading ? (
             <div className="table-state">Audit kayıtları yükleniyor…</div>
           ) : events.length === 0 ? (
@@ -183,17 +194,20 @@ export function AuditLogPage() {
               <table className="data-table audit-table">
                 <thead><tr><th>Zaman</th><th>İşlem</th><th>Kaydı yapan</th><th>Kayıt</th><th>Klinik</th><th>Gerekçe</th><th /></tr></thead>
                 <tbody>
-                  {events.map((auditEvent) => (
-                    <tr key={auditEvent.id}>
+                  {events.map((auditEvent) => {
+                    const tone = auditToneFor(auditEvent.action, auditEvent.entity_type);
+                    return (
+                    <tr className={`audit-row audit-tone-${tone}`} key={auditEvent.id}>
                       <td><strong>{formatDate(auditEvent.created_at)}</strong><small>{auditEvent.ip_address ?? "IP bilgisi yok"}</small></td>
-                      <td><span className="action-chip">{ACTION_LABELS[auditEvent.action] ?? auditEvent.action}</span><small>{auditEvent.action}</small></td>
+                      <td><span className={`action-chip audit-tone-${tone}`}>{ACTION_LABELS[auditEvent.action] ?? auditEvent.action}</span><small>{auditEvent.action}</small></td>
                       <td>{auditEvent.actor_email ?? "Sistem"}</td>
                       <td><strong>{ENTITY_LABELS[auditEvent.entity_type] ?? auditEvent.entity_type}</strong><small className="audit-entity-id">{auditEvent.entity_id}</small></td>
                       <td>{auditEvent.clinic_id === null ? "—" : (clinicNames.get(auditEvent.clinic_id) ?? auditEvent.clinic_id)}</td>
                       <td><span className="reason-preview">{auditEvent.reason ?? "Gerekçe belirtilmedi"}</span></td>
                       <td><div className="row-actions"><button onClick={() => setSelectedEvent(auditEvent)}>Detay</button></div></td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -211,7 +225,7 @@ export function AuditLogPage() {
 
       {selectedEvent !== null && (
         <div className="modal-backdrop" role="presentation">
-          <section className="modal-card audit-detail-modal" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
+          <section className={`modal-card audit-detail-modal audit-tone-${auditToneFor(selectedEvent.action, selectedEvent.entity_type)}`} role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
             <div className="modal-heading">
               <div><p className="eyebrow">AUDIT DETAYI</p><h2 id="audit-detail-title">{ACTION_LABELS[selectedEvent.action] ?? selectedEvent.action}</h2></div>
               <button className="icon-button" onClick={() => setSelectedEvent(null)} aria-label="Pencereyi kapat">×</button>

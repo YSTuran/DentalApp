@@ -14,6 +14,7 @@ from app.schemas.user_management import (
     ReasonRequest,
     RoleAssignmentCreateRequest,
     RoleAssignmentResponse,
+    RoleAssignmentUpdateRequest,
     UserCreatedResponse,
     UserCreateRequest,
     UserUpdateRequest,
@@ -32,6 +33,7 @@ from app.services.users import (
     get_visible_user,
     list_visible_role_assignments,
     list_visible_users,
+    replace_role_assignment,
     update_user,
 )
 
@@ -256,6 +258,38 @@ def add_role(
             request=request,
         )
     except (UserNotFoundError, UserConflictError, UserValidationError) as error:
+        raise _translate_service_error(error) from error
+    return RoleAssignmentResponse.model_validate(assignment)
+
+
+@router.patch(
+    "/{user_id}/roles/{assignment_id}",
+    response_model=RoleAssignmentResponse,
+)
+def change_role_assignment(
+    user_id: UUID,
+    assignment_id: UUID,
+    payload: RoleAssignmentUpdateRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[User, Depends(require_system_admin)],
+    _csrf: Annotated[None, Depends(require_csrf)],
+) -> RoleAssignmentResponse:
+    try:
+        assignment = replace_role_assignment(
+            db,
+            user_id=user_id,
+            assignment_id=assignment_id,
+            payload=payload,
+            actor=actor,
+            request=request,
+        )
+    except (
+        UserNotFoundError,
+        RoleAssignmentNotFoundError,
+        UserConflictError,
+        UserValidationError,
+    ) as error:
         raise _translate_service_error(error) from error
     return RoleAssignmentResponse.model_validate(assignment)
 
