@@ -214,15 +214,30 @@ PostgreSQL trigger entegrasyon testlerini ayrıca çalıştırmak için:
 
 ```powershell
 $env:RUN_DATABASE_INTEGRATION_TESTS='1'
-pytest tests/integration/test_audit_immutability.py tests/integration/test_clinic_api.py tests/integration/test_user_management_api.py
+cd backend
+pytest -q
 ```
 
 ## Vaka iş akışı
 
 MVP vaka durumları, rol yetkileri, iki zorunlu onay, sorumlu hekim kuralı ve iade
 kararları `docs/case-workflow.md` belgesinde tanımlanmıştır. Bu kuralların çalışan
-karşılığı `backend/app/domain/case_workflow.py` dosyasıdır. Vaka tabloları ve API'leri
-sonraki aşamada bu durum makinesini kaynak kabul ederek oluşturulacaktır.
+karşılığı `backend/app/domain/case_workflow.py` dosyasıdır.
+
+Temel vaka endpoint'leri:
+
+- `GET /api/cases`: kullanıcının rolüne ve klinik kapsamına göre vaka listesi.
+- `POST /api/cases`: klinik personeli, hekim veya yönetici hekim için taslak oluşturma.
+- `GET /api/cases/{case_id}`: yetki kapsamındaki vaka detayı.
+- `PATCH /api/cases/{case_id}`: taslak/düzeltme aşamasındaki vakayı güncelleme.
+- `POST /api/cases/{case_id}/submit`: zorunlu alanları ve doğrulanmış tarama sürümünü
+  kontrol ederek vakayı yönetici onayına gönderme.
+- `POST /api/cases/{case_id}/cancel`: gerekçeli iptal; kayıt silinmez.
+- `GET /api/cases/{case_id}/history`: değiştirilemez durum geçmişi.
+
+Taslaklar eksik kaydedilebilir; ancak zorunlu alanları veya geçerli mesh sonucu olan
+bir tarama sürümü bulunmayan vaka yönetici onayına gönderilemez. Teknisyen yalnızca
+laboratuvar aşamasına ulaşmış vakaları görür ve API yanıtında hasta adı yer almaz.
 
 ## Migration
 

@@ -1,45 +1,7 @@
 from dataclasses import dataclass
-from enum import StrEnum
 from uuid import UUID
 
-from app.models import RoleCode
-
-
-class CaseStatus(StrEnum):
-    DRAFT = "draft"
-    MANAGER_REVIEW = "manager_review"
-    MANAGER_REVISION_REQUESTED = "manager_revision_requested"
-    MANAGER_REJECTED = "manager_rejected"
-    LAB_DESIGN = "lab_design"
-    DENTIST_REVIEW = "dentist_review"
-    DESIGN_REVISION_REQUESTED = "design_revision_requested"
-    READY_FOR_PRODUCTION = "ready_for_production"
-    IN_PRODUCTION = "in_production"
-    PRODUCTION_COMPLETED = "production_completed"
-    SHIPPED = "shipped"
-    DELIVERED = "delivered"
-    RETURN_REVIEW = "return_review"
-    REPRODUCTION_REQUESTED = "reproduction_requested"
-    RESCAN_REQUESTED = "rescan_requested"
-    CANCELLED = "cancelled"
-
-
-class CaseAction(StrEnum):
-    SUBMIT = "submit"
-    CANCEL = "cancel"
-    MANAGER_APPROVE = "manager_approve"
-    MANAGER_REQUEST_REVISION = "manager_request_revision"
-    MANAGER_REJECT = "manager_reject"
-    UPLOAD_DESIGN = "upload_design"
-    DENTIST_APPROVE_DESIGN = "dentist_approve_design"
-    DENTIST_REQUEST_DESIGN_REVISION = "dentist_request_design_revision"
-    START_PRODUCTION = "start_production"
-    COMPLETE_PRODUCTION = "complete_production"
-    SHIP = "ship"
-    CONFIRM_DELIVERY = "confirm_delivery"
-    REGISTER_RETURN_RECEIVED = "register_return_received"
-    DECIDE_REPRODUCTION = "decide_reproduction"
-    DECIDE_RESCAN = "decide_rescan"
+from app.models.enums import CaseAction, CaseStatus, RoleCode
 
 
 class CaseWorkflowError(ValueError):
