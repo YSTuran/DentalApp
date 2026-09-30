@@ -138,7 +138,8 @@ Frontend sistem yönetimi ekranları:
 - `http://localhost:5173/yonetim/audit-kayitlari`: işlem, kayıt türü, klinik ve
   kayıt kimliğine göre filtrelenebilen değiştirilemez denetim kayıtları.
 - `http://localhost:5173/ayarlar`: bütün kullanıcıların mevcut parolalarını
-  doğrulayarak kendi Firebase parolalarını değiştirebildiği hesap ayarları.
+  doğrulayarak kendi Firebase parolalarını değiştirebildiği ve görünüm temasını
+  seçebildiği hesap ayarları.
 
 Yeni kullanıcı oluşturulduğunda Firebase geçici parolası ekranda yalnızca bir kez
 gösterilir. Pencere kapatılmadan önce parola güvenli biçimde kaydedilip kullanıcıya
@@ -171,6 +172,20 @@ yalnızca başarılı `POST /api/users` yanıtında bir kez döner ve audit kayd
 Firebase işlemi sonrasında PostgreSQL/audit işlemi başarısız olursa yapılan Firebase
 değişikliği telafi edilir. Son aktif sistem yöneticisi veya oturumdaki yöneticinin
 kendi hesabı pasifleştirilemez.
+
+## Kullanıcı görünüm tercihleri
+
+Kullanıcılar açık, karanlık veya cihaz ayarını izleyen sistem modunu; ayrıca
+Dental yeşili, okyanus mavisi, menekşe, Arktik laboratuvar, adaçayı, grafit,
+kehribar, bordo, mercan, kum ve sepya veya yüksek kontrast paletini seçebilir:
+
+- `GET /api/account/preferences`: oturumdaki kullanıcının görünüm tercihleri.
+- `PATCH /api/account/preferences`: CSRF korumalı tercih güncellemesi.
+
+Tercihler PostgreSQL'deki `user_preferences` tablosunda saklanır ve değişiklikler
+`user.preferences.updated` audit olayı üretir. Frontend aynı değeri `localStorage`
+içinde önbelleğe alarak giriş ekranında ve ilk yüklemede temayı beklemeden uygular;
+oturum açıldığında PostgreSQL'deki hesap tercihi esas alınır.
 
 ## Frontend
 

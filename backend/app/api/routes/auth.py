@@ -28,6 +28,7 @@ from app.services.firebase_auth import (
     RecentSignInRequiredError,
     create_session_cookie,
 )
+from app.services.preferences import serialize_preferences
 
 router = APIRouter()
 
@@ -51,6 +52,7 @@ def serialize_user(user: User) -> CurrentUserResponse:
         full_name=user.full_name,
         global_roles=global_roles,
         clinic_roles=clinic_roles,
+        preferences=serialize_preferences(user.preference),
     )
 
 

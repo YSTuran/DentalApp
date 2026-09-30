@@ -6,7 +6,7 @@ from app.api.dependencies import auth as auth_dependencies
 from app.api.dependencies.auth import get_optional_current_user
 from app.api.routes import auth as auth_routes
 from app.main import app
-from app.models import RoleCode, User, UserRoleAssignment
+from app.models import RoleCode, User, UserPreference, UserRoleAssignment
 
 
 def build_user() -> User:
@@ -36,6 +36,20 @@ def test_csrf_endpoint_sets_cookie() -> None:
     assert response.status_code == 200
     assert response.json()["csrf_token"]
     assert "dentalapp_csrf=" in response.headers["set-cookie"]
+
+
+def test_current_user_serialization_includes_stored_preferences() -> None:
+    user = build_user()
+    user.preference = UserPreference(
+        user_id=user.id,
+        theme_mode="dark",
+        color_palette="violet",
+    )
+
+    response = auth_routes.serialize_user(user)
+
+    assert response.preferences.theme_mode == "dark"
+    assert response.preferences.color_palette == "violet"
 
 
 def test_session_rejects_missing_csrf() -> None:
@@ -79,6 +93,11 @@ def test_session_sets_http_only_cookie(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["global_roles"] == ["system_admin"]
+    assert response.json()["preferences"] == {
+        "theme_mode": "system",
+        "color_palette": "default",
+        "updated_at": None,
+    }
     assert "dentalapp_session=" in response.headers["set-cookie"]
     assert "HttpOnly" in response.headers["set-cookie"]
     assert "Max-Age" not in response.headers["set-cookie"]

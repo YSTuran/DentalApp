@@ -30,7 +30,10 @@ def require_csrf(request: Request) -> None:
 def load_active_user_by_firebase_uid(db: Session, firebase_uid: str) -> User:
     user = db.scalar(
         select(User)
-        .options(selectinload(User.role_assignments))
+        .options(
+            selectinload(User.role_assignments),
+            selectinload(User.preference),
+        )
         .where(User.firebase_uid == firebase_uid)
     )
 

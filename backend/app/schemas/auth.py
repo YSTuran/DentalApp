@@ -3,6 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.enums import RoleCode
+from app.schemas.preference import UserPreferenceResponse
 
 
 class SessionRequest(BaseModel):
@@ -25,6 +26,7 @@ class CurrentUserResponse(BaseModel):
     full_name: str
     global_roles: list[RoleCode]
     clinic_roles: list[ClinicRoleResponse]
+    preferences: UserPreferenceResponse
 
 
 class LogoutResponse(BaseModel):

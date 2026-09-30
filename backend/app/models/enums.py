@@ -14,6 +14,26 @@ class RoleCode(StrEnum):
         return self in {self.SYSTEM_ADMIN, self.TECHNICIAN}
 
 
+class ThemeMode(StrEnum):
+    LIGHT = "light"
+    DARK = "dark"
+    SYSTEM = "system"
+
+
+class ColorPalette(StrEnum):
+    DEFAULT = "default"
+    OCEAN = "ocean"
+    VIOLET = "violet"
+    ARCTIC = "arctic"
+    SAGE = "sage"
+    GRAPHITE = "graphite"
+    AMBER = "amber"
+    BURGUNDY = "burgundy"
+    CORAL = "coral"
+    SEPIA = "sepia"
+    HIGH_CONTRAST = "high_contrast"
+
+
 class CaseStatus(StrEnum):
     DRAFT = "draft"
     MANAGER_REVIEW = "manager_review"

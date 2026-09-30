@@ -16,11 +16,14 @@ from app.models.enums import (
     CaseDecision,
     CaseFileKind,
     CaseStatus,
+    ColorPalette,
     MeshValidationStatus,
     RoleCode,
+    ThemeMode,
 )
 from app.models.role_assignment import UserRoleAssignment
 from app.models.user import User
+from app.models.user_preference import UserPreference
 
 __all__ = [
     "AuditEvent",
@@ -35,9 +38,12 @@ __all__ = [
     "CaseStatus",
     "CaseStatusHistory",
     "Clinic",
+    "ColorPalette",
     "DentalCase",
     "MeshValidationStatus",
     "RoleCode",
+    "ThemeMode",
     "User",
+    "UserPreference",
     "UserRoleAssignment",
 ]

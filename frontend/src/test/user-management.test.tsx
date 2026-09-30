@@ -27,6 +27,11 @@ const currentUser: CurrentUser = {
   full_name: "Demo Admin",
   global_roles: ["system_admin"],
   clinic_roles: [],
+  preferences: {
+    theme_mode: "system",
+    color_palette: "default",
+    updated_at: null,
+  },
 };
 
 const authValue: AuthContextValue = {

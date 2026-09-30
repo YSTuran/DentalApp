@@ -7,6 +7,7 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.role_assignment import UserRoleAssignment
+    from app.models.user_preference import UserPreference
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -24,6 +25,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
         back_populates="user",
+    )
+    preference: Mapped["UserPreference | None"] = relationship(
+        back_populates="user",
+        uselist=False,
     )
 
     __table_args__ = (

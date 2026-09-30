@@ -1,3 +1,5 @@
+import type { ThemePreferences } from "./theme";
+
 export type RoleCode =
   | "system_admin"
   | "clinic_manager"
@@ -17,4 +19,5 @@ export interface CurrentUser {
   full_name: string;
   global_roles: RoleCode[];
   clinic_roles: ClinicRole[];
+  preferences: ThemePreferences;
 }
