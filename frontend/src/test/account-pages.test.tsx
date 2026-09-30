@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,10 +86,17 @@ describe("hesap ekranları", () => {
     const user = userEvent.setup();
     renderWithAuth(<SettingsPage />, authValue({ changePassword }));
 
-    await user.type(screen.getByLabelText("Eski parola"), "old-password");
-    await user.type(screen.getByLabelText("Yeni parola"), "new-password-123");
-    await user.type(screen.getByLabelText("Yeni parola tekrar"), "new-password-123");
+    await user.click(screen.getByRole("button", { name: /Güvenlik/ }));
     await user.click(screen.getByRole("button", { name: "Parolayı değiştir" }));
+    const passwordDialog = screen.getByRole("dialog", { name: "Parolayı değiştir" });
+
+    await user.type(within(passwordDialog).getByLabelText("Eski parola"), "old-password");
+    await user.type(within(passwordDialog).getByLabelText("Yeni parola"), "new-password-123");
+    await user.type(
+      within(passwordDialog).getByLabelText("Yeni parola tekrar"),
+      "new-password-123",
+    );
+    await user.click(within(passwordDialog).getByRole("button", { name: "Devam et" }));
 
     expect(changePassword).not.toHaveBeenCalled();
     expect(
@@ -108,6 +115,7 @@ describe("hesap ekranları", () => {
     const user = userEvent.setup();
     renderWithAuth(<SettingsPage />, authValue());
 
+    await user.click(screen.getByRole("button", { name: /Görünüm/ }));
     await user.click(screen.getByRole("radio", { name: /Karanlık/ }));
 
     await waitFor(() => {
@@ -122,6 +130,7 @@ describe("hesap ekranları", () => {
     const user = userEvent.setup();
     renderWithAuth(<SettingsPage />, authValue());
 
+    await user.click(screen.getByRole("button", { name: /Görünüm/ }));
     await user.click(screen.getByRole("radio", { name: /Arktik laboratuvar/ }));
 
     await waitFor(() => {
@@ -130,6 +139,19 @@ describe("hesap ekranları", () => {
       });
       expect(document.documentElement.dataset.palette).toBe("arctic");
     });
+  });
+
+  it("hesap, görünüm ve güvenlik bölümleri arasında geçiş yapar", async () => {
+    const user = userEvent.setup();
+    renderWithAuth(<SettingsPage />, authValue());
+
+    expect(screen.getByRole("heading", { name: "Hesap bilgileri" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Görünüm/ }));
+    expect(screen.getByRole("heading", { name: "Tema tercihi" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Güvenlik/ }));
+    expect(screen.getByRole("heading", { name: "Parola güvenliği" })).toBeInTheDocument();
   });
 });
 

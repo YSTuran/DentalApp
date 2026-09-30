@@ -1,0 +1,246 @@
+.settings-content {
+  width: min(1120px, 92vw);
+  margin: 0 auto;
+  padding: 3rem 0 5rem;
+}
+
+.settings-heading {
+  align-items: flex-start;
+}
+
+.settings-workspace {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.28fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.settings-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+
+.settings-navigation {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.settings-navigation button {
+  display: grid;
+  min-height: 64px;
+  gap: 0.2rem;
+  padding: 0.8rem 0.9rem;
+  color: var(--muted);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 11px;
+}
+
+.settings-navigation button:hover {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.settings-navigation button.active {
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--line));
+}
+
+.settings-navigation button:focus-visible {
+  outline: 3px solid var(--primary-focus);
+  outline-offset: 1px;
+}
+
+.settings-navigation strong {
+  font-size: 0.88rem;
+}
+
+.settings-navigation small {
+  color: inherit;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.settings-section-content {
+  min-width: 0;
+}
+
+.settings-panel {
+  min-height: 460px;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.settings-panel .primary-button {
+  margin-top: 0;
+}
+
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.4rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.settings-section-heading .card-label {
+  margin-bottom: 0.55rem;
+}
+
+.settings-section-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.55rem;
+  letter-spacing: -0.035em;
+}
+
+.settings-section-heading p:last-child {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.account-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem;
+  margin-bottom: 1.2rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+}
+
+.account-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: 15px 15px 15px 5px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.account-profile-summary > div:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+.account-profile-summary strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.account-profile-summary span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+}
+
+.settings-detail-list,
+.settings-detail-list dd {
+  margin: 0;
+}
+
+.settings-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.settings-detail-list > div:last-child {
+  border-bottom: 0;
+}
+
+.settings-detail-list dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.settings-detail-list dd {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.settings-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.settings-role-list span {
+  padding: 0.35rem 0.52rem;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 900px) {
+  .settings-workspace {
+    grid-template-columns: minmax(180px, 0.25fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-content {
+    width: calc(100% - 1.5rem);
+  }
+
+  .settings-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-sidebar {
+    position: static;
+  }
+
+  .settings-navigation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings-navigation button {
+    min-height: 54px;
+    text-align: center;
+  }
+
+  .settings-navigation small {
+    display: none;
+  }
+
+  .settings-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 500px) {
+  .settings-detail-list > div {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+}

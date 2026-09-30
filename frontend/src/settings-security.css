@@ -1,0 +1,135 @@
+.security-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.2rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+
+.security-action-card > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.security-action-card strong,
+.security-note strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.security-action-card span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.security-note {
+  padding: 1rem 1.1rem;
+  margin-top: 1rem;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  border-radius: 11px;
+}
+
+.security-note p {
+  margin: 0.35rem 0 0;
+  color: inherit;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.password-dialog {
+  width: min(100%, 560px);
+}
+
+.password-dialog-form {
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+}
+
+.password-dialog-form > label {
+  margin-top: 0.35rem;
+}
+
+.password-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+}
+
+.password-input-row button {
+  min-width: 72px;
+  color: var(--primary-dark);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.password-input-row button:hover {
+  background: var(--primary-soft);
+}
+
+.password-input-row button:focus-visible {
+  outline: 3px solid var(--primary-focus);
+  outline-offset: 1px;
+}
+
+.password-requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0;
+  margin: 0.65rem 0;
+  list-style: none;
+}
+
+.password-requirements li {
+  padding: 0.35rem 0.5rem;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.password-requirements li::before {
+  margin-right: 0.3rem;
+  content: "○";
+}
+
+.password-requirements li.met {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: var(--success-line);
+}
+
+.password-requirements li.met::before {
+  content: "✓";
+}
+
+@media (max-width: 720px) {
+  .security-action-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .security-action-card .primary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 500px) {
+  .password-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .password-input-row button {
+    min-height: 40px;
+  }
+}
