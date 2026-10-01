@@ -486,6 +486,33 @@ input:disabled {
 }
 
 .auth-layout {
+  color: #173934;
+  color-scheme: light;
+  background: #eff7f5;
+  --page-bg: #eff7f5;
+  --ink: #173934;
+  --muted: #687c78;
+  --primary: #087e70;
+  --primary-dark: #05665b;
+  --primary-hover: #05665b;
+  --primary-soft: #eaf7f4;
+  --primary-focus: rgb(8 126 112 / 14%);
+  --line: #d7e6e2;
+  --line-soft: #edf2f1;
+  --surface: #ffffff;
+  --input-bg: #fbfdfc;
+  --danger: #b42318;
+  --danger-bg: #fff1ef;
+  --danger-line: #ffc9c2;
+  --warning: #794900;
+  --warning-bg: #fff3d6;
+  --warning-line: #f1d391;
+  --hero-start: #0b8c7c;
+  --hero-middle: #05685e;
+  --hero-end: #034a45;
+  --hero-soft: #afe6da;
+  --on-primary: #ffffff;
+  --on-hero: #ffffff;
   display: grid;
   grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.05fr);
   min-height: 100vh;

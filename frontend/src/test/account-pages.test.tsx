@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 import { LoginPage } from "../pages/LoginPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { useTheme } from "../theme/ThemeContext";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import type { CurrentUser } from "../types/auth";
 
@@ -55,6 +56,10 @@ afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
+  delete document.documentElement.dataset.mode;
+  delete document.documentElement.dataset.themeMode;
+  delete document.documentElement.dataset.palette;
+  document.documentElement.style.colorScheme = "";
   preferenceMocks.updateThemePreferences.mockImplementation(async (update) => ({
     ...currentUser.preferences,
     ...update,
@@ -62,6 +67,78 @@ beforeEach(() => {
 });
 
 describe("hesap ekranları", () => {
+  it("giriş ekranını önceki kullanıcı temasından bağımsız açık dental temada gösterir", async () => {
+    window.localStorage.setItem("dentalapp.theme_mode", "dark");
+    window.localStorage.setItem("dentalapp.color_palette", "violet");
+    document.documentElement.dataset.mode = "dark";
+    document.documentElement.dataset.palette = "violet";
+
+    renderWithAuth(
+      <LoginPage />,
+      authValue({ status: "unauthenticated", user: null }),
+    );
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.mode).toBe("light");
+      expect(document.documentElement.dataset.palette).toBe("default");
+    });
+    expect(getComputedStyle(screen.getByRole("main")).colorScheme).toBe("light");
+  });
+
+  it("kullanıcı değiştiğinde yalnızca yeni hesabın temasını uygular", async () => {
+    const oceanUser: CurrentUser = {
+      ...currentUser,
+      preferences: {
+        theme_mode: "dark",
+        color_palette: "ocean",
+        updated_at: "2026-09-30T10:00:00Z",
+      },
+    };
+    const violetUser: CurrentUser = {
+      ...currentUser,
+      id: "f118fa4c-aa09-47ca-8f14-62b965f902ae",
+      email: "other@example.test",
+      preferences: {
+        theme_mode: "light",
+        color_palette: "violet",
+        updated_at: "2026-09-30T11:00:00Z",
+      },
+    };
+
+    function ThemeProbe() {
+      const { preferences } = useTheme();
+      return <span>{preferences.color_palette}</span>;
+    }
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <AuthContext.Provider value={authValue({ user: oceanUser })}>
+          <ThemeProvider><ThemeProbe /></ThemeProvider>
+        </AuthContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("ocean")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.documentElement.dataset.mode).toBe("dark");
+      expect(document.documentElement.dataset.palette).toBe("ocean");
+    });
+
+    rerender(
+      <MemoryRouter>
+        <AuthContext.Provider value={authValue({ user: violetUser })}>
+          <ThemeProvider><ThemeProbe /></ThemeProvider>
+        </AuthContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("violet")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.documentElement.dataset.mode).toBe("light");
+      expect(document.documentElement.dataset.palette).toBe("violet");
+    });
+  });
+
   it("girişte oturumu açık tut seçimini kimlik akışına iletir", async () => {
     const login = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();

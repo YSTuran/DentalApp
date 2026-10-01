@@ -8,7 +8,7 @@ from app.models import ColorPalette, ThemeMode
 class UserPreferenceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    theme_mode: ThemeMode = ThemeMode.SYSTEM
+    theme_mode: ThemeMode = ThemeMode.LIGHT
     color_palette: ColorPalette = ColorPalette.DEFAULT
     updated_at: datetime | None = None
 

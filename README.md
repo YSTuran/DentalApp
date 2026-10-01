@@ -183,9 +183,11 @@ kehribar, bordo, mercan, kum ve sepya veya yüksek kontrast paletini seçebilir:
 - `PATCH /api/account/preferences`: CSRF korumalı tercih güncellemesi.
 
 Tercihler PostgreSQL'deki `user_preferences` tablosunda saklanır ve değişiklikler
-`user.preferences.updated` audit olayı üretir. Frontend aynı değeri `localStorage`
-içinde önbelleğe alarak giriş ekranında ve ilk yüklemede temayı beklemeden uygular;
-oturum açıldığında PostgreSQL'deki hesap tercihi esas alınır.
+`user.preferences.updated` audit olayı üretir. Her oturumda yalnızca giriş yapan
+kullanıcının PostgreSQL'deki hesap tercihi uygulanır; kullanıcılar arasında ortak
+tema önbelleği kullanılmaz. Yeni hesapların varsayılanı açık mod ve Dental yeşili
+paletidir. Giriş ekranı ise hesap tercihlerinden bağımsız, sabit açık Dental
+temasında gösterilir.
 
 ## Frontend
 

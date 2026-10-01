@@ -21,8 +21,8 @@ class UserPreference(TimestampMixin, Base):
     theme_mode: Mapped[str] = mapped_column(
         String(16),
         nullable=False,
-        default=ThemeMode.SYSTEM.value,
-        server_default=ThemeMode.SYSTEM.value,
+        default=ThemeMode.LIGHT.value,
+        server_default=ThemeMode.LIGHT.value,
     )
     color_palette: Mapped[str] = mapped_column(
         String(32),

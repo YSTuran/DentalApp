@@ -5,10 +5,10 @@ from app.models import ColorPalette, ThemeMode
 from app.schemas.preference import UserPreferenceResponse, UserPreferenceUpdateRequest
 
 
-def test_default_preferences_follow_system_theme() -> None:
+def test_default_preferences_use_light_dental_theme() -> None:
     preferences = UserPreferenceResponse()
 
-    assert preferences.theme_mode == ThemeMode.SYSTEM
+    assert preferences.theme_mode == ThemeMode.LIGHT
     assert preferences.color_palette == ColorPalette.DEFAULT
 
 

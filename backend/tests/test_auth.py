@@ -94,7 +94,7 @@ def test_session_sets_http_only_cookie(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["global_roles"] == ["system_admin"]
     assert response.json()["preferences"] == {
-        "theme_mode": "system",
+        "theme_mode": "light",
         "color_palette": "default",
         "updated_at": None,
     }

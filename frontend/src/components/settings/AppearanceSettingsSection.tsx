@@ -95,13 +95,13 @@ export function AppearanceSettingsSection() {
       />
 
       <footer className="appearance-footer">
-        <span>Sistem varsayılanı, cihazın açık veya karanlık ayarını takip eder.</span>
+        <span>Sistem seçeneği, cihazın açık veya karanlık ayarını takip eder.</span>
         <button
           type="button"
           className="secondary-button compact-button"
           disabled={saveState === "saving"}
           onClick={() => void changeAppearance({
-            theme_mode: "system",
+            theme_mode: "light",
             color_palette: "default",
           })}
         >

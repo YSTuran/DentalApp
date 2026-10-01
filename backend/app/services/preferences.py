@@ -27,7 +27,7 @@ def update_user_preferences(
     if preference is None:
         preference = UserPreference(
             user_id=actor.id,
-            theme_mode=ThemeMode.SYSTEM.value,
+            theme_mode=ThemeMode.LIGHT.value,
             color_palette=ColorPalette.DEFAULT.value,
         )
 

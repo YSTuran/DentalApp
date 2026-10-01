@@ -29,7 +29,7 @@ def test_user_can_store_theme_preferences_with_audit(
         default_response = client.get("/api/account/preferences")
         assert default_response.status_code == 200
         assert default_response.json() == {
-            "theme_mode": "system",
+            "theme_mode": "light",
             "color_palette": "default",
             "updated_at": None,
         }
