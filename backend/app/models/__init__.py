@@ -7,6 +7,7 @@ from app.models.case import (
     CaseDetail,
     CaseFileVersion,
     CaseStatusHistory,
+    CaseUploadSession,
     DentalCase,
 )
 from app.models.clinic import Clinic
@@ -20,6 +21,7 @@ from app.models.enums import (
     MeshValidationStatus,
     RoleCode,
     ThemeMode,
+    UploadStatus,
 )
 from app.models.role_assignment import UserRoleAssignment
 from app.models.user import User
@@ -37,12 +39,14 @@ __all__ = [
     "CaseFileVersion",
     "CaseStatus",
     "CaseStatusHistory",
+    "CaseUploadSession",
     "Clinic",
     "ColorPalette",
     "DentalCase",
     "MeshValidationStatus",
     "RoleCode",
     "ThemeMode",
+    "UploadStatus",
     "User",
     "UserPreference",
     "UserRoleAssignment",

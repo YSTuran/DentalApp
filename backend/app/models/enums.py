@@ -83,6 +83,14 @@ class MeshValidationStatus(StrEnum):
     FAILED = "failed"
 
 
+class UploadStatus(StrEnum):
+    PENDING = "pending"
+    UPLOADING = "uploading"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
+
+
 class CaseApprovalType(StrEnum):
     MANAGER_SCAN = "manager_scan"
     DENTIST_DESIGN = "dentist_design"

@@ -9,10 +9,18 @@ from app.services.case_management.exceptions import (
 )
 from app.services.case_management.queries import (
     get_visible_case,
+    list_case_create_options,
     list_case_history,
     list_visible_cases,
 )
 from app.services.case_management.serialization import case_to_response
+from app.services.case_management.uploads import (
+    append_upload_chunk,
+    complete_upload,
+    get_file_version_for_download,
+    get_upload,
+    start_upload,
+)
 from app.services.case_management.workflow import cancel_case, submit_case
 
 __all__ = [
@@ -20,12 +28,18 @@ __all__ = [
     "CaseConflictError",
     "CaseNotFoundError",
     "CaseValidationError",
+    "append_upload_chunk",
     "cancel_case",
     "case_to_response",
+    "complete_upload",
     "create_case",
     "get_visible_case",
+    "get_file_version_for_download",
+    "get_upload",
+    "list_case_create_options",
     "list_case_history",
     "list_visible_cases",
     "submit_case",
+    "start_upload",
     "update_case",
 ]

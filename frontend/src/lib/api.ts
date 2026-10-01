@@ -65,6 +65,23 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   return (await response.json()) as T;
 }
 
+export async function apiBlobRequest(path: string, init?: RequestInit): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      Accept: "application/octet-stream",
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw await parseError(response);
+  }
+
+  return response.blob();
+}
+
 let csrfToken: string | null = null;
 let csrfTokenRequest: Promise<string> | null = null;
 

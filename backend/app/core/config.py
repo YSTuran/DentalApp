@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     secret_key: str = "change-this-before-real-use"
     cors_origins: list[str] = ["http://localhost:5173"]
     storage_path: Path = BACKEND_DIR.parent / "storage"
+    upload_max_bytes: int = 536_870_912
+    upload_chunk_max_bytes: int = 8_388_608
+    upload_session_hours: int = 24
+    mesh_validation_stale_minutes: int = 30
+    mesh_validation_max_attempts: int = 3
 
     firebase_project_id: str = "demo-dentalapp"
     firebase_credentials_path: Path | None = None

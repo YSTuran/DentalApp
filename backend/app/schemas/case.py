@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models import CaseFileKind, CaseStatus, MeshValidationStatus
+from app.models import CaseFileKind, CaseStatus, MeshValidationStatus, UploadStatus
 
 CASE_UPDATE_FIELDS = {
     "responsible_dentist_user_id",
@@ -172,9 +172,62 @@ class CaseFileVersionResponse(BaseModel):
     original_filename: str | None = None
     size_bytes: int
     mesh_status: MeshValidationStatus
+    mesh_report: dict[str, Any] | None
     is_locked: bool
+    mesh_validation_attempts: int
+    mesh_validated_at: datetime | None
     uploaded_by_user_id: UUID
     created_at: datetime
+
+
+class UploadCreateRequest(BaseModel):
+    kind: CaseFileKind
+    original_filename: str = Field(min_length=1, max_length=255)
+    expected_size: int = Field(gt=0)
+    expected_sha256: str | None = Field(default=None, min_length=64, max_length=64)
+
+    @field_validator("original_filename")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized.lower().endswith(".stl"):
+            raise ValueError("Yalnızca .stl dosyaları yüklenebilir.")
+        if "/" in normalized or "\\" in normalized or any(ord(char) < 32 for char in normalized):
+            raise ValueError("Dosya adı geçersiz karakter içeriyor.")
+        return normalized
+
+    @field_validator("expected_sha256")
+    @classmethod
+    def validate_sha256(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.lower()
+        if any(char not in "0123456789abcdef" for char in normalized):
+            raise ValueError("SHA-256 değeri 64 karakterlik hexadecimal metin olmalıdır.")
+        return normalized
+
+
+class UploadSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    case_id: UUID
+    kind: CaseFileKind
+    original_filename: str
+    expected_size: int
+    received_size: int
+    expected_sha256: str | None
+    status: UploadStatus
+    expires_at: datetime
+    failure_reason: str | None
+    completed_file_version_id: UUID | None
+    chunk_max_bytes: int = 0
+
+
+class UploadCompleteResponse(BaseModel):
+    upload: UploadSessionResponse
+    file_version: CaseFileVersionResponse
+    validation_queued: bool
 
 
 class CaseResponse(BaseModel):
@@ -183,8 +236,10 @@ class CaseResponse(BaseModel):
     id: UUID
     case_number: str
     clinic_id: UUID
+    clinic_name: str
     created_by_user_id: UUID
     responsible_dentist_user_id: UUID
+    responsible_dentist_name: str
     patient_code: str | None
     patient_name: str | None = None
     status: CaseStatus
@@ -201,6 +256,22 @@ class CaseListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class CaseDentistOptionResponse(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class CaseClinicOptionResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    dentists: list[CaseDentistOptionResponse]
+
+
+class CaseCreateOptionsResponse(BaseModel):
+    clinics: list[CaseClinicOptionResponse]
 
 
 class CaseStatusHistoryResponse(BaseModel):

@@ -14,6 +14,8 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Firebase Authentication ve yerel Authentication Emulator desteği
 - Klinik kapsamlı rol/yetki kontrol katmanı
 - PostgreSQL seviyesinde değiştirilemez audit kayıtları
+- Parçalı, devam ettirilebilir ve SHA-256 kontrollü STL yükleme altyapısı
+- Redis/Celery tabanlı asenkron STL mesh doğrulaması
 - Sistem yöneticisi için yönetim, klinik yöneticisi için klinik kapsamlı salt okunur ekranlar
 - Firebase ile PostgreSQL'i birlikte yöneten kullanıcı ve rol API'si
 - Liveness ve readiness endpoint'leri
@@ -199,9 +201,14 @@ proje kökünde:
 npm run dev
 ```
 
-Loglar aynı terminalde `FIREBASE`, `API` ve `WEB` etiketleriyle gösterilir. `Ctrl+C`
-üç servisi de kapatır; Firebase kullanıcıları temiz kapanışta `firebase-export` klasörüne
-kaydedilir. PostgreSQL servisinin ve Redis konteynerinin önceden çalışıyor olması gerekir.
+Loglar aynı terminalde `FIREBASE`, `API`, `WORKER`, `BEAT` ve `WEB` etiketleriyle
+gösterilir. `Ctrl+C` servisleri kapatır; Firebase kullanıcıları temiz kapanışta
+`firebase-export` klasörüne kaydedilir. PostgreSQL servisinin ve Redis konteynerinin
+önceden çalışıyor olması gerekir.
+
+`WORKER` mesh doğrulama görevlerini yürütür. `BEAT`, Redis geçici olarak ulaşılamazken
+kuyruğa alınamayan doğrulamaları yeniden bulur ve süresi geçen yarım yüklemeleri,
+veritabanı kayıtlarını silmeden `expired` durumuna geçirerek temizler.
 
 Yalnızca React, TypeScript ve Vite tabanlı frontend'i çalıştırmak için:
 
@@ -254,6 +261,29 @@ Temel vaka endpoint'leri:
   kontrol ederek vakayı yönetici onayına gönderme.
 - `POST /api/cases/{case_id}/cancel`: gerekçeli iptal; kayıt silinmez.
 - `GET /api/cases/{case_id}/history`: değiştirilemez durum geçmişi.
+
+STL yükleme endpoint'leri:
+
+- `POST /api/cases/{case_id}/uploads`: yükleme oturumu oluşturur.
+- `GET /api/cases/{case_id}/uploads/{upload_id}`: kaydedilmiş byte ofsetini döndürür.
+- `PATCH /api/cases/{case_id}/uploads/{upload_id}`: `Upload-Offset` başlığıyla sıradaki
+  parçayı yükler. Gövde `application/offset+octet-stream` veya
+  `application/octet-stream` olmalıdır.
+- `POST /api/cases/{case_id}/uploads/{upload_id}/complete`: boyut ve SHA-256 kontrolü
+  sonrasında dosya sürümünü oluşturur ve mesh doğrulamasını kuyruğa alır.
+- `GET /api/cases/{case_id}/files/{file_version_id}`: yetki kontrolünden sonra dosyayı
+  hasta bilgisi içermeyen güvenli bir adla indirir.
+
+Varsayılan toplam dosya sınırı 512 MB, parça sınırı 8 MB ve yarım yükleme ömrü 24
+saattir. Bu değerler `UPLOAD_MAX_BYTES`, `UPLOAD_CHUNK_MAX_BYTES` ve
+`UPLOAD_SESSION_HOURS` ortam değişkenleriyle değiştirilebilir. Yükleme tamamlanmadan
+`case_file_versions` kaydı oluşmaz. Tamamlanan dosya SHA-256 ile doğrulanır, atomik
+olarak kalıcı klasöre taşınır ve `pending` mesh durumuyla kaydedilir.
+
+Mesh worker; STL'nin okunabilirliğini, boş veya sonlu olmayan geometriyi, açık
+kenarları, kapalı hacmi, winding tutarlılığını, dejenere ve tekrarlanan yüzleri ve
+non-manifold kenarları denetler. Geometrik self-intersection kontrolünün mevcut seviyesi
+raporda `topology_only` olarak belirtilir; yapılmayan bir kontrol başarılı gösterilmez.
 
 Taslaklar eksik kaydedilebilir; ancak zorunlu alanları veya geçerli mesh sonucu olan
 bir tarama sürümü bulunmayan vaka yönetici onayına gönderilemez. Teknisyen yalnızca

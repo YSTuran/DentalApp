@@ -83,6 +83,18 @@ export function DashboardPage() {
         )}
 
         <div className="dashboard-grid">
+          <section className="info-card next-step-card">
+            <p className="card-label">VAKA OPERASYONU</p>
+            <h2>Aktif vakaları görüntüleyin</h2>
+            <p>Rolünüze açık vaka kuyruğunu, STL sürümlerini ve işlem geçmişini tek yerden takip edin.</p>
+            <div className="dashboard-management-links">
+              <Link className="primary-link" to="/vakalar">Vakalara git</Link>
+              {user.clinic_roles.some((assignment) => ["managing_dentist", "dentist", "clinic_staff"].includes(assignment.role)) && (
+                <Link className="primary-link" to="/vakalar/yeni">Yeni vaka oluştur</Link>
+              )}
+            </div>
+          </section>
+
           <section className="info-card">
             <p className="card-label">KULLANICI</p>
             <dl>

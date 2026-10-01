@@ -3,9 +3,65 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import CaseStatus, CaseStatusHistory, DentalCase, User
-from app.services.case_management.access import case_visibility_filter, require_case_visibility
+from app.models import (
+    CaseStatus,
+    CaseStatusHistory,
+    Clinic,
+    DentalCase,
+    RoleCode,
+    User,
+    UserRoleAssignment,
+)
+from app.services.case_management.access import (
+    CASE_CREATE_ROLES,
+    case_visibility_filter,
+    clinic_ids_for_roles,
+    require_case_visibility,
+)
 from app.services.case_management.repository import CASE_LOAD_OPTIONS, load_case
+
+
+def list_case_create_options(
+    db: Session,
+    *,
+    actor: User,
+) -> list[tuple[Clinic, list[User]]]:
+    clinic_ids = clinic_ids_for_roles(actor, CASE_CREATE_ROLES)
+    if not clinic_ids:
+        return []
+
+    clinics = list(
+        db.scalars(
+            select(Clinic)
+            .where(Clinic.id.in_(clinic_ids), Clinic.is_active.is_(True))
+            .order_by(Clinic.name, Clinic.id)
+        ).all()
+    )
+    if not clinics:
+        return []
+
+    assignments = db.execute(
+        select(UserRoleAssignment.clinic_id, User)
+        .join(User, User.id == UserRoleAssignment.user_id)
+        .where(
+            UserRoleAssignment.clinic_id.in_([clinic.id for clinic in clinics]),
+            UserRoleAssignment.role.in_({RoleCode.DENTIST, RoleCode.MANAGING_DENTIST}),
+            UserRoleAssignment.is_active.is_(True),
+            User.is_active.is_(True),
+        )
+        .order_by(User.full_name, User.id)
+    ).all()
+
+    dentists_by_clinic: dict[UUID, dict[UUID, User]] = {
+        clinic.id: {} for clinic in clinics
+    }
+    for clinic_id, dentist in assignments:
+        dentists_by_clinic[clinic_id][dentist.id] = dentist
+
+    return [
+        (clinic, list(dentists_by_clinic[clinic.id].values()))
+        for clinic in clinics
+    ]
 
 
 def list_visible_cases(

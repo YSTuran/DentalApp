@@ -11,6 +11,8 @@ CASE_NUMBER_SEQUENCE = Sequence("case_number_seq")
 CASE_LOAD_OPTIONS = (
     selectinload(DentalCase.details),
     selectinload(DentalCase.file_versions),
+    selectinload(DentalCase.clinic),
+    selectinload(DentalCase.responsible_dentist),
 )
 
 

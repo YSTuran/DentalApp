@@ -30,6 +30,7 @@ from app.models.enums import (
     CaseFileKind,
     CaseStatus,
     MeshValidationStatus,
+    UploadStatus,
 )
 
 CASE_STATUS_ENUM = Enum(
@@ -55,6 +56,13 @@ CASE_APPROVAL_TYPE_ENUM = Enum(
 CASE_DECISION_ENUM = Enum(
     CaseDecision,
     name="case_decision",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+UPLOAD_STATUS_ENUM = Enum(
+    UploadStatus,
+    name="upload_status",
+    native_enum=False,
+    create_constraint=True,
     values_callable=lambda enum: [item.value for item in enum],
 )
 
@@ -94,6 +102,10 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     file_versions: Mapped[list["CaseFileVersion"]] = relationship(
         back_populates="case",
         order_by="CaseFileVersion.created_at",
+    )
+    upload_sessions: Mapped[list["CaseUploadSession"]] = relationship(
+        back_populates="case",
+        order_by="CaseUploadSession.created_at",
     )
     approvals: Mapped[list["CaseApproval"]] = relationship(
         back_populates="case",
@@ -169,6 +181,20 @@ class CaseFileVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=False,
         server_default=false(),
     )
+    mesh_validation_attempts: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    mesh_validation_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    mesh_validated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     case: Mapped[DentalCase] = relationship(back_populates="file_versions")
     uploaded_by = relationship("User")
@@ -180,7 +206,70 @@ class CaseFileVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("version_number > 0", name="version_number_positive"),
         CheckConstraint("size_bytes > 0", name="size_bytes_positive"),
         CheckConstraint("length(sha256) = 64", name="sha256_length"),
+        CheckConstraint(
+            "mesh_validation_attempts >= 0",
+            name="mesh_validation_attempts_non_negative",
+        ),
         Index("ix_case_file_versions_case_kind", "case_id", "kind"),
+    )
+
+
+class CaseUploadSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "case_upload_sessions"
+
+    case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("cases.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[CaseFileKind] = mapped_column(CASE_FILE_KIND_ENUM, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    expected_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    received_size: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    expected_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    temp_storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[UploadStatus] = mapped_column(
+        UPLOAD_STATUS_ENUM,
+        nullable=False,
+        default=UploadStatus.PENDING,
+        server_default=UploadStatus.PENDING.value,
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    completed_file_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(
+            "case_file_versions.id",
+            name="fk_upload_completed_file_version",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        unique=True,
+    )
+
+    case: Mapped[DentalCase] = relationship(back_populates="upload_sessions")
+    created_by = relationship("User")
+    completed_file_version = relationship("CaseFileVersion")
+
+    __table_args__ = (
+        UniqueConstraint("temp_storage_key", name="uq_case_upload_sessions_temp_storage_key"),
+        CheckConstraint("expected_size > 0", name="expected_size_positive"),
+        CheckConstraint("received_size >= 0", name="received_size_non_negative"),
+        CheckConstraint("received_size <= expected_size", name="received_size_not_excessive"),
+        CheckConstraint(
+            "expected_sha256 IS NULL OR length(expected_sha256) = 64",
+            name="expected_sha256_length",
+        ),
+        Index("ix_case_upload_sessions_case_status", "case_id", "status"),
+        Index("ix_case_upload_sessions_expires_at", "expires_at"),
     )
 
 

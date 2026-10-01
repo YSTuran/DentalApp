@@ -10,8 +10,11 @@ import {
 import { AccessDeniedPage } from "./pages/AccessDeniedPage";
 import { AuditLogPage } from "./pages/AuditLogPage";
 import { ClinicsPage } from "./pages/ClinicsPage";
+import { CaseDetailPage } from "./pages/CaseDetailPage";
+import { CasesPage } from "./pages/CasesPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { NewCasePage } from "./pages/NewCasePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { UsersPage } from "./pages/UsersPage";
@@ -28,6 +31,9 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/ayarlar" element={<SettingsPage />} />
+              <Route path="/vakalar" element={<CasesPage />} />
+              <Route path="/vakalar/yeni" element={<NewCasePage />} />
+              <Route path="/vakalar/:caseId" element={<CaseDetailPage />} />
               <Route path="/yetkisiz" element={<AccessDeniedPage />} />
               <Route element={<ManagementReadRoute />}>
                 <Route path="/yonetim/klinikler" element={<ClinicsPage />} />

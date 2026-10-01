@@ -5,12 +5,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import require_csrf
-from app.api.dependencies.authorization import require_any_role
+from app.api.dependencies.cases import case_access
 from app.db.session import get_db
-from app.models import CaseStatus, RoleCode, User
+from app.models import CaseStatus, User
 from app.schemas.case import (
     CaseCancelRequest,
+    CaseClinicOptionResponse,
+    CaseCreateOptionsResponse,
     CaseCreateRequest,
+    CaseDentistOptionResponse,
     CaseHistoryListResponse,
     CaseListResponse,
     CaseResponse,
@@ -26,6 +29,7 @@ from app.services.cases import (
     case_to_response,
     create_case,
     get_visible_case,
+    list_case_create_options,
     list_case_history,
     list_visible_cases,
     submit_case,
@@ -33,16 +37,6 @@ from app.services.cases import (
 )
 
 router = APIRouter()
-
-case_access = require_any_role(
-    RoleCode.SYSTEM_ADMIN,
-    RoleCode.CLINIC_MANAGER,
-    RoleCode.MANAGING_DENTIST,
-    RoleCode.DENTIST,
-    RoleCode.CLINIC_STAFF,
-    RoleCode.TECHNICIAN,
-)
-
 
 def _not_found() -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="case_not_found")
@@ -68,6 +62,27 @@ def _raise_service_error(error: Exception) -> None:
             detail=detail,
         ) from error
     raise error
+
+
+@router.get("/create-options", response_model=CaseCreateOptionsResponse)
+def get_case_create_options(
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[User, Depends(case_access)],
+) -> CaseCreateOptionsResponse:
+    return CaseCreateOptionsResponse(
+        clinics=[
+            CaseClinicOptionResponse(
+                id=clinic.id,
+                code=clinic.code,
+                name=clinic.name,
+                dentists=[
+                    CaseDentistOptionResponse(id=dentist.id, full_name=dentist.full_name)
+                    for dentist in dentists
+                ],
+            )
+            for clinic, dentists in list_case_create_options(db, actor=actor)
+        ]
+    )
 
 
 @router.get("", response_model=CaseListResponse, response_model_exclude_none=True)

@@ -146,3 +146,40 @@ def test_case_creation_rejects_cross_clinic_responsible_dentist(
     with case_session_factory() as session:
         assert session.scalar(select(DentalCase.id)) is None
         assert session.scalar(select(CaseStatusHistory.id)) is None
+
+
+def test_case_create_options_are_scoped_to_creator_clinics(
+    case_session_factory: sessionmaker[Session],
+) -> None:
+    own_clinic = create_clinic(case_session_factory, "FORM")
+    other_clinic = create_clinic(case_session_factory, "HIDDEN")
+    staff = create_user(case_session_factory, RoleCode.CLINIC_STAFF, own_clinic.id)
+    dentist = create_user(case_session_factory, RoleCode.DENTIST, own_clinic.id)
+    manager_dentist = create_user(
+        case_session_factory,
+        RoleCode.MANAGING_DENTIST,
+        own_clinic.id,
+    )
+    create_user(case_session_factory, RoleCode.DENTIST, other_clinic.id)
+
+    app.dependency_overrides[get_current_user] = lambda: staff
+    with TestClient(app) as client:
+        response = client.get("/api/cases/create-options")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "clinics": [
+            {
+                "id": str(own_clinic.id),
+                "code": own_clinic.code,
+                "name": own_clinic.name,
+                "dentists": [
+                    {"id": str(dentist.id), "full_name": dentist.full_name},
+                    {
+                        "id": str(manager_dentist.id),
+                        "full_name": manager_dentist.full_name,
+                    },
+                ],
+            }
+        ]
+    }

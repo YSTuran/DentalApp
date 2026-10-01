@@ -4,9 +4,11 @@
   "description": "Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve teslim süreçlerini yöneten demo uygulaması.",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently --names FIREBASE,API,WEB --prefix-colors yellow,cyan,green --kill-others-on-fail \"npm:dev:firebase\" \"npm:dev:api\" \"npm:dev:web\"",
+    "dev": "concurrently --names FIREBASE,API,WORKER,BEAT,WEB --prefix-colors yellow,cyan,magenta,blue,green --kill-others-on-fail \"npm:dev:firebase\" \"npm:dev:api\" \"npm:dev:worker\" \"npm:dev:beat\" \"npm:dev:web\"",
     "dev:firebase": "firebase emulators:start --only auth --import=./firebase-export --export-on-exit --project dentalapp-7b131",
     "dev:api": "backend\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --reload-dir backend --app-dir backend",
+    "dev:worker": "backend\\.venv\\Scripts\\python.exe -m celery --workdir backend -A app.worker.celery_app worker --pool=solo --loglevel=INFO",
+    "dev:beat": "backend\\.venv\\Scripts\\python.exe -m celery --workdir backend -A app.worker.celery_app beat --loglevel=INFO --schedule ../storage/celerybeat-schedule",
     "dev:web": "npm --prefix frontend run dev",
     "test": "npm run test:backend && npm run test:frontend",
     "test:quick": "npm run test:backend:unit && npm run test:frontend",
