@@ -9,8 +9,13 @@
     "dev:api": "backend\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --reload-dir backend --app-dir backend",
     "dev:web": "npm --prefix frontend run dev",
     "test": "npm run test:backend && npm run test:frontend",
-    "test:backend": "backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pyproject.toml backend\\tests",
-    "test:frontend": "npm --prefix frontend test"
+    "test:quick": "npm run test:backend:unit && npm run test:frontend",
+    "test:backend": "npm run test:backend:unit && npm run test:backend:integration",
+    "test:backend:unit": "backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pyproject.toml backend\\tests -m \"not integration\"",
+    "test:backend:integration": "set RUN_DATABASE_INTEGRATION_TESTS=1&& backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pyproject.toml backend\\tests -m integration",
+    "test:frontend": "npm --prefix frontend test",
+    "lint": "backend\\.venv\\Scripts\\python.exe -m ruff check backend && npm --prefix frontend run lint",
+    "build": "npm --prefix frontend run build"
   },
   "repository": {
     "type": "git",

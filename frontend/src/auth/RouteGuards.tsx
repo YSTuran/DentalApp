@@ -1,23 +1,32 @@
 import { Navigate, Outlet } from "react-router-dom";
 
+import { AuthUnavailableScreen } from "../components/AuthUnavailableScreen";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { useAuth } from "./AuthContext";
 
 export function ProtectedRoute() {
-  const { status } = useAuth();
+  const { retrySession, status } = useAuth();
 
   if (status === "loading") {
     return <LoadingScreen />;
+  }
+
+  if (status === "unavailable") {
+    return <AuthUnavailableScreen onRetry={retrySession} />;
   }
 
   return status === "authenticated" ? <Outlet /> : <Navigate to="/giris" replace />;
 }
 
 export function PublicOnlyRoute() {
-  const { status } = useAuth();
+  const { retrySession, status } = useAuth();
 
   if (status === "loading") {
     return <LoadingScreen />;
+  }
+
+  if (status === "unavailable") {
+    return <AuthUnavailableScreen onRetry={retrySession} />;
   }
 
   return status === "unauthenticated" ? <Outlet /> : <Navigate to="/" replace />;
@@ -31,4 +40,13 @@ export function SystemAdminRoute() {
   ) : (
     <Navigate to="/yetkisiz" replace />
   );
+}
+
+export function ManagementReadRoute() {
+  const { user } = useAuth();
+  const canReadManagement =
+    user?.global_roles.includes("system_admin") === true ||
+    user?.clinic_roles.some((assignment) => assignment.role === "clinic_manager") === true;
+
+  return canReadManagement ? <Outlet /> : <Navigate to="/yetkisiz" replace />;
 }

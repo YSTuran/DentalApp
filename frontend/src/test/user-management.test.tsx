@@ -40,6 +40,7 @@ const authValue: AuthContextValue = {
   login: vi.fn().mockResolvedValue(undefined),
   logout: vi.fn().mockResolvedValue(undefined),
   changePassword: vi.fn().mockResolvedValue(undefined),
+  retrySession: vi.fn().mockResolvedValue(undefined),
 };
 
 afterEach(cleanup);
@@ -192,6 +193,65 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
         reason: "Görev yeri değişti",
       });
     });
+  });
+
+  it("klinik yöneticisine yalnızca kendi kapsamındaki hekimleri salt okunur gösterir", async () => {
+    const clinicId = "9acfa1ce-cb10-4e29-9bb3-aebdd62f823f";
+    const managerUser: CurrentUser = {
+      ...currentUser,
+      global_roles: [],
+      clinic_roles: [{ clinic_id: clinicId, role: "clinic_manager" }],
+    };
+    vi.mocked(listClinics).mockResolvedValue({
+      items: [{
+        id: clinicId,
+        code: "K001",
+        name: "Birinci Klinik",
+        address: null,
+        phone: null,
+        is_active: true,
+        created_at: "2026-09-28T10:00:00Z",
+        updated_at: "2026-09-28T10:00:00Z",
+      }],
+      total: 1,
+      limit: 100,
+      offset: 0,
+    });
+    vi.mocked(listUsers).mockResolvedValue({
+      items: [{
+        id: "26ae89c7-8f4a-40f9-8502-8def51e134fd",
+        email: "doctor@example.test",
+        full_name: "Demo Hekim",
+        is_active: true,
+        created_at: "2026-09-28T10:00:00Z",
+        updated_at: "2026-09-28T10:00:00Z",
+        role_assignments: [{
+          id: "654925b2-ab70-40e5-9e7c-d7fda9a5789a",
+          role: "dentist",
+          clinic_id: clinicId,
+          is_active: true,
+          created_at: "2026-09-28T10:00:00Z",
+          updated_at: "2026-09-28T10:00:00Z",
+        }],
+      }],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/yonetim/kullanicilar"]}>
+        <AuthContext.Provider value={{ ...authValue, user: managerUser }}>
+          <UsersPage />
+        </AuthContext.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Demo Hekim")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Yeni kullanıcı" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rol/Klinik düzenle" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pasife al" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Sistem yöneticisi" })).not.toBeInTheDocument();
   });
 });
 

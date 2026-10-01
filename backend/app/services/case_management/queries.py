@@ -67,6 +67,6 @@ def list_case_history(
         db.scalars(
             select(CaseStatusHistory)
             .where(CaseStatusHistory.case_id == case_id)
-            .order_by(CaseStatusHistory.created_at, CaseStatusHistory.id)
+            .order_by(CaseStatusHistory.sequence_number)
         ).all()
     )

@@ -30,8 +30,11 @@ def context_for(
     case_clinic_id = uuid4()
     return CaseActionContext(
         actor_user_id=actor_id,
-        actor_roles=frozenset({role}),
-        actor_clinic_ids=frozenset({case_clinic_id}) if same_clinic else frozenset(),
+        actor_role_assignments=frozenset(
+            {(role, None if role.is_global else case_clinic_id)}
+            if same_clinic or role.is_global
+            else {(role, uuid4())}
+        ),
         case_clinic_id=case_clinic_id,
         case_created_by_user_id=actor_id if actor_is_creator else uuid4(),
         responsible_dentist_user_id=actor_id if actor_is_dentist else uuid4(),
@@ -72,7 +75,29 @@ def test_clinic_staff_can_submit_case_but_cannot_approve_design() -> None:
 def test_manager_cannot_review_case_from_another_clinic() -> None:
     context = context_for(RoleCode.MANAGING_DENTIST, same_clinic=False)
 
-    with pytest.raises(CaseActionDeniedError, match="kliniğin"):
+    with pytest.raises(CaseActionDeniedError, match="vaka kliniğinde"):
+        authorize_case_action(CaseAction.MANAGER_APPROVE, context)
+
+
+def test_role_from_one_clinic_cannot_authorize_action_in_another_clinic() -> None:
+    actor_id = uuid4()
+    manager_clinic_id = uuid4()
+    staff_clinic_id = uuid4()
+    context = CaseActionContext(
+        actor_user_id=actor_id,
+        actor_role_assignments=frozenset(
+            {
+                (RoleCode.MANAGING_DENTIST, manager_clinic_id),
+                (RoleCode.CLINIC_STAFF, staff_clinic_id),
+            }
+        ),
+        case_clinic_id=staff_clinic_id,
+        case_created_by_user_id=uuid4(),
+        responsible_dentist_user_id=uuid4(),
+        reason=None,
+    )
+
+    with pytest.raises(CaseActionDeniedError, match="vaka kliniğinde"):
         authorize_case_action(CaseAction.MANAGER_APPROVE, context)
 
 

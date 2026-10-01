@@ -37,6 +37,7 @@ function authValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue 
     login: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined),
     changePassword: vi.fn().mockResolvedValue(undefined),
+    retrySession: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -81,6 +82,8 @@ describe("hesap ekranları", () => {
     await waitFor(() => {
       expect(document.documentElement.dataset.mode).toBe("light");
       expect(document.documentElement.dataset.palette).toBe("default");
+      expect(window.localStorage.getItem("dentalapp.theme_mode")).toBeNull();
+      expect(window.localStorage.getItem("dentalapp.color_palette")).toBeNull();
     });
     expect(getComputedStyle(screen.getByRole("main")).colorScheme).toBe("light");
   });

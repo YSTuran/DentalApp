@@ -3,18 +3,22 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export function ManagementHeader() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const isSystemAdmin = user?.global_roles.includes("system_admin") === true;
 
   return (
     <header className="topbar management-topbar">
       <Link className="brand-inline brand-link" to="/">
         <div className="brand-mark brand-mark-small" aria-hidden="true">D</div>
-        <div><strong>DentalApp</strong><span>Sistem yönetimi</span></div>
+        <div><strong>DentalApp</strong><span>{isSystemAdmin ? "Sistem yönetimi" : "Klinik görünümü"}</span></div>
       </Link>
-      <nav className="management-nav" aria-label="Sistem yönetimi navigasyonu">
+      <nav
+        className="management-nav"
+        aria-label={isSystemAdmin ? "Sistem yönetimi navigasyonu" : "Klinik görünümü navigasyonu"}
+      >
         <NavLink to="/yonetim/klinikler">Klinikler</NavLink>
         <NavLink to="/yonetim/kullanicilar">Kullanıcılar</NavLink>
-        <NavLink to="/yonetim/audit-kayitlari">Audit kayıtları</NavLink>
+        {isSystemAdmin && <NavLink to="/yonetim/audit-kayitlari">Audit kayıtları</NavLink>}
       </nav>
       <div className="topbar-actions">
         <Link className="text-link" to="/">Panel</Link>

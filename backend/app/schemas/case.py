@@ -169,7 +169,7 @@ class CaseFileVersionResponse(BaseModel):
     id: UUID
     kind: CaseFileKind
     version_number: int
-    original_filename: str
+    original_filename: str | None = None
     size_bytes: int
     mesh_status: MeshValidationStatus
     is_locked: bool

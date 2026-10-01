@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 import type { CurrentUser } from "../types/auth";
 
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+export type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "unavailable";
 
 export interface AuthContextValue {
   status: AuthStatus;
@@ -10,6 +10,7 @@ export interface AuthContextValue {
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  retrySession: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

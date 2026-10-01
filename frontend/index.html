@@ -1,5 +1,11 @@
 <!doctype html>
-<html lang="tr">
+<html
+  lang="tr"
+  data-mode="light"
+  data-theme-mode="light"
+  data-palette="default"
+  style="color-scheme: light"
+>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,40 +15,6 @@
       content="DentalApp klinik ve laboratuvar vaka yönetimi uygulaması"
     />
     <title>DentalApp</title>
-    <script>
-      (() => {
-        const modes = ["light", "dark", "system"];
-        const palettes = [
-          "default",
-          "ocean",
-          "violet",
-          "arctic",
-          "sage",
-          "graphite",
-          "amber",
-          "burgundy",
-          "coral",
-          "sepia",
-          "high_contrast",
-        ];
-        try {
-          const storedMode = localStorage.getItem("dentalapp.theme_mode");
-          const storedPalette = localStorage.getItem("dentalapp.color_palette");
-          const themeMode = modes.includes(storedMode) ? storedMode : "system";
-          const palette = palettes.includes(storedPalette) ? storedPalette : "default";
-          const mode = themeMode === "system"
-            ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-            : themeMode;
-          document.documentElement.dataset.mode = mode;
-          document.documentElement.dataset.themeMode = themeMode;
-          document.documentElement.dataset.palette = palette;
-          document.documentElement.style.colorScheme = mode;
-        } catch {
-          document.documentElement.dataset.mode = "light";
-          document.documentElement.dataset.palette = "default";
-        }
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

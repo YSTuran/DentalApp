@@ -115,6 +115,7 @@ def update_case(
     require_case_visibility(actor, case)
     if actor.id not in {case.created_by_user_id, case.responsible_dentist_user_id}:
         raise CaseAccessDeniedError
+    validate_clinic(db, case.clinic_id)
     if case.status not in EDITABLE_CASE_STATUSES:
         raise CaseConflictError("case_not_editable")
 

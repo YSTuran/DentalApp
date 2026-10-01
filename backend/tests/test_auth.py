@@ -38,6 +38,14 @@ def test_csrf_endpoint_sets_cookie() -> None:
     assert "dentalapp_csrf=" in response.headers["set-cookie"]
 
 
+def test_csrf_endpoint_reuses_existing_valid_token() -> None:
+    with TestClient(app) as client:
+        first = client.get("/api/auth/csrf")
+        second = client.get("/api/auth/csrf")
+
+    assert second.json()["csrf_token"] == first.json()["csrf_token"]
+
+
 def test_current_user_serialization_includes_stored_preferences() -> None:
     user = build_user()
     user.preference = UserPreference(

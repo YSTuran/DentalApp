@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
 import {
@@ -31,6 +32,8 @@ function formatDate(value: string): string {
 }
 
 export function ClinicsPage() {
+  const { user } = useAuth();
+  const isSystemAdmin = user?.global_roles.includes("system_admin") === true;
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -151,13 +154,15 @@ export function ClinicsPage() {
       <main className="management-content">
         <div className="page-heading">
           <div>
-            <p className="eyebrow">SİSTEM YÖNETİMİ</p>
+            <p className="eyebrow">{isSystemAdmin ? "SİSTEM YÖNETİMİ" : "KLİNİK GÖRÜNÜMÜ"}</p>
             <h1>Klinikler</h1>
-            <p>Şubeleri oluşturun, bilgilerini güncelleyin ve durumlarını yönetin.</p>
+            <p>{isSystemAdmin ? "Şubeleri oluşturun, bilgilerini güncelleyin ve durumlarını yönetin." : "Yetkili olduğunuz klinik bilgilerini görüntüleyin."}</p>
           </div>
-          <button className="primary-button compact-button" onClick={openCreateForm}>
-            + Yeni klinik
-          </button>
+          {isSystemAdmin && (
+            <button className="primary-button compact-button" onClick={openCreateForm}>
+              + Yeni klinik
+            </button>
+          )}
         </div>
 
         {notice !== null && <div className="success-message" role="status">{notice}</div>}
@@ -198,7 +203,7 @@ export function ClinicsPage() {
           ) : (
             <div className="table-scroll">
               <table className="data-table">
-                <thead><tr><th>Kod</th><th>Klinik</th><th>İletişim</th><th>Durum</th><th>Güncelleme</th><th /></tr></thead>
+                <thead><tr><th>Kod</th><th>Klinik</th><th>İletişim</th><th>Durum</th><th>Güncelleme</th>{isSystemAdmin && <th />}</tr></thead>
                 <tbody>
                   {clinics.map((clinic) => (
                     <tr key={clinic.id}>
@@ -207,14 +212,14 @@ export function ClinicsPage() {
                       <td>{clinic.phone || "—"}</td>
                       <td><span className={`state-chip ${clinic.is_active ? "active" : "inactive"}`}>{clinic.is_active ? "Aktif" : "Pasif"}</span></td>
                       <td><small>{formatDate(clinic.updated_at)}</small></td>
-                      <td>
+                      {isSystemAdmin && <td>
                         <div className="row-actions">
                           <button onClick={() => openEditForm(clinic)}>Düzenle</button>
                           <button className={clinic.is_active ? "danger-action" : "success-action"} onClick={() => { setStatusTarget(clinic); setStatusReason(""); }}>
                             {clinic.is_active ? "Pasife al" : "Etkinleştir"}
                           </button>
                         </div>
-                      </td>
+                      </td>}
                     </tr>
                   ))}
                 </tbody>
@@ -232,7 +237,7 @@ export function ClinicsPage() {
         </section>
       </main>
 
-      {formMode !== null && (
+      {isSystemAdmin && formMode !== null && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="clinic-form-title">
             <div className="modal-heading">
@@ -251,7 +256,7 @@ export function ClinicsPage() {
         </div>
       )}
 
-      {statusTarget !== null && (
+      {isSystemAdmin && statusTarget !== null && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal-card modal-card-small" role="dialog" aria-modal="true" aria-labelledby="status-title">
             <div className="modal-heading"><div><p className="eyebrow">DURUM DEĞİŞİKLİĞİ</p><h2 id="status-title">{statusTarget.is_active ? "Kliniği pasife al" : "Kliniği etkinleştir"}</h2></div><button className="icon-button" onClick={() => setStatusTarget(null)} aria-label="Pencereyi kapat">×</button></div>

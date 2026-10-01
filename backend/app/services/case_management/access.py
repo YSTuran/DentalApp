@@ -30,15 +30,10 @@ def active_assignments(actor: User) -> list[UserRoleAssignment]:
     return [assignment for assignment in actor.role_assignments if assignment.is_active]
 
 
-def actor_roles(actor: User) -> frozenset[RoleCode]:
-    return frozenset(assignment.role for assignment in active_assignments(actor))
-
-
-def actor_clinic_ids(actor: User) -> frozenset[UUID]:
+def actor_role_assignments(actor: User) -> frozenset[tuple[RoleCode, UUID | None]]:
     return frozenset(
-        assignment.clinic_id
+        (assignment.role, assignment.clinic_id)
         for assignment in active_assignments(actor)
-        if assignment.clinic_id is not None
     )
 
 

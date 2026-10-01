@@ -10,9 +10,12 @@ from app.api.dependencies.auth import get_current_user
 from app.main import app
 from app.models import (
     CaseDetail,
+    CaseFileKind,
+    CaseFileVersion,
     CaseStatus,
     CaseStatusHistory,
     DentalCase,
+    MeshValidationStatus,
     RoleCode,
 )
 from tests.integration.case_test_support import create_clinic, create_user, csrf_headers
@@ -70,6 +73,19 @@ def test_role_visibility_and_technician_patient_name_masking(
         )
         session.add_all([draft, lab_case, other_case])
         session.flush()
+        session.add(
+            CaseFileVersion(
+                case_id=lab_case.id,
+                kind=CaseFileKind.SCAN,
+                version_number=1,
+                original_filename="hasta-adi-tarama.stl",
+                storage_key=f"test/{lab_case.id}/scan.stl",
+                size_bytes=1024,
+                sha256="b" * 64,
+                mesh_status=MeshValidationStatus.VALID,
+                uploaded_by_user_id=own_dentist.id,
+            )
+        )
 
     with TestClient(app) as client:
         app.dependency_overrides[get_current_user] = lambda: technician
@@ -81,6 +97,7 @@ def test_role_visibility_and_technician_patient_name_masking(
         assert [item["id"] for item in technician_list.json()["items"]] == [str(lab_case.id)]
         assert "patient_name" not in technician_list.json()["items"][0]
         assert "patient_name" not in technician_detail.json()
+        assert "original_filename" not in technician_detail.json()["file_versions"][0]
         assert technician_detail.json()["patient_code"] == "P-LAB"
         assert hidden_draft.status_code == 403
 

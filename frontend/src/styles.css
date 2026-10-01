@@ -782,6 +782,24 @@ input:disabled {
   color: var(--muted);
 }
 
+.service-unavailable-card {
+  width: min(92vw, 34rem);
+  padding: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: 0 22px 60px color-mix(in srgb, var(--ink) 12%, transparent);
+  text-align: center;
+}
+
+.service-unavailable-card h1 {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.service-unavailable-card .primary-button {
+  margin-top: 0.75rem;
+}
+
 .spinner {
   width: 34px;
   height: 34px;

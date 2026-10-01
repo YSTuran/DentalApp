@@ -108,10 +108,6 @@ REASON_REQUIRED_ACTIONS = frozenset(
     }
 )
 
-CLINIC_SCOPED_ACTIONS = frozenset(
-    action for action, roles in ACTION_ROLES.items() if RoleCode.TECHNICIAN not in roles
-)
-
 CASE_OWNER_ACTIONS = frozenset({CaseAction.SUBMIT, CaseAction.CANCEL})
 DENTIST_OWNER_ACTIONS = frozenset(
     {CaseAction.DENTIST_APPROVE_DESIGN, CaseAction.DENTIST_REQUEST_DESIGN_REVISION}
@@ -121,8 +117,7 @@ DENTIST_OWNER_ACTIONS = frozenset(
 @dataclass(frozen=True, slots=True)
 class CaseActionContext:
     actor_user_id: UUID
-    actor_roles: frozenset[RoleCode]
-    actor_clinic_ids: frozenset[UUID]
+    actor_role_assignments: frozenset[tuple[RoleCode, UUID | None]]
     case_clinic_id: UUID
     case_created_by_user_id: UUID
     responsible_dentist_user_id: UUID
@@ -140,11 +135,18 @@ def next_case_status(current: CaseStatus, action: CaseAction) -> CaseStatus:
 
 def authorize_case_action(action: CaseAction, context: CaseActionContext) -> None:
     allowed_roles = ACTION_ROLES[action]
-    if context.actor_roles.isdisjoint(allowed_roles):
-        raise CaseActionDeniedError("Bu rol vaka işlemini gerçekleştiremez.")
-
-    if action in CLINIC_SCOPED_ACTIONS and context.case_clinic_id not in context.actor_clinic_ids:
-        raise CaseActionDeniedError("Kullanıcı bu kliniğin vakasına erişemez.")
+    has_scoped_role = any(
+        role in allowed_roles
+        and (
+            (role.is_global and clinic_id is None)
+            or (not role.is_global and clinic_id == context.case_clinic_id)
+        )
+        for role, clinic_id in context.actor_role_assignments
+    )
+    if not has_scoped_role:
+        raise CaseActionDeniedError(
+            "Kullanıcı bu işlem için gerekli role vaka kliniğinde sahip değil."
+        )
 
     if action in CASE_OWNER_ACTIONS and context.actor_user_id not in {
         context.case_created_by_user_id,

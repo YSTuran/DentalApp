@@ -41,7 +41,7 @@ def list_audit_events(
     items = db.scalars(
         select(AuditEvent)
         .where(*filters)
-        .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
+        .order_by(AuditEvent.sequence_number.desc())
         .limit(limit)
         .offset(offset)
     ).all()

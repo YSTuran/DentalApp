@@ -1,7 +1,8 @@
 # DentalApp vaka iş akışı kararı
 
-Bu belge, vaka tabloları ve API'leri oluşturulmadan önce uygulanacak MVP iş kurallarını
-tek yerde sabitler. Çalışan karşılığı `backend/app/domain/case_workflow.py` dosyasındadır.
+Bu belge, uygulanmış MVP vaka iş kurallarını tek yerde açıklar. Durum makinesinin
+çalışan karşılığı `backend/app/domain/case_workflow.py`; kalıcı veri yapıları ise
+`backend/app/models/case.py` dosyasındadır.
 
 ## Temel akış
 
@@ -32,6 +33,7 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
   Yeni tarama kararında vaka tekrar yönetici onayına gönderilir.
 - Sistem yöneticisi kullanıcı ve şube yönetir; klinik onay rollerini devralmaz.
 
-Bu aşamada veritabanına vaka tablosu eklenmemiştir. Sonraki aşamada model ve migration
-bu durum makinesini kaynak kabul ederek hazırlanacaktır.
+Vaka, dosya sürümü, onay ve durum geçmişi tabloları migration ile oluşturulmuştur.
+Onaylanan dosya sürümlerinin kilidi veritabanı trigger'ıyla korunur; onay ve geçmiş
+kayıtları deterministik sıra numarasıyla okunur.
 

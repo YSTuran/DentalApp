@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from secrets import token_urlsafe
 from typing import Annotated
@@ -31,6 +32,7 @@ from app.services.firebase_auth import (
 from app.services.preferences import serialize_preferences
 
 router = APIRouter()
+CSRF_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
 
 
 def serialize_user(user: User) -> CurrentUserResponse:
@@ -107,9 +109,14 @@ def set_session_cookie(
 
 
 @router.get("/csrf", response_model=CsrfResponse)
-def issue_csrf_token(response: Response) -> CsrfResponse:
+def issue_csrf_token(request: Request, response: Response) -> CsrfResponse:
     settings = get_settings()
-    csrf_token = token_urlsafe(32)
+    current_token = request.cookies.get(settings.csrf_cookie_name)
+    csrf_token = (
+        current_token
+        if current_token is not None and CSRF_TOKEN_PATTERN.fullmatch(current_token)
+        else token_urlsafe(32)
+    )
     response.set_cookie(
         key=settings.csrf_cookie_name,
         value=csrf_token,

@@ -7,4 +7,6 @@ def case_to_response(case: DentalCase, *, actor: User) -> CaseResponse:
     response = CaseResponse.model_validate(case)
     if not can_view_patient_name(actor, case):
         response.patient_name = None
+        for file_version in response.file_versions:
+            file_version.original_filename = None
     return response

@@ -9,7 +9,13 @@ import {
   signOut,
   updatePassword,
 } from "firebase/auth";
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   ApiError,
@@ -79,6 +85,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<CurrentUser | null>(null);
 
+  const retrySession = useCallback(async () => {
+    setStatus("loading");
+
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      setStatus("authenticated");
+    } catch (error) {
+      setUser(null);
+      if (error instanceof ApiError && error.status === 401) {
+        setStatus("unauthenticated");
+      } else {
+        console.error("Oturum bilgisi alınamadı", error);
+        setStatus("unavailable");
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
 
@@ -94,11 +118,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        if (!(error instanceof ApiError) || error.status !== 401) {
-          console.error("Oturum bilgisi alınamadı", error);
-        }
         setUser(null);
-        setStatus("unauthenticated");
+        if (error instanceof ApiError && error.status === 401) {
+          setStatus("unauthenticated");
+        } else {
+          console.error("Oturum bilgisi alınamadı", error);
+          setStatus("unavailable");
+        }
       });
 
     return () => {
@@ -194,8 +220,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, login, logout, changePassword }),
-    [changePassword, login, logout, status, user],
+    () => ({ status, user, login, logout, changePassword, retrySession }),
+    [changePassword, login, logout, retrySession, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

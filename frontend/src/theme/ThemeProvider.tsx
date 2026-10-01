@@ -49,6 +49,15 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       : preferences.theme_mode;
 
   useEffect(() => {
+    try {
+      window.localStorage.removeItem("dentalapp.theme_mode");
+      window.localStorage.removeItem("dentalapp.color_palette");
+    } catch {
+      // Legacy theme cache is optional and no longer used by the application.
+    }
+  }, []);
+
+  useEffect(() => {
     const mediaQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
     if (mediaQuery === undefined) return;
 

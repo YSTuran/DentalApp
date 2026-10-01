@@ -9,6 +9,8 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
+    Identity,
     Index,
     Integer,
     String,
@@ -95,11 +97,11 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     approvals: Mapped[list["CaseApproval"]] = relationship(
         back_populates="case",
-        order_by="CaseApproval.created_at",
+        order_by="CaseApproval.sequence_number",
     )
     status_history: Mapped[list["CaseStatusHistory"]] = relationship(
         back_populates="case",
-        order_by="CaseStatusHistory.created_at",
+        order_by="CaseStatusHistory.sequence_number",
     )
 
     __table_args__ = (
@@ -172,6 +174,7 @@ class CaseFileVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     uploaded_by = relationship("User")
 
     __table_args__ = (
+        UniqueConstraint("id", "case_id", name="uq_case_file_versions_id_case"),
         UniqueConstraint("case_id", "kind", "version_number", name="uq_case_file_version_number"),
         UniqueConstraint("storage_key", name="uq_case_file_versions_storage_key"),
         CheckConstraint("version_number > 0", name="version_number_positive"),
@@ -184,13 +187,18 @@ class CaseFileVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class CaseApproval(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "case_approvals"
 
+    sequence_number: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(),
+        nullable=False,
+    )
     case_id: Mapped[UUID] = mapped_column(
         ForeignKey("cases.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     approval_type: Mapped[CaseApprovalType] = mapped_column(CASE_APPROVAL_TYPE_ENUM, nullable=False)
     decision: Mapped[CaseDecision] = mapped_column(CASE_DECISION_ENUM, nullable=False)
     file_version_id: Mapped[UUID] = mapped_column(
-        ForeignKey("case_file_versions.id", ondelete="RESTRICT"), nullable=False
+        nullable=False
     )
     actor_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -207,15 +215,44 @@ class CaseApproval(UUIDPrimaryKeyMixin, Base):
     )
 
     case: Mapped[DentalCase] = relationship(back_populates="approvals")
-    file_version = relationship("CaseFileVersion")
+    file_version = relationship("CaseFileVersion", viewonly=True)
     actor = relationship("User")
 
-    __table_args__ = (Index("ix_case_approvals_case_created", "case_id", "created_at"),)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["file_version_id", "case_id"],
+            ["case_file_versions.id", "case_file_versions.case_id"],
+            name="fk_case_approvals_file_version_case",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "case_id",
+            "approval_type",
+            "file_version_id",
+            name="uq_case_approval_file_decision",
+        ),
+        CheckConstraint(
+            "decision = 'approved' OR "
+            "(reason IS NOT NULL AND length(btrim(reason)) >= 3)",
+            name="decision_reason_required",
+        ),
+        CheckConstraint(
+            "NOT is_self_approval OR approval_type = 'manager_scan'",
+            name="self_approval_manager_only",
+        ),
+        Index("uq_case_approvals_sequence_number", "sequence_number", unique=True),
+        Index("ix_case_approvals_case_created", "case_id", "created_at"),
+    )
 
 
 class CaseStatusHistory(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "case_status_history"
 
+    sequence_number: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(),
+        nullable=False,
+    )
     case_id: Mapped[UUID] = mapped_column(
         ForeignKey("cases.id", ondelete="RESTRICT"), nullable=False, index=True
     )
@@ -233,4 +270,7 @@ class CaseStatusHistory(UUIDPrimaryKeyMixin, Base):
     case: Mapped[DentalCase] = relationship(back_populates="status_history")
     actor = relationship("User")
 
-    __table_args__ = (Index("ix_case_status_history_case_created", "case_id", "created_at"),)
+    __table_args__ = (
+        Index("uq_case_status_history_sequence_number", "sequence_number", unique=True),
+        Index("ix_case_status_history_case_created", "case_id", "created_at"),
+    )

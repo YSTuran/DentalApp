@@ -71,6 +71,7 @@ function formatDate(value: string): string {
 
 export function UsersPage() {
   const { user: currentUser } = useAuth();
+  const isSystemAdmin = currentUser?.global_roles.includes("system_admin") === true;
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [total, setTotal] = useState(0);
@@ -280,13 +281,15 @@ export function UsersPage() {
       <main className="management-content">
         <div className="page-heading">
           <div>
-            <p className="eyebrow">SİSTEM YÖNETİMİ</p>
+            <p className="eyebrow">{isSystemAdmin ? "SİSTEM YÖNETİMİ" : "KLİNİK GÖRÜNÜMÜ"}</p>
             <h1>Kullanıcılar</h1>
-            <p>Personel hesaplarını oluşturun, rollerini görün ve erişimlerini yönetin.</p>
+            <p>{isSystemAdmin ? "Personel hesaplarını oluşturun, rollerini görün ve erişimlerini yönetin." : "Kliniğinizdeki hekimleri ve yönetici hekimleri görüntüleyin."}</p>
           </div>
-          <button className="primary-button compact-button" onClick={openCreateForm}>
-            + Yeni kullanıcı
-          </button>
+          {isSystemAdmin && (
+            <button className="primary-button compact-button" onClick={openCreateForm}>
+              + Yeni kullanıcı
+            </button>
+          )}
         </div>
 
         {notice !== null && <div className="success-message" role="status">{notice}</div>}
@@ -308,7 +311,10 @@ export function UsersPage() {
               <span>Rol</span>
               <select value={roleFilter} onChange={(event) => { setRoleFilter(event.target.value as RoleCode | ""); setOffset(0); }}>
                 <option value="">Tümü</option>
-                {FILTER_ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {(isSystemAdmin
+                  ? FILTER_ROLE_OPTIONS
+                  : FILTER_ROLE_OPTIONS.filter((option) => option.value === "dentist" || option.value === "managing_dentist")
+                ).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
             <label className="filter-select">
@@ -335,7 +341,7 @@ export function UsersPage() {
           ) : (
             <div className="table-scroll">
               <table className="data-table user-table">
-                <thead><tr><th>Kullanıcı</th><th>Roller</th><th>Durum</th><th>Oluşturulma</th><th /></tr></thead>
+                <thead><tr><th>Kullanıcı</th><th>Roller</th><th>Durum</th><th>Oluşturulma</th>{isSystemAdmin && <th />}</tr></thead>
                 <tbody>
                   {users.map((managedUser) => {
                     const canChangeRole =
@@ -355,7 +361,7 @@ export function UsersPage() {
                       </td>
                       <td><span className={`state-chip ${managedUser.is_active ? "active" : "inactive"}`}>{managedUser.is_active ? "Aktif" : "Pasif"}</span></td>
                       <td><small>{formatDate(managedUser.created_at)}</small></td>
-                      <td>
+                      {isSystemAdmin && <td>
                         <div className="row-actions">
                           {managedUser.id === currentUser?.id ? (
                             <span className="current-account-label">Mevcut hesap</span>
@@ -375,7 +381,7 @@ export function UsersPage() {
                             </>
                           )}
                         </div>
-                      </td>
+                      </td>}
                     </tr>
                     );
                   })}
@@ -394,7 +400,7 @@ export function UsersPage() {
         </section>
       </main>
 
-      {createOpen && (
+      {isSystemAdmin && createOpen && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="user-form-title">
             <div className="modal-heading">
@@ -432,7 +438,7 @@ export function UsersPage() {
         </div>
       )}
 
-      {temporaryPassword !== null && (
+      {isSystemAdmin && temporaryPassword !== null && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal-card modal-card-small" role="dialog" aria-modal="true" aria-labelledby="credential-title">
             <div className="modal-heading"><div><p className="eyebrow">TEK SEFERLİK BİLGİ</p><h2 id="credential-title">Geçici parola</h2></div></div>
@@ -447,7 +453,7 @@ export function UsersPage() {
         </div>
       )}
 
-      {roleTarget !== null && (
+      {isSystemAdmin && roleTarget !== null && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="role-change-title">
             <div className="modal-heading">
@@ -502,7 +508,7 @@ export function UsersPage() {
         </div>
       )}
 
-      {statusTarget !== null && (
+      {isSystemAdmin && statusTarget !== null && (
         <div className="modal-backdrop" role="presentation">
           <section className="modal-card modal-card-small" role="dialog" aria-modal="true" aria-labelledby="user-status-title">
             <div className="modal-heading"><div><p className="eyebrow">ERİŞİM DEĞİŞİKLİĞİ</p><h2 id="user-status-title">{statusTarget.is_active ? "Kullanıcıyı pasifleştir" : "Kullanıcıyı etkinleştir"}</h2></div><button className="icon-button" onClick={() => setStatusTarget(null)} aria-label="Pencereyi kapat">×</button></div>

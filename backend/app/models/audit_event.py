@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,6 +12,11 @@ from app.db.base import Base, UUIDPrimaryKeyMixin
 class AuditEvent(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "audit_events"
 
+    sequence_number: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(),
+        nullable=False,
+    )
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_id: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -43,6 +48,7 @@ class AuditEvent(UUIDPrimaryKeyMixin, Base):
     )
 
     __table_args__ = (
+        Index("uq_audit_events_sequence_number", "sequence_number", unique=True),
         Index("ix_audit_events_created_at", "created_at"),
         Index("ix_audit_events_action", "action"),
         Index("ix_audit_events_actor_user_id", "actor_user_id"),

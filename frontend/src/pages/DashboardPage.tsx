@@ -38,6 +38,10 @@ export function DashboardPage() {
     ...user.global_roles.map((role) => roleLabels[role]),
     ...user.clinic_roles.map((assignment) => roleLabels[assignment.role]),
   ];
+  const isSystemAdmin = user.global_roles.includes("system_admin");
+  const isClinicManager = user.clinic_roles.some(
+    (assignment) => assignment.role === "clinic_manager",
+  );
 
   return (
     <div className="dashboard-shell">
@@ -107,23 +111,25 @@ export function DashboardPage() {
               )}
             </div>
             <p className="scope-note">
-              {user.global_roles.includes("system_admin")
+              {isSystemAdmin
                 ? "Tüm klinikler üzerinde sistem yöneticisi erişimi bulunuyor."
                 : `${user.clinic_roles.length} klinik rolü atanmış.`}
             </p>
           </section>
 
           <section className="info-card next-step-card">
-            <p className="card-label">SİSTEM YÖNETİMİ</p>
-            <h2>Klinik, kullanıcı ve audit yönetimi</h2>
+            <p className="card-label">{isSystemAdmin ? "SİSTEM YÖNETİMİ" : "KLİNİK YÖNETİMİ"}</p>
+            <h2>{isSystemAdmin ? "Klinik, kullanıcı ve audit yönetimi" : "Klinik personeli görünümü"}</h2>
             <p>
-              Klinik kayıtlarını, personel hesaplarını ve değiştirilemez işlem geçmişini yönetin.
+              {isSystemAdmin
+                ? "Klinik kayıtlarını, personel hesaplarını ve değiştirilemez işlem geçmişini yönetin."
+                : "Yetkili olduğunuz klinikleri ve bu kliniklerdeki hekimleri görüntüleyin."}
             </p>
-            {user.global_roles.includes("system_admin") && (
+            {(isSystemAdmin || isClinicManager) && (
               <div className="dashboard-management-links">
                 <Link className="primary-link" to="/yonetim/klinikler">Klinikler</Link>
                 <Link className="primary-link" to="/yonetim/kullanicilar">Kullanıcılar</Link>
-                <Link className="primary-link" to="/yonetim/audit-kayitlari">Audit kayıtları</Link>
+                {isSystemAdmin && <Link className="primary-link" to="/yonetim/audit-kayitlari">Audit kayıtları</Link>}
               </div>
             )}
           </section>

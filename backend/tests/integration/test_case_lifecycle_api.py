@@ -11,6 +11,7 @@ from app.models import (
     AuditEvent,
     CaseFileKind,
     CaseFileVersion,
+    Clinic,
     MeshValidationStatus,
     RoleCode,
 )
@@ -153,3 +154,40 @@ def test_submit_rejects_incomplete_draft_and_cancel_preserves_record(
         detail_response = client.get(f"/api/cases/{case_id}")
         assert detail_response.status_code == 200
         assert detail_response.json()["status"] == "cancelled"
+
+
+def test_inactive_clinic_draft_cannot_be_changed_or_submitted(
+    case_session_factory: sessionmaker[Session],
+) -> None:
+    clinic = create_clinic(case_session_factory, "INACTIVE")
+    dentist = create_user(case_session_factory, RoleCode.DENTIST, clinic.id)
+    app.dependency_overrides[get_current_user] = lambda: dentist
+
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        create_response = client.post(
+            "/api/cases",
+            headers=headers,
+            json=create_case_payload(clinic, dentist),
+        )
+        assert create_response.status_code == 201
+        case_id = create_response.json()["id"]
+
+    with case_session_factory.begin() as session:
+        stored_clinic = session.get(Clinic, clinic.id)
+        assert stored_clinic is not None
+        stored_clinic.is_active = False
+
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        update_response = client.patch(
+            f"/api/cases/{case_id}",
+            headers=headers,
+            json={"patient_code": "HST-PASIF", "reason": "Pasif klinik kontrolü"},
+        )
+        assert update_response.status_code == 422
+        assert update_response.json()["detail"] == "case_clinic_inactive"
+
+        submit_response = client.post(f"/api/cases/{case_id}/submit", headers=headers)
+        assert submit_response.status_code == 422
+        assert submit_response.json()["detail"] == "case_clinic_inactive"

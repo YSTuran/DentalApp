@@ -14,7 +14,7 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Firebase Authentication ve yerel Authentication Emulator desteği
 - Klinik kapsamlı rol/yetki kontrol katmanı
 - PostgreSQL seviyesinde değiştirilemez audit kayıtları
-- Sistem yöneticisi için klinik yönetimi ekranı
+- Sistem yöneticisi için yönetim, klinik yöneticisi için klinik kapsamlı salt okunur ekranlar
 - Firebase ile PostgreSQL'i birlikte yöneten kullanıcı ve rol API'si
 - Liveness ve readiness endpoint'leri
 - Pytest başlangıç testleri
@@ -128,7 +128,8 @@ audit olayı aynı PostgreSQL transaction'ında kaydedilir.
 Sistem yöneticisi giriş yaptıktan sonra klinik yönetimi ekranına
 `http://localhost:5173/yonetim/klinikler` adresinden ulaşabilir. Burada arama,
 aktif/pasif filtreleme, sayfalama, klinik ekleme, düzenleme ve gerekçeli durum
-değişikliği yapılabilir.
+değişikliği yapılabilir. Klinik yöneticisi aynı ekranda yalnızca aktif rolünün
+bulunduğu kliniği ve kullanıcı ekranında o kliniğin hekimlerini salt okunur görür.
 
 Frontend sistem yönetimi ekranları:
 
@@ -220,20 +221,22 @@ FastAPI doğrulamadan sonra CSRF korumalı, HttpOnly bir oturum çerezi üretir.
 
 ## Test
 
-Backend birim testleri ile frontend bileşen testlerini birlikte çalıştırmak için
+PostgreSQL çalışırken backend birim ve entegrasyon testleri ile frontend bileşen
+testlerini birlikte çalıştırmak için
 proje kökünde:
 
 ```powershell
 npm test
 ```
 
-PostgreSQL trigger entegrasyon testlerini ayrıca çalıştırmak için:
+Veritabanı gerektirmeyen hızlı testleri çalıştırmak için:
 
 ```powershell
-$env:RUN_DATABASE_INTEGRATION_TESTS='1'
-cd backend
-pytest -q
+npm run test:quick
 ```
+
+Kod kalitesi ve üretim derlemesi kontrolleri `npm run lint` ve `npm run build`
+komutlarıyla çalıştırılır.
 
 ## Vaka iş akışı
 
@@ -254,7 +257,8 @@ Temel vaka endpoint'leri:
 
 Taslaklar eksik kaydedilebilir; ancak zorunlu alanları veya geçerli mesh sonucu olan
 bir tarama sürümü bulunmayan vaka yönetici onayına gönderilemez. Teknisyen yalnızca
-laboratuvar aşamasına ulaşmış vakaları görür ve API yanıtında hasta adı yer almaz.
+laboratuvar aşamasına ulaşmış vakaları görür; API yanıtında hasta adı ve hasta bilgisi
+içerebilecek özgün yükleme dosyası adı yer almaz.
 
 ## Migration
 

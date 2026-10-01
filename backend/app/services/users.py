@@ -3,7 +3,7 @@ from collections.abc import Callable
 from uuid import UUID
 
 from fastapi import Request
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -28,6 +28,7 @@ from app.services.firebase_identity import (
 
 logger = logging.getLogger(__name__)
 CLINIC_MANAGER_VISIBLE_ROLES = {RoleCode.DENTIST, RoleCode.MANAGING_DENTIST}
+SYSTEM_ADMIN_MUTATION_LOCK_KEY = 4_428_861_106_564_001_101
 
 
 class UserNotFoundError(Exception):
@@ -123,6 +124,14 @@ def _active_system_admin_count(db: Session) -> int:
             )
         )
         or 0
+    )
+
+
+def _lock_system_admin_mutation(db: Session) -> None:
+    """Serialize operations that could remove the final active system admin."""
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_key)"),
+        {"lock_key": SYSTEM_ADMIN_MUTATION_LOCK_KEY},
     )
 
 
@@ -393,12 +402,10 @@ def change_user_status(
         raise UserConflictError(detail)
     if not is_active and user.id == actor.id:
         raise UserConflictError("cannot_deactivate_self")
-    if (
-        not is_active
-        and _has_active_system_admin_role(user)
-        and _active_system_admin_count(db) <= 1
-    ):
-        raise UserConflictError("last_system_admin")
+    if not is_active and _has_active_system_admin_role(user):
+        _lock_system_admin_mutation(db)
+        if _active_system_admin_count(db) <= 1:
+            raise UserConflictError("last_system_admin")
 
     try:
         set_identity_disabled(user.firebase_uid, disabled=not is_active)
@@ -631,6 +638,7 @@ def change_role_status(
     elif assignment.role == RoleCode.SYSTEM_ADMIN and user.is_active:
         if user.id == actor.id:
             raise UserConflictError("cannot_remove_own_system_admin_role")
+        _lock_system_admin_mutation(db)
         if _active_system_admin_count(db) <= 1:
             raise UserConflictError("last_system_admin")
 

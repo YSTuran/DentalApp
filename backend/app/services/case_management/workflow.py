@@ -14,21 +14,20 @@ from app.domain.case_workflow import (
 )
 from app.models import CaseAction, CaseStatus, DentalCase, User
 from app.services.audit import record_audit_event
-from app.services.case_management.access import actor_clinic_ids, actor_roles
+from app.services.case_management.access import actor_role_assignments
 from app.services.case_management.exceptions import (
     CaseAccessDeniedError,
     CaseConflictError,
     CaseValidationError,
 )
 from app.services.case_management.repository import add_history, load_case
-from app.services.case_management.validation import validate_submit_requirements
+from app.services.case_management.validation import validate_clinic, validate_submit_requirements
 
 
 def _action_context(case: DentalCase, actor: User, *, reason: str | None) -> CaseActionContext:
     return CaseActionContext(
         actor_user_id=actor.id,
-        actor_roles=actor_roles(actor),
-        actor_clinic_ids=actor_clinic_ids(actor),
+        actor_role_assignments=actor_role_assignments(actor),
         case_clinic_id=case.clinic_id,
         case_created_by_user_id=case.created_by_user_id,
         responsible_dentist_user_id=case.responsible_dentist_user_id,
@@ -63,6 +62,7 @@ def submit_case(
 ) -> DentalCase:
     case = load_case(db, case_id, for_update=True)
     next_status = _authorize_transition(case, actor, CaseAction.SUBMIT, reason=None)
+    validate_clinic(db, case.clinic_id)
     validate_submit_requirements(case)
     previous_status = case.status
 
