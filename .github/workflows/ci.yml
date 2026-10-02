@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: dentalapp_user
+          POSTGRES_PASSWORD: dentalapp_password
+          POSTGRES_DB: dentalapp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dentalapp_user -d dentalapp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      APP_DEBUG: "false"
+      DEMO_MODE: "true"
+      DATABASE_URL: postgresql+psycopg://dentalapp_user:dentalapp_password@localhost:5432/dentalapp
+      REDIS_URL: redis://localhost:6379/0
+      FIREBASE_USE_EMULATOR: "true"
+      RUN_DATABASE_INTEGRATION_TESTS: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend
+        run: pip install -r backend/requirements.lock
+
+      - name: Install frontend
+        run: npm ci --prefix frontend
+
+      - name: Apply migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Backend tests
+        run: python -m pytest -c backend/pyproject.toml backend/tests
+
+      - name: Backend lint and audit
+        run: |
+          ruff check backend
+          pip-audit -r backend/requirements.lock
+
+      - name: Frontend tests, lint, build and audit
+        run: |
+          npm --prefix frontend test
+          npm --prefix frontend run lint
+          npm --prefix frontend run build
+          npm --prefix frontend audit --omit=dev

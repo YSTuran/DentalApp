@@ -14,6 +14,7 @@ dependencies = [
     "fastapi>=0.116,<1",
     "numpy>=2.1,<3",
     "psycopg[binary]>=3.2,<4",
+    "pymeshlab>=2025.7,<2026",
     "pydantic-settings>=2.10,<3",
     "redis>=6,<8",
     "sqlalchemy>=2.0,<3",
@@ -24,6 +25,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "httpx>=0.28,<1",
+    "pip-audit>=2.9,<3",
+    "pip-tools>=7.5,<8",
     "pytest>=8.4,<10",
     "pytest-cov>=6,<8",
     "ruff>=0.12,<1",
@@ -33,7 +36,8 @@ dev = [
 include = ["app*"]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q --basetemp=storage/pytest-temp"
+cache_dir = "storage/pytest-cache"
 pythonpath = ["."]
 testpaths = ["tests"]
 markers = [

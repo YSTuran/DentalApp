@@ -1,6 +1,7 @@
-import { apiBlobRequest, apiRequest, csrfRequest } from "./api";
+import { apiArrayBufferRequest, apiBlobRequest, apiRequest, csrfRequest } from "./api";
 import type {
   CaseCreateOptions,
+  CaseDecision,
   CaseHistoryItem,
   CaseListResponse,
   CaseStatus,
@@ -65,6 +66,23 @@ export function submitCase(caseId: string): Promise<DentalCase> {
   return csrfRequest(`/api/cases/${caseId}/submit`, { method: "POST" });
 }
 
+export function managerDecideCase(
+  caseId: string,
+  decision: CaseDecision,
+  fileVersionId: string,
+  reason: string | null,
+): Promise<DentalCase> {
+  return csrfRequest(`/api/cases/${caseId}/manager-decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      decision,
+      file_version_id: fileVersionId,
+      reason,
+    }),
+  });
+}
+
 export function startUpload(caseId: string, file: File): Promise<UploadSession> {
   return csrfRequest(`/api/cases/${caseId}/uploads`, {
     method: "POST",
@@ -108,7 +126,9 @@ export async function downloadCaseFile(
   fileId: string,
   filename: string,
 ): Promise<void> {
-  const blob = await apiBlobRequest(`/api/cases/${caseId}/files/${fileId}`);
+  const blob = await apiBlobRequest(
+    `/api/cases/${caseId}/files/${fileId}?purpose=download`,
+  );
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -117,4 +137,15 @@ export async function downloadCaseFile(
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export function getCaseFileBuffer(
+  caseId: string,
+  fileId: string,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer> {
+  return apiArrayBufferRequest(
+    `/api/cases/${caseId}/files/${fileId}?purpose=preview`,
+    { signal },
+  );
 }

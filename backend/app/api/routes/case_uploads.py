@@ -1,7 +1,7 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from app.schemas.case import (
     UploadCreateRequest,
     UploadSessionResponse,
 )
+from app.services.audit import record_audit_event
 from app.services.cases import (
     CaseAccessDeniedError,
     CaseConflictError,
@@ -213,8 +214,10 @@ def complete_file_upload(
 def download_case_file(
     case_id: UUID,
     file_version_id: UUID,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(case_access)],
+    purpose: Annotated[Literal["download", "preview"], Query()] = "download",
 ) -> FileResponse:
     try:
         case, version = get_file_version_for_download(
@@ -234,5 +237,33 @@ def download_case_file(
             detail="case_file_not_found",
         ) from error
 
+    record_audit_event(
+        db,
+        action=(
+            "case.file_previewed" if purpose == "preview" else "case.file_downloaded"
+        ),
+        entity_type="case_file_version",
+        entity_id=version.id,
+        actor=actor,
+        clinic_id=case.clinic_id,
+        context={
+            "source": "api",
+            "purpose": purpose,
+            "case_id": case.id,
+            "kind": version.kind,
+            "version_number": version.version_number,
+        },
+        request=request,
+    )
+    db.commit()
+
     safe_filename = f"{case.case_number}-{version.kind.value}-v{version.version_number}.stl"
-    return FileResponse(path, media_type="model/stl", filename=safe_filename)
+    return FileResponse(
+        path,
+        media_type="model/stl",
+        filename=safe_filename,
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

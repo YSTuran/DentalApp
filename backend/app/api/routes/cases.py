@@ -19,6 +19,7 @@ from app.schemas.case import (
     CaseResponse,
     CaseStatusHistoryResponse,
     CaseUpdateRequest,
+    ManagerDecisionRequest,
 )
 from app.services.cases import (
     CaseAccessDeniedError,
@@ -32,6 +33,7 @@ from app.services.cases import (
     list_case_create_options,
     list_case_history,
     list_visible_cases,
+    manager_decide_case,
     submit_case,
     update_case,
 )
@@ -200,6 +202,37 @@ def submit_existing_case(
 ) -> CaseResponse:
     try:
         case = submit_case(db, case_id=case_id, actor=actor, request=request)
+    except (
+        CaseNotFoundError,
+        CaseAccessDeniedError,
+        CaseConflictError,
+        CaseValidationError,
+    ) as error:
+        _raise_service_error(error)
+    return case_to_response(case, actor=actor)
+
+
+@router.post(
+    "/{case_id}/manager-decision",
+    response_model=CaseResponse,
+    response_model_exclude_none=True,
+)
+def decide_manager_review(
+    case_id: UUID,
+    payload: ManagerDecisionRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[User, Depends(case_access)],
+    _csrf: Annotated[None, Depends(require_csrf)],
+) -> CaseResponse:
+    try:
+        case = manager_decide_case(
+            db,
+            case_id=case_id,
+            payload=payload,
+            actor=actor,
+            request=request,
+        )
     except (
         CaseNotFoundError,
         CaseAccessDeniedError,

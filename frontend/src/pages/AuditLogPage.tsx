@@ -3,6 +3,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
 import { AUDIT_LEGEND, auditToneFor } from "../lib/audit-colors";
+import { formatAuditReason } from "../lib/audit-format";
 import { type AuditFilters, auditErrorMessage, listAuditEvents } from "../lib/audit-api";
 import { listClinics } from "../lib/clinics-api";
 import type { AuditEvent } from "../types/audit";
@@ -203,7 +204,7 @@ export function AuditLogPage() {
                       <td>{auditEvent.actor_email ?? "Sistem"}</td>
                       <td><strong>{ENTITY_LABELS[auditEvent.entity_type] ?? auditEvent.entity_type}</strong><small className="audit-entity-id">{auditEvent.entity_id}</small></td>
                       <td>{auditEvent.clinic_id === null ? "—" : (clinicNames.get(auditEvent.clinic_id) ?? auditEvent.clinic_id)}</td>
-                      <td><span className="reason-preview">{auditEvent.reason ?? "Gerekçe belirtilmedi"}</span></td>
+                      <td><span className="reason-preview">{formatAuditReason(auditEvent.reason)}</span></td>
                       <td><div className="row-actions"><button onClick={() => setSelectedEvent(auditEvent)}>Detay</button></div></td>
                     </tr>
                     );
@@ -236,7 +237,7 @@ export function AuditLogPage() {
               <div><dt>İşlemi yapan</dt><dd>{selectedEvent.actor_email ?? "Sistem"}</dd></div>
               <div><dt>Kayıt</dt><dd>{selectedEvent.entity_type} · {selectedEvent.entity_id}</dd></div>
               <div><dt>Klinik</dt><dd>{selectedEvent.clinic_id === null ? "—" : (clinicNames.get(selectedEvent.clinic_id) ?? selectedEvent.clinic_id)}</dd></div>
-              <div><dt>Gerekçe</dt><dd>{selectedEvent.reason ?? "Belirtilmedi"}</dd></div>
+              <div><dt>Gerekçe</dt><dd>{formatAuditReason(selectedEvent.reason)}</dd></div>
               <div><dt>IP adresi</dt><dd>{selectedEvent.ip_address ?? "—"}</dd></div>
             </dl>
             <div className="audit-json-grid">

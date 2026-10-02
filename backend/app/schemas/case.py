@@ -5,7 +5,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models import CaseFileKind, CaseStatus, MeshValidationStatus, UploadStatus
+from app.models import (
+    CaseApprovalType,
+    CaseDecision,
+    CaseFileKind,
+    CaseStatus,
+    MeshValidationStatus,
+    UploadStatus,
+)
 
 CASE_UPDATE_FIELDS = {
     "responsible_dentist_user_id",
@@ -153,6 +160,23 @@ class CaseCancelRequest(BaseModel):
         return normalized
 
 
+class ManagerDecisionRequest(BaseModel):
+    decision: CaseDecision
+    file_version_id: UUID
+    reason: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str | None) -> str | None:
+        return _optional_text(value)
+
+    @model_validator(mode="after")
+    def require_rejection_reason(self) -> "ManagerDecisionRequest":
+        if self.decision != CaseDecision.APPROVED and len(self.reason or "") < 3:
+            raise ValueError("Düzeltme ve ret kararlarında en az 3 karakter gerekçe zorunludur.")
+        return self
+
+
 class CaseDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -176,7 +200,7 @@ class CaseFileVersionResponse(BaseModel):
     is_locked: bool
     mesh_validation_attempts: int
     mesh_validated_at: datetime | None
-    uploaded_by_user_id: UUID
+    uploaded_by_user_id: UUID | None = None
     created_at: datetime
 
 
@@ -230,6 +254,19 @@ class UploadCompleteResponse(BaseModel):
     validation_queued: bool
 
 
+class CaseApprovalResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    approval_type: CaseApprovalType
+    decision: CaseDecision
+    file_version_id: UUID
+    actor_user_id: UUID | None = None
+    reason: str | None
+    is_self_approval: bool
+    created_at: datetime
+
+
 class CaseResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -237,9 +274,9 @@ class CaseResponse(BaseModel):
     case_number: str
     clinic_id: UUID
     clinic_name: str
-    created_by_user_id: UUID
-    responsible_dentist_user_id: UUID
-    responsible_dentist_name: str
+    created_by_user_id: UUID | None = None
+    responsible_dentist_user_id: UUID | None = None
+    responsible_dentist_name: str | None = None
     patient_code: str | None
     patient_name: str | None = None
     status: CaseStatus
@@ -249,6 +286,7 @@ class CaseResponse(BaseModel):
     updated_at: datetime
     details: CaseDetailResponse
     file_versions: list[CaseFileVersionResponse]
+    approvals: list[CaseApprovalResponse]
 
 
 class CaseListResponse(BaseModel):

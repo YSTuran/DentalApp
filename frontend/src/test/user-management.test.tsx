@@ -89,6 +89,42 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     expect(screen.queryByRole("button", { name: "Pasife al" })).not.toBeInTheDocument();
   });
 
+  it("kullanıcı listesinde yalnızca aktif rol atamalarını gösterir", async () => {
+    const existingUser = (await listUsers({})).items[0];
+    vi.mocked(listUsers).mockResolvedValue({
+      items: [{
+        ...existingUser,
+        role_assignments: [
+          ...existingUser.role_assignments,
+          {
+            id: "bd128125-8628-4234-a53e-0898e69d6a91",
+            role: "dentist",
+            clinic_id: null,
+            is_active: false,
+            created_at: "2026-09-27T10:00:00Z",
+            updated_at: "2026-09-28T10:00:00Z",
+          },
+        ],
+      }],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/yonetim/kullanicilar"]}>
+        <AuthContext.Provider value={authValue}>
+          <UsersPage />
+        </AuthContext.Provider>
+      </MemoryRouter>,
+    );
+
+    const userRow = (await screen.findByText("Demo Admin")).closest("tr");
+    expect(userRow).not.toBeNull();
+    expect(within(userRow!).getByText("Sistem yöneticisi")).toBeInTheDocument();
+    expect(within(userRow!).queryByText("Hekim")).not.toBeInTheDocument();
+  });
+
   it("yeni kullanıcı formunda sistem yöneticisi rolünü sunmaz", async () => {
     const user = userEvent.setup();
     render(

@@ -3,7 +3,10 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models import (
+    CaseApprovalType,
+    CaseDecision,
     CaseFileKind,
+    CaseStatus,
     Clinic,
     DentalCase,
     MeshValidationStatus,
@@ -62,3 +65,18 @@ def validate_submit_requirements(case: DentalCase) -> None:
             "case_scan_not_valid",
             context={"mesh_status": latest_scan.mesh_status},
         )
+
+    if case.status == CaseStatus.MANAGER_REVISION_REQUESTED:
+        revision_requests = [
+            approval
+            for approval in case.approvals
+            if approval.approval_type == CaseApprovalType.MANAGER_SCAN
+            and approval.decision == CaseDecision.REVISION_REQUESTED
+        ]
+        if revision_requests:
+            latest_request = max(
+                revision_requests,
+                key=lambda approval: approval.sequence_number,
+            )
+            if latest_scan.id == latest_request.file_version_id:
+                raise CaseValidationError("case_scan_revision_required")

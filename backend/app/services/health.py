@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import engine
+from app.tasks.system import BACKGROUND_HEARTBEAT_KEY
 
 
 def check_database() -> bool:
@@ -23,6 +24,21 @@ def check_redis() -> bool:
     )
     try:
         return bool(client.ping())
+    except Exception:
+        return False
+    finally:
+        client.close()
+
+
+def check_background_services() -> bool:
+    settings = get_settings()
+    client = Redis.from_url(
+        settings.redis_url,
+        socket_connect_timeout=1,
+        socket_timeout=1,
+    )
+    try:
+        return client.get(BACKGROUND_HEARTBEAT_KEY) == b"ok"
     except Exception:
         return False
     finally:

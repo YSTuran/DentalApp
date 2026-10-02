@@ -344,6 +344,9 @@ export function UsersPage() {
                 <thead><tr><th>Kullanıcı</th><th>Roller</th><th>Durum</th><th>Oluşturulma</th>{isSystemAdmin && <th />}</tr></thead>
                 <tbody>
                   {users.map((managedUser) => {
+                    const activeAssignments = managedUser.role_assignments.filter(
+                      (assignment) => assignment.is_active,
+                    );
                     const canChangeRole =
                       managedUser.is_active && editableAssignments(managedUser).length > 0;
                     return (
@@ -351,12 +354,14 @@ export function UsersPage() {
                       <td><strong>{managedUser.full_name}</strong><small>{managedUser.email}</small></td>
                       <td>
                         <div className="assignment-list">
-                          {managedUser.role_assignments.map((assignment) => (
-                            <span className={assignment.is_active ? "" : "inactive"} key={assignment.id}>
-                              {ROLE_LABELS[assignment.role]}
-                              {assignment.clinic_id !== null && ` · ${clinicNames.get(assignment.clinic_id) ?? "Bilinmeyen klinik"}`}
-                            </span>
-                          ))}
+                          {activeAssignments.length > 0 ? (
+                            activeAssignments.map((assignment) => (
+                              <span key={assignment.id}>
+                                {ROLE_LABELS[assignment.role]}
+                                {assignment.clinic_id !== null && ` · ${clinicNames.get(assignment.clinic_id) ?? "Bilinmeyen klinik"}`}
+                              </span>
+                            ))
+                          ) : <span>-</span>}
                         </div>
                       </td>
                       <td><span className={`state-chip ${managedUser.is_active ? "active" : "inactive"}`}>{managedUser.is_active ? "Aktif" : "Pasif"}</span></td>

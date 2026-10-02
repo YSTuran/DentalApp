@@ -1,14 +1,22 @@
 from dataclasses import dataclass
+from multiprocessing import get_context
 from pathlib import Path
+from queue import Empty
 from typing import Any
 
 import numpy as np
+import pymeshlab
 import trimesh
 
+from app.core.config import get_settings
 from app.models import MeshValidationStatus
 
 
 class MeshInspectionError(RuntimeError):
+    pass
+
+
+class MeshResourceLimitError(MeshInspectionError):
     pass
 
 
@@ -22,7 +30,31 @@ def _finite_float(value: float) -> float | None:
     return float(value) if np.isfinite(value) else None
 
 
+def _declared_binary_face_count(path: Path) -> int | None:
+    size = path.stat().st_size
+    if size < 84:
+        return None
+    with path.open("rb") as handle:
+        handle.seek(80)
+        count = int.from_bytes(handle.read(4), "little")
+    return count if size == 84 + count * 50 else None
+
+
+def _self_intersecting_face_count(path: Path) -> int:
+    mesh_set = pymeshlab.MeshSet()
+    mesh_set.load_new_mesh(str(path))
+    mesh_set.compute_selection_by_self_intersections_per_face()
+    return int(np.count_nonzero(mesh_set.current_mesh().face_selection_array()))
+
+
 def inspect_stl(path: Path) -> MeshInspectionResult:
+    declared_face_count = _declared_binary_face_count(path)
+    maximum_faces = get_settings().mesh_validation_max_faces
+    if declared_face_count is not None and declared_face_count > maximum_faces:
+        raise MeshResourceLimitError(
+            f"STL üçgen sayısı güvenli doğrulama sınırını aşıyor ({maximum_faces})."
+        )
+
     try:
         loaded = trimesh.load_mesh(path, file_type="stl", process=True)
     except Exception as error:
@@ -68,6 +100,11 @@ def inspect_stl(path: Path) -> MeshInspectionResult:
         surface_area = _finite_float(loaded.area)
         volume = _finite_float(abs(loaded.volume))
 
+    try:
+        self_intersecting_face_count = _self_intersecting_face_count(path)
+    except Exception as error:
+        raise MeshInspectionError("STL yüzey kesişimleri denetlenemedi.") from error
+
     issues: list[str] = []
     if not finite_vertices:
         issues.append("mesh_non_finite_vertices")
@@ -83,6 +120,8 @@ def inspect_stl(path: Path) -> MeshInspectionResult:
         issues.append("mesh_inconsistent_winding")
     if not is_volume:
         issues.append("mesh_not_closed_volume")
+    if self_intersecting_face_count:
+        issues.append("mesh_self_intersections")
 
     report: dict[str, Any] = {
         "validator": "trimesh",
@@ -102,8 +141,52 @@ def inspect_stl(path: Path) -> MeshInspectionResult:
         "non_manifold_edge_count": non_manifold_edge_count,
         "degenerate_face_count": degenerate_face_count,
         "duplicate_face_count": duplicate_face_count,
-        "self_intersection_check": "topology_only",
+        "self_intersection_check": "pymeshlab",
+        "self_intersecting_face_count": self_intersecting_face_count,
         "issues": issues,
     }
     status = MeshValidationStatus.VALID if not issues else MeshValidationStatus.INVALID
     return MeshInspectionResult(status=status, report=report)
+
+
+def _inspect_in_child(path: str, output_queue) -> None:
+    try:
+        result = inspect_stl(Path(path))
+        output_queue.put(("ok", result.status.value, result.report))
+    except MeshResourceLimitError as error:
+        output_queue.put(("resource_limit", str(error), None))
+    except MeshInspectionError as error:
+        output_queue.put(("inspection_error", str(error), None))
+    except Exception as error:
+        output_queue.put(("internal_error", type(error).__name__, None))
+
+
+def inspect_stl_isolated(path: Path, *, timeout_seconds: int) -> MeshInspectionResult:
+    context = get_context("spawn")
+    output_queue = context.Queue(maxsize=1)
+    process = context.Process(target=_inspect_in_child, args=(str(path), output_queue))
+    process.start()
+    process.join(timeout_seconds)
+    if process.is_alive():
+        process.terminate()
+        process.join(5)
+        if process.is_alive():
+            process.kill()
+            process.join(5)
+        raise MeshResourceLimitError("STL doğrulaması süre sınırını aştı.")
+    try:
+        kind, value, report = output_queue.get(timeout=1)
+    except Empty as error:
+        raise MeshInspectionError("STL doğrulama alt süreci sonuç üretmedi.") from error
+    finally:
+        output_queue.close()
+        output_queue.join_thread()
+
+    if kind == "ok":
+        return MeshInspectionResult(
+            status=MeshValidationStatus(value),
+            report=report,
+        )
+    if kind == "resource_limit":
+        raise MeshResourceLimitError(value)
+    raise MeshInspectionError(value)

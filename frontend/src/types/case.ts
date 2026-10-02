@@ -19,6 +19,8 @@ export type CaseStatus =
 export type CaseFileKind = "scan" | "design";
 export type MeshStatus = "pending" | "valid" | "invalid" | "failed";
 export type UploadStatus = "pending" | "uploading" | "completed" | "failed" | "expired";
+export type CaseDecision = "approved" | "revision_requested" | "rejected";
+export type CaseApprovalType = "manager_scan" | "dentist_design";
 
 export interface CaseDetails {
   appliance_type: string | null;
@@ -39,7 +41,18 @@ export interface CaseFileVersion {
   is_locked: boolean;
   mesh_validation_attempts: number;
   mesh_validated_at: string | null;
-  uploaded_by_user_id: string;
+  uploaded_by_user_id?: string;
+  created_at: string;
+}
+
+export interface CaseApproval {
+  id: string;
+  approval_type: CaseApprovalType;
+  decision: CaseDecision;
+  file_version_id: string;
+  actor_user_id?: string;
+  reason: string | null;
+  is_self_approval: boolean;
   created_at: string;
 }
 
@@ -48,9 +61,9 @@ export interface DentalCase {
   case_number: string;
   clinic_id: string;
   clinic_name: string;
-  created_by_user_id: string;
-  responsible_dentist_user_id: string;
-  responsible_dentist_name: string;
+  created_by_user_id?: string;
+  responsible_dentist_user_id?: string;
+  responsible_dentist_name?: string;
   patient_code: string | null;
   patient_name?: string;
   status: CaseStatus;
@@ -60,6 +73,7 @@ export interface DentalCase {
   updated_at: string;
   details: CaseDetails;
   file_versions: CaseFileVersion[];
+  approvals: CaseApproval[];
 }
 
 export interface CaseListResponse {

@@ -17,7 +17,11 @@
     "test:backend:integration": "set RUN_DATABASE_INTEGRATION_TESTS=1&& backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pyproject.toml backend\\tests -m integration",
     "test:frontend": "npm --prefix frontend test",
     "lint": "backend\\.venv\\Scripts\\python.exe -m ruff check backend && npm --prefix frontend run lint",
-    "build": "npm --prefix frontend run build"
+    "build": "npm --prefix frontend run build",
+    "verify": "npm test && npm run lint && npm run build",
+    "security:audit": "backend\\.venv\\Scripts\\python.exe -m pip_audit -r backend\\requirements.lock && npm --prefix frontend audit --omit=dev",
+    "storage:check": "backend\\.venv\\Scripts\\python.exe -m app.cli.check_storage",
+    "backup": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\backup.ps1"
   },
   "repository": {
     "type": "git",

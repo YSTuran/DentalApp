@@ -10,7 +10,11 @@ from app.db.session import SessionLocal
 from app.models import CaseFileVersion, MeshValidationStatus, User
 from app.services.audit import record_audit_event
 from app.services.local_storage import LocalFileStorage
-from app.services.mesh_validation import MeshInspectionError, inspect_stl
+from app.services.mesh_validation import (
+    MeshInspectionError,
+    MeshResourceLimitError,
+    inspect_stl_isolated,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +59,25 @@ def process_mesh_validation(
 
     try:
         path = LocalFileStorage(settings.storage_path).path_for(storage_key)
-        result = inspect_stl(path)
+        result = inspect_stl_isolated(
+            path,
+            timeout_seconds=settings.mesh_validation_timeout_seconds,
+        )
         error_code = None
+        terminal_error = False
+    except MeshResourceLimitError:
+        result = None
+        error_code = "mesh_resource_limit"
+        terminal_error = True
     except MeshInspectionError:
         result = None
         error_code = "mesh_parse_failed"
+        terminal_error = False
     except Exception:
         logger.exception("Mesh doğrulaması beklenmeyen bir hatayla sonuçlandı")
         result = None
         error_code = "mesh_validation_internal_error"
+        terminal_error = False
 
     with session_factory() as db:
         version = db.scalar(
@@ -75,7 +89,11 @@ def process_mesh_validation(
             return "superseded"
 
         version.mesh_validation_started_at = None
-        terminal = result is not None or claimed_attempt >= settings.mesh_validation_max_attempts
+        terminal = (
+            result is not None
+            or terminal_error
+            or claimed_attempt >= settings.mesh_validation_max_attempts
+        )
         if result is not None:
             version.mesh_status = result.status
             version.mesh_report = result.report

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
@@ -6,12 +6,16 @@ import { DemoBanner } from "../components/DemoBanner";
 import { OperationsHeader } from "../components/OperationsHeader";
 import { CaseFileList } from "../components/cases/CaseFileList";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
+import { ManagerDecisionPanel } from "../components/cases/ManagerDecisionPanel";
 import { StlUploadPanel } from "../components/cases/StlUploadPanel";
 import { caseStatusLabels, formatDate } from "../lib/case-format";
 import { getCase, getCaseHistory, submitCase } from "../lib/cases-api";
 import type { CaseHistoryItem, DentalCase } from "../types/case";
 
 const editableStatuses = new Set(["draft", "manager_revision_requested", "rescan_requested"]);
+const StlViewerPanel = lazy(() => import("../components/cases/StlViewerPanel").then((module) => ({
+  default: module.StlViewerPanel,
+})));
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
@@ -54,6 +58,12 @@ export function CaseDetailPage() {
     dentalCase.created_by_user_id === user.id || dentalCase.responsible_dentist_user_id === user.id
   ), [dentalCase, user]);
   const canEdit = dentalCase !== null && isOwner && editableStatuses.has(dentalCase.status);
+  const canManagerReview = dentalCase !== null
+    && dentalCase.status === "manager_review"
+    && user?.clinic_roles.some((assignment) => (
+      assignment.clinic_id === dentalCase.clinic_id
+      && assignment.role === "managing_dentist"
+    )) === true;
 
   async function handleSubmit() {
     if (!dentalCase || !window.confirm("Vakayı yönetici hekim onayına göndermek istiyor musunuz? Bu aşamada form düzenlemeye kapanır.")) return;
@@ -69,6 +79,13 @@ export function CaseDetailPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleManagerUpdated(updated: DentalCase, message: string) {
+    setDentalCase(updated);
+    setSuccess(message);
+    setError(null);
+    void getCaseHistory(updated.id).then((result) => setHistory(result.items));
   }
 
   return (
@@ -102,12 +119,42 @@ export function CaseDetailPage() {
                     {Object.entries(dentalCase.details.extra_fields).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{String(value)}</dd></div>)}
                   </dl>
                 </section>
+                <Suspense fallback={<section className="case-panel viewer-module-loading">3D görüntüleyici yükleniyor…</section>}>
+                  <StlViewerPanel
+                    key={dentalCase.file_versions.map((file) => file.id).join(":")}
+                    caseId={dentalCase.id}
+                    files={dentalCase.file_versions}
+                  />
+                </Suspense>
                 <CaseFileList caseId={dentalCase.id} caseNumber={dentalCase.case_number} files={dentalCase.file_versions} />
                 {canEdit && user && <StlUploadPanel caseId={dentalCase.id} userId={user.id} onCompleted={() => void load(true)} />}
               </div>
 
               <aside className="case-side-column">
+                {canManagerReview && user && (
+                  <ManagerDecisionPanel
+                    dentalCase={dentalCase}
+                    user={user}
+                    onUpdated={handleManagerUpdated}
+                  />
+                )}
                 <section className="case-panel"><p className="card-label">İŞ AKIŞI</p><h2>{caseStatusLabels[dentalCase.status]}</h2><p className="panel-description">İki onay tamamlanmadan vaka üretim kuyruğuna alınamaz.</p></section>
+                {dentalCase.approvals.length > 0 && (
+                  <section className="case-panel">
+                    <p className="card-label">DEĞİŞMEZ KARARLAR</p>
+                    <div className="approval-list">
+                      {[...dentalCase.approvals].reverse().map((approval) => (
+                        <article key={approval.id}>
+                          <strong>{approval.decision === "approved" ? "Onaylandı" : approval.decision === "revision_requested" ? "Düzeltme istendi" : "Reddedildi"}</strong>
+                          <span>{approval.approval_type === "manager_scan" ? "Yönetici tarama kararı" : "Hekim tasarım kararı"}</span>
+                          <small>{formatDate(approval.created_at)}</small>
+                          {approval.is_self_approval && <em>Yönetici kendi vakasını onayladı</em>}
+                          {approval.reason && <p>{approval.reason}</p>}
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <section className="case-panel"><div className="panel-heading"><div><p className="card-label">GEÇMİŞ</p><h2>İşlem zaman çizelgesi</h2></div></div>
                   <ol className="case-timeline">
                     {[...history].reverse().map((item) => <li key={item.id}><i aria-hidden="true" /><div><strong>{caseStatusLabels[item.to_status]}</strong><span>{item.action}</span><small>{formatDate(item.created_at)}</small>{item.reason && <p>{item.reason}</p>}</div></li>)}

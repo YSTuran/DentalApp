@@ -59,7 +59,13 @@ def test_role_visibility_and_technician_patient_name_masking(
             patient_code="P-LAB",
             patient_name="Gizli Laboratuvar Hastası",
             status=CaseStatus.LAB_DESIGN,
-            details=CaseDetail(),
+            details=CaseDetail(
+                appliance_type="Şeffaf plak",
+                material="PET-G",
+                tooth_numbers=["11"],
+                special_notes="Hasta adı serbest notta tekrar edilmiştir.",
+                extra_fields={"hasta_telefonu": "5550000000"},
+            ),
         )
         other_case = DentalCase(
             case_number=f"TEST-{uuid4().hex[:8]}",
@@ -97,7 +103,14 @@ def test_role_visibility_and_technician_patient_name_masking(
         assert [item["id"] for item in technician_list.json()["items"]] == [str(lab_case.id)]
         assert "patient_name" not in technician_list.json()["items"][0]
         assert "patient_name" not in technician_detail.json()
+        assert "created_by_user_id" not in technician_detail.json()
+        assert "responsible_dentist_user_id" not in technician_detail.json()
+        assert "responsible_dentist_name" not in technician_detail.json()
         assert "original_filename" not in technician_detail.json()["file_versions"][0]
+        assert "uploaded_by_user_id" not in technician_detail.json()["file_versions"][0]
+        assert "special_notes" not in technician_detail.json()["details"]
+        assert technician_detail.json()["details"]["extra_fields"] == {}
+        assert technician_detail.json()["details"]["material"] == "PET-G"
         assert technician_detail.json()["patient_code"] == "P-LAB"
         assert hidden_draft.status_code == 403
 

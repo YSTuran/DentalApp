@@ -167,10 +167,10 @@ def authorize_case_action(action: CaseAction, context: CaseActionContext) -> Non
 
 
 def is_manager_self_approval(action: CaseAction, context: CaseActionContext) -> bool:
-    return action == CaseAction.MANAGER_APPROVE and context.actor_user_id in {
-        context.case_created_by_user_id,
-        context.responsible_dentist_user_id,
-    }
+    return (
+        action == CaseAction.MANAGER_APPROVE
+        and context.actor_user_id == context.case_created_by_user_id
+    )
 
 
 def locked_artifact_for(action: CaseAction) -> str | None:

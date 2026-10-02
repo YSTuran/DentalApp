@@ -6,12 +6,13 @@ from uuid import UUID
 import pytest
 import trimesh
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.dependencies.auth import get_current_user
 from app.core.config import get_settings
 from app.main import app
-from app.models import RoleCode
+from app.models import AuditEvent, RoleCode
 from app.services.mesh_jobs import process_mesh_validation
 from tests.integration.case_test_support import (
     create_case_payload,
@@ -153,8 +154,10 @@ def test_resumable_upload_validation_download_and_submit(
                 f"/api/cases/{case_id}/files/{file_version_id}"
             )
             assert download_response.status_code == 200
-            assert download_response.content == stl_bytes
+            assert len(download_response.content) == len(stl_bytes)
+            assert download_response.content.startswith(b"DentalApp sanitized STL")
             assert "demo-scan.stl" not in download_response.headers["content-disposition"]
+            assert download_response.headers["cache-control"] == "private, no-store"
 
             submit_response = client.post(
                 f"/api/cases/{case_id}/submit",
@@ -162,5 +165,14 @@ def test_resumable_upload_validation_download_and_submit(
             )
             assert submit_response.status_code == 200
             assert submit_response.json()["status"] == "manager_review"
+
+        with case_session_factory() as session:
+            access_event = session.scalar(
+                select(AuditEvent).where(
+                    AuditEvent.action == "case.file_downloaded",
+                    AuditEvent.entity_id == file_version_id,
+                )
+            )
+            assert access_event is not None
     finally:
         settings.storage_path = previous_storage_path

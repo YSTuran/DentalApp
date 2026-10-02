@@ -8,7 +8,7 @@ celery_app = Celery(
     "dentalapp",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.mesh_validation", "app.tasks.uploads"],
+    include=["app.tasks.mesh_validation", "app.tasks.system", "app.tasks.uploads"],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -18,6 +18,9 @@ celery_app.conf.update(
     enable_utc=True,
     task_acks_late=True,
     task_reject_on_worker_lost=True,
+    worker_prefetch_multiplier=1,
+    task_soft_time_limit=settings.mesh_validation_timeout_seconds + 30,
+    task_time_limit=settings.mesh_validation_timeout_seconds + 60,
     beat_schedule={
         "dispatch-pending-mesh-validations": {
             "task": "mesh.dispatch_pending",
@@ -26,6 +29,10 @@ celery_app.conf.update(
         "expire-stale-file-uploads": {
             "task": "uploads.expire_stale",
             "schedule": 3600.0,
+        },
+        "background-services-heartbeat": {
+            "task": "system.heartbeat",
+            "schedule": 15.0,
         },
     },
 )

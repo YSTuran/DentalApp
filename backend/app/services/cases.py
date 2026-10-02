@@ -21,7 +21,7 @@ from app.services.case_management.uploads import (
     get_upload,
     start_upload,
 )
-from app.services.case_management.workflow import cancel_case, submit_case
+from app.services.case_management.workflow import cancel_case, manager_decide_case, submit_case
 
 __all__ = [
     "CaseAccessDeniedError",
@@ -39,6 +39,7 @@ __all__ = [
     "list_case_create_options",
     "list_case_history",
     "list_visible_cases",
+    "manager_decide_case",
     "submit_case",
     "start_upload",
     "update_case",

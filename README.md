@@ -28,7 +28,8 @@ cd backend
 & 'C:\Users\Yusuf\AppData\Local\Programs\Python\Python313\python.exe' -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements.lock
+python -m pip install -e . --no-deps
 uvicorn app.main:app --reload
 ```
 
@@ -42,7 +43,8 @@ API belgeleri: `http://127.0.0.1:8000/docs`
 Sağlık kontrolleri:
 
 - `GET /api/health/live`: API sürecinin çalıştığını gösterir.
-- `GET /api/health`: PostgreSQL, Redis ve Firebase bağlantılarını kontrol eder.
+- `GET /api/health`: PostgreSQL, Redis, Firebase ve Celery worker/beat kalp atışını
+  kontrol eder. Servisler ilk açıldığında kalp atışının oluşması 15 saniye sürebilir.
 
 ## Firebase Authentication Emulator
 
@@ -259,6 +261,10 @@ Temel vaka endpoint'leri:
 - `PATCH /api/cases/{case_id}`: taslak/düzeltme aşamasındaki vakayı güncelleme.
 - `POST /api/cases/{case_id}/submit`: zorunlu alanları ve doğrulanmış tarama sürümünü
   kontrol ederek vakayı yönetici onayına gönderme.
+- `POST /api/cases/{case_id}/manager-decision`: yönetici hekimin en son tarama
+  sürümünü onaylaması, düzeltme istemesi veya kesin reddetmesi. Karar değiştirilemez
+  onay kaydına bağlanır; onaylanan STL sürümü kilitlenir ve kendi vakasını onaylayan
+  yönetici ayrıca işaretlenir.
 - `POST /api/cases/{case_id}/cancel`: gerekçeli iptal; kayıt silinmez.
 - `GET /api/cases/{case_id}/history`: değiştirilemez durum geçmişi.
 
@@ -281,14 +287,54 @@ saattir. Bu değerler `UPLOAD_MAX_BYTES`, `UPLOAD_CHUNK_MAX_BYTES` ve
 olarak kalıcı klasöre taşınır ve `pending` mesh durumuyla kaydedilir.
 
 Mesh worker; STL'nin okunabilirliğini, boş veya sonlu olmayan geometriyi, açık
-kenarları, kapalı hacmi, winding tutarlılığını, dejenere ve tekrarlanan yüzleri ve
-non-manifold kenarları denetler. Geometrik self-intersection kontrolünün mevcut seviyesi
-raporda `topology_only` olarak belirtilir; yapılmayan bir kontrol başarılı gösterilmez.
+kenarları, kapalı hacmi, winding tutarlılığını, dejenere ve tekrarlanan yüzleri,
+non-manifold kenarları ve PyMeshLab ile gerçek yüzey kesişimlerini denetler. Doğrulama
+izole alt süreçte çalışır; 5,5 milyon üçgen ve 10 dakika sınırı worker'ın tek bir
+dosya yüzünden kilitlenmesini önler.
 
 Taslaklar eksik kaydedilebilir; ancak zorunlu alanları veya geçerli mesh sonucu olan
-bir tarama sürümü bulunmayan vaka yönetici onayına gönderilemez. Teknisyen yalnızca
-laboratuvar aşamasına ulaşmış vakaları görür; API yanıtında hasta adı ve hasta bilgisi
-içerebilecek özgün yükleme dosyası adı yer almaz.
+bir tarama sürümü bulunmayan vaka yönetici onayına gönderilemez. Düzeltme talebinden
+sonra aynı STL yeniden gönderilemez; geçerli yeni bir sürüm gerekir. Teknisyen yalnızca
+laboratuvar aşamasına ulaşmış vakaları görür; API yanıtında hasta adı, klinik serbest
+notları, dinamik alanlar, kullanıcı kimlikleri ve özgün dosya adı yer almaz. STL'nin
+binary veya ASCII başlığındaki serbest ad bilgisi de kalıcı saklama öncesinde temizlenir.
+
+Vaka detay ekranındaki Three.js tabanlı 3D önizleme STL dosyasını oturum kontrollü
+dosya endpoint'inden alır. Büyük modellerin ayrıştırılması Web Worker içinde yapılır;
+görüntüleyicide döndürme, kaydırma, yakınlaştırma, görünümü sıfırlama, tel kafes modu,
+sürüm seçimi ve mesh doğrulama özeti bulunur. Önizleme en fazla 250 bin üçgen çizer;
+orijinal STL üretim ve indirme için tam çözünürlükte saklanır.
+
+## Yedekleme ve geri yükleme
+
+PostgreSQL, tamamlanmış vaka dosyaları ve Firebase Emulator export'unu aynı manifest
+altında yedeklemek için proje kökünde:
+
+```powershell
+.\scripts\backup.ps1
+```
+
+Yedekler varsayılan olarak Git dışında kalan `backups` klasörüne yazılır. Her dosyanın
+SHA-256 özeti manifestte tutulur. Bir yedeği veri değiştirmeden doğrulamak için:
+
+```powershell
+.\scripts\restore.ps1 -BackupPath .\backups\dentalapp-YYYYMMDD-HHMMSS
+```
+
+Gerçek geri yükleme için `-Apply` eklenir ve ekranda `RESTORE` onayı verilir. Betik
+geri yükleme öncesinde otomatik yeni yedek alır; mevcut dosyaları silmek yerine
+`storage\restore-rollback-*` altında geri dönüş noktası olarak saklar.
+Geri yükleme sırasında API, worker, beat ve Firebase Emulator kapalı olmalıdır.
+
+Veritabanı kayıtları ile fiziksel dosyaların uyumunu silme yapmadan denetlemek için:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m app.cli.check_storage
+```
+
+Sahipsiz dosyalar `--quarantine-orphans` seçeneğiyle silinmeden karantina klasörüne
+taşınabilir. Eksik tamamlanmış dosyalar bulunduğunda komut hata koduyla sonlanır.
 
 ## Migration
 

@@ -267,11 +267,11 @@ def complete_upload(
     try:
         if storage.size(upload.temp_storage_key) != upload.expected_size:
             raise StorageError("Geçici dosya boyutu yükleme kaydıyla uyuşmuyor.")
-        digest = storage.sha256(upload.temp_storage_key)
+        source_digest = storage.sha256(upload.temp_storage_key)
     except StorageError as error:
         raise CaseConflictError("case_upload_storage_error") from error
 
-    if upload.expected_sha256 is not None and digest != upload.expected_sha256:
+    if upload.expected_sha256 is not None and source_digest != upload.expected_sha256:
         upload.status = UploadStatus.FAILED
         upload.failure_reason = "sha256_mismatch"
         record_audit_event(
@@ -288,6 +288,16 @@ def complete_upload(
         db.commit()
         storage.remove(upload.temp_storage_key)
         raise CaseValidationError("case_upload_sha256_mismatch")
+
+    try:
+        metadata_sanitized = storage.sanitize_stl_metadata(upload.temp_storage_key)
+        digest = (
+            storage.sha256(upload.temp_storage_key)
+            if metadata_sanitized
+            else source_digest
+        )
+    except StorageError as error:
+        raise CaseConflictError("case_upload_storage_error") from error
 
     current_version = db.scalar(
         select(func.max(CaseFileVersion.version_number)).where(
@@ -339,7 +349,12 @@ def complete_upload(
                 "sha256": version.sha256,
                 "mesh_status": version.mesh_status,
             },
-            context={"source": "api", "upload_session_id": upload.id},
+            context={
+                "source": "api",
+                "upload_session_id": upload.id,
+                "source_sha256": source_digest,
+                "metadata_sanitized": metadata_sanitized,
+            },
             request=request,
         )
         db.commit()
