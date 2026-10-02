@@ -2151,6 +2151,51 @@ input:disabled {
   justify-content: flex-start;
 }
 
+.case-edit-modal {
+  width: min(100%, 820px);
+}
+
+.workflow-notice {
+  padding: 0.75rem;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-line);
+  border-radius: 9px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.lab-design-panel {
+  display: grid;
+  gap: 0.8rem;
+  border-top: 4px solid var(--primary);
+}
+
+.lab-upload-actions {
+  justify-content: flex-start;
+}
+
+.design-submit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+
+.design-submit-row > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.design-submit-row span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .case-detail-heading {
   align-items: flex-end;
   margin-bottom: 1.25rem;
@@ -2522,6 +2567,10 @@ input:disabled {
   border-top: 4px solid var(--primary);
 }
 
+.dentist-decision-panel {
+  border-top: 4px solid var(--success);
+}
+
 .manager-decision-actions {
   display: grid;
   gap: 0.55rem;
@@ -2739,6 +2788,10 @@ input:disabled {
   .dynamic-field-row .icon-button {
     grid-row: 1 / span 2;
     grid-column: 2;
+  }
+
+  .design-submit-row {
+    grid-template-columns: 1fr;
   }
 
   .viewer-toolbar {

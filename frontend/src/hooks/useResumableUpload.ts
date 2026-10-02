@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { completeUpload, getUpload, sendUploadChunk, startUpload } from "../lib/cases-api";
-import type { UploadCompleteResponse, UploadSession } from "../types/case";
+import type { CaseFileKind, UploadCompleteResponse, UploadSession } from "../types/case";
 
 type UploadPhase = "idle" | "preparing" | "uploading" | "paused" | "finalizing" | "completed" | "error";
 
@@ -10,8 +10,8 @@ interface SavedUpload {
   fingerprint: string;
 }
 
-function storageKey(userId: string, caseId: string): string {
-  return `dentalapp:scan-upload:${userId}:${caseId}`;
+function storageKey(userId: string, caseId: string, kind: CaseFileKind): string {
+  return `dentalapp:${kind}-upload:${userId}:${caseId}`;
 }
 
 function readSaved(key: string): SavedUpload | null {
@@ -52,7 +52,7 @@ async function fingerprintFile(file: File): Promise<string> {
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-export function useResumableUpload(userId: string) {
+export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") {
   const controller = useRef<AbortController | null>(null);
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [progress, setProgress] = useState(0);
@@ -74,7 +74,7 @@ export function useResumableUpload(userId: string) {
 
     setError(null);
     setPhase("preparing");
-    const key = storageKey(userId, caseId);
+    const key = storageKey(userId, caseId, kind);
     const fingerprint = await fingerprintFile(file);
     let session: UploadSession | null = null;
     const saved = readSaved(key);
@@ -98,7 +98,7 @@ export function useResumableUpload(userId: string) {
 
     try {
       if (session === null) {
-        session = await startUpload(caseId, file);
+        session = await startUpload(caseId, file, kind);
         saveUpload(key, { uploadId: session.id, fingerprint });
       }
 
@@ -137,7 +137,7 @@ export function useResumableUpload(userId: string) {
     } finally {
       controller.current = null;
     }
-  }, [userId]);
+  }, [kind, userId]);
 
   return { phase, progress, error, upload, pause };
 }

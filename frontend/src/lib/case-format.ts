@@ -26,6 +26,18 @@ export const meshStatusLabels: Record<MeshStatus, string> = {
   failed: "Doğrulama başarısız",
 };
 
+export const caseActionLabels: Record<string, string> = {
+  create: "Vaka oluşturuldu",
+  submit: "Yönetici onayına gönderildi",
+  cancel: "Vaka iptal edildi",
+  manager_approve: "Tarama onaylandı",
+  manager_request_revision: "Tarama düzeltmesi istendi",
+  manager_reject: "Vaka kesin reddedildi",
+  upload_design: "Tasarım hekim onayına gönderildi",
+  dentist_approve_design: "Tasarım onaylandı",
+  dentist_request_design_revision: "Tasarım düzeltmesi istendi",
+};
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("tr-TR", {

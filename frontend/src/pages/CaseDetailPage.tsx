@@ -4,15 +4,21 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { OperationsHeader } from "../components/OperationsHeader";
+import { CaseCancelDialog } from "../components/cases/CaseCancelDialog";
+import { CaseEditDialog } from "../components/cases/CaseEditDialog";
 import { CaseFileList } from "../components/cases/CaseFileList";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
+import { DentistDesignDecisionPanel } from "../components/cases/DentistDesignDecisionPanel";
+import { LabDesignPanel } from "../components/cases/LabDesignPanel";
 import { ManagerDecisionPanel } from "../components/cases/ManagerDecisionPanel";
 import { StlUploadPanel } from "../components/cases/StlUploadPanel";
-import { caseStatusLabels, formatDate } from "../lib/case-format";
+import { caseActionLabels, caseStatusLabels, formatDate } from "../lib/case-format";
 import { getCase, getCaseHistory, submitCase } from "../lib/cases-api";
 import type { CaseHistoryItem, DentalCase } from "../types/case";
 
 const editableStatuses = new Set(["draft", "manager_revision_requested", "rescan_requested"]);
+const cancellableStatuses = new Set(["draft", "manager_revision_requested"]);
+const labDesignStatuses = new Set(["lab_design", "design_revision_requested"]);
 const StlViewerPanel = lazy(() => import("../components/cases/StlViewerPanel").then((module) => ({
   default: module.StlViewerPanel,
 })));
@@ -58,6 +64,18 @@ export function CaseDetailPage() {
     dentalCase.created_by_user_id === user.id || dentalCase.responsible_dentist_user_id === user.id
   ), [dentalCase, user]);
   const canEdit = dentalCase !== null && isOwner && editableStatuses.has(dentalCase.status);
+  const canCancel = dentalCase !== null && isOwner && cancellableStatuses.has(dentalCase.status);
+  const canLabDesign = dentalCase !== null
+    && labDesignStatuses.has(dentalCase.status)
+    && user?.global_roles.includes("technician") === true;
+  const canDentistReview = dentalCase !== null
+    && user !== null
+    && dentalCase.status === "dentist_review"
+    && dentalCase.responsible_dentist_user_id === user.id
+    && user.clinic_roles.some((assignment) => (
+      assignment.clinic_id === dentalCase.clinic_id
+      && ["dentist", "managing_dentist"].includes(assignment.role)
+    ));
   const canManagerReview = dentalCase !== null
     && dentalCase.status === "manager_review"
     && user?.clinic_roles.some((assignment) => (
@@ -81,7 +99,7 @@ export function CaseDetailPage() {
     }
   }
 
-  function handleManagerUpdated(updated: DentalCase, message: string) {
+  function handleCaseUpdated(updated: DentalCase, message: string) {
     setDentalCase(updated);
     setSuccess(message);
     setError(null);
@@ -99,7 +117,7 @@ export function CaseDetailPage() {
           <>
             <div className="case-detail-heading">
               <div><Link className="text-link" to="/vakalar">← Vakalara dön</Link><p className="eyebrow">{dentalCase.clinic_name}</p><h1>{dentalCase.case_number}</h1><p>Son güncelleme {formatDate(dentalCase.updated_at)}</p></div>
-              <div className="case-heading-actions"><CaseStatusBadge status={dentalCase.status} />{canEdit && <button className="primary-button" disabled={submitting || validationPending} onClick={() => void handleSubmit()}>{submitting ? "Gönderiliyor…" : "Yönetici onayına gönder"}</button>}</div>
+              <div className="case-heading-actions"><CaseStatusBadge status={dentalCase.status} />{canCancel && <CaseCancelDialog dentalCase={dentalCase} onUpdated={handleCaseUpdated} />}{canEdit && <button className="primary-button" disabled={submitting || validationPending} onClick={() => void handleSubmit()}>{submitting ? "Gönderiliyor…" : "Yönetici onayına gönder"}</button>}</div>
             </div>
             {error && <div className="form-error dashboard-error" role="alert">{error}</div>}
             {success && <div className="success-message">{success}</div>}
@@ -107,7 +125,7 @@ export function CaseDetailPage() {
             <div className="case-detail-grid">
               <div className="case-main-column">
                 <section className="case-panel">
-                  <div className="panel-heading"><div><p className="card-label">VAKA BİLGİLERİ</p><h2>Klinik talep</h2></div>{canEdit && <span className="edit-hint">Düzenleme ekranı sonraki dilimde eklenecek</span>}</div>
+                  <div className="panel-heading"><div><p className="card-label">VAKA BİLGİLERİ</p><h2>Klinik talep</h2></div>{canEdit && <CaseEditDialog dentalCase={dentalCase} onUpdated={handleCaseUpdated} />}</div>
                   <dl className="case-facts">
                     <div><dt>Hasta kodu</dt><dd>{dentalCase.patient_code ?? "—"}</dd></div>
                     {dentalCase.patient_name !== undefined && <div><dt>Hasta adı</dt><dd>{dentalCase.patient_name ?? "—"}</dd></div>}
@@ -128,6 +146,7 @@ export function CaseDetailPage() {
                 </Suspense>
                 <CaseFileList caseId={dentalCase.id} caseNumber={dentalCase.case_number} files={dentalCase.file_versions} />
                 {canEdit && user && <StlUploadPanel caseId={dentalCase.id} userId={user.id} onCompleted={() => void load(true)} />}
+                {canLabDesign && user && <LabDesignPanel dentalCase={dentalCase} userId={user.id} onRefresh={() => void load(true)} onUpdated={handleCaseUpdated} />}
               </div>
 
               <aside className="case-side-column">
@@ -135,9 +154,10 @@ export function CaseDetailPage() {
                   <ManagerDecisionPanel
                     dentalCase={dentalCase}
                     user={user}
-                    onUpdated={handleManagerUpdated}
+                    onUpdated={handleCaseUpdated}
                   />
                 )}
+                {canDentistReview && <DentistDesignDecisionPanel dentalCase={dentalCase} onUpdated={handleCaseUpdated} />}
                 <section className="case-panel"><p className="card-label">İŞ AKIŞI</p><h2>{caseStatusLabels[dentalCase.status]}</h2><p className="panel-description">İki onay tamamlanmadan vaka üretim kuyruğuna alınamaz.</p></section>
                 {dentalCase.approvals.length > 0 && (
                   <section className="case-panel">
@@ -157,7 +177,7 @@ export function CaseDetailPage() {
                 )}
                 <section className="case-panel"><div className="panel-heading"><div><p className="card-label">GEÇMİŞ</p><h2>İşlem zaman çizelgesi</h2></div></div>
                   <ol className="case-timeline">
-                    {[...history].reverse().map((item) => <li key={item.id}><i aria-hidden="true" /><div><strong>{caseStatusLabels[item.to_status]}</strong><span>{item.action}</span><small>{formatDate(item.created_at)}</small>{item.reason && <p>{item.reason}</p>}</div></li>)}
+                    {[...history].reverse().map((item) => <li key={item.id}><i aria-hidden="true" /><div><strong>{caseStatusLabels[item.to_status]}</strong><span>{caseActionLabels[item.action] ?? item.action}</span><small>{formatDate(item.created_at)}</small>{item.reason && <p>{item.reason}</p>}</div></li>)}
                   </ol>
                 </section>
               </aside>

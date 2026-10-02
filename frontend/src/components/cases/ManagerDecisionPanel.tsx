@@ -1,9 +1,10 @@
 import { useState } from "react";
 
 import { ApiError } from "../../lib/api";
+import { latestCaseFile } from "../../lib/case-files";
 import { managerDecideCase } from "../../lib/cases-api";
 import type { CurrentUser } from "../../types/auth";
-import type { CaseDecision, CaseFileVersion, DentalCase } from "../../types/case";
+import type { CaseDecision, DentalCase } from "../../types/case";
 
 interface Props {
   dentalCase: DentalCase;
@@ -29,18 +30,13 @@ const decisionContent: Record<CaseDecision, { title: string; description: string
   },
 };
 
-function latestScan(files: CaseFileVersion[]): CaseFileVersion | null {
-  const scans = files.filter((file) => file.kind === "scan");
-  return scans.sort((left, right) => right.version_number - left.version_number)[0] ?? null;
-}
-
 export function ManagerDecisionPanel({ dentalCase, user, onUpdated }: Props) {
   const [decision, setDecision] = useState<CaseDecision | null>(null);
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const scan = latestScan(dentalCase.file_versions);
+  const scan = latestCaseFile(dentalCase.file_versions, "scan");
   const isSelfApproval = user.id === dentalCase.created_by_user_id;
 
   function open(nextDecision: CaseDecision) {

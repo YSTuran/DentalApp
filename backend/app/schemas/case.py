@@ -177,6 +177,29 @@ class ManagerDecisionRequest(BaseModel):
         return self
 
 
+class DesignSubmitRequest(BaseModel):
+    file_version_id: UUID
+
+
+class DentistDecisionRequest(BaseModel):
+    decision: CaseDecision
+    file_version_id: UUID
+    reason: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str | None) -> str | None:
+        return _optional_text(value)
+
+    @model_validator(mode="after")
+    def validate_decision(self) -> "DentistDecisionRequest":
+        if self.decision == CaseDecision.REJECTED:
+            raise ValueError("Hekim tasarımı reddetmek yerine düzeltme istemelidir.")
+        if self.decision == CaseDecision.REVISION_REQUESTED and len(self.reason or "") < 3:
+            raise ValueError("Tasarım düzeltmesinde en az 3 karakter gerekçe zorunludur.")
+        return self
+
+
 class CaseDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

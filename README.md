@@ -33,6 +33,15 @@ python -m pip install -e . --no-deps
 uvicorn app.main:app --reload
 ```
 
+`backend/requirements.lock` Windows geliştirme ortamı için üretilmiştir. Ubuntu üzerinde
+çalışan GitHub Actions, platforma özel bağımlılıkları ayırmak için
+`backend/requirements-linux.lock` dosyasını kullanır. Linux kilidini güncellemek için proje
+kökünde şu komut çalıştırılabilir:
+
+```powershell
+docker run --rm -v "${PWD}:/workspace" -w /workspace python:3.13-slim sh -lc "python -m pip install pip-tools==7.6.1 && python -m piptools compile --extra=dev --output-file=backend/requirements-linux.lock backend/pyproject.toml"
+```
+
 Yerel ayarlar doğrudan `backend/.env` dosyasından okunur. Bu dosya veritabanı
 parolası ve uygulama anahtarı içerebildiği için Git'e eklenmez.
 

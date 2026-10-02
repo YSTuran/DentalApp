@@ -15,6 +15,10 @@ export const AUDIT_LEGEND: Array<{ tone: AuditTone; label: string }> = [
   { tone: "clinic", label: "Klinik" },
   { tone: "user", label: "Kullanıcı" },
   { tone: "role", label: "Rol ve yetki" },
+  { tone: "case", label: "Vaka ve onay" },
+  { tone: "production", label: "Üretim" },
+  { tone: "delivery", label: "Teslimat ve iade" },
+  { tone: "system", label: "Sistem" },
 ];
 
 export function auditToneFor(action: string, entityType: string): AuditTone {

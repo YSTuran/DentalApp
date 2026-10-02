@@ -66,6 +66,14 @@ export function submitCase(caseId: string): Promise<DentalCase> {
   return csrfRequest(`/api/cases/${caseId}/submit`, { method: "POST" });
 }
 
+export function cancelCase(caseId: string, reason: string): Promise<DentalCase> {
+  return csrfRequest(`/api/cases/${caseId}/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+}
+
 export function managerDecideCase(
   caseId: string,
   decision: CaseDecision,
@@ -83,12 +91,41 @@ export function managerDecideCase(
   });
 }
 
-export function startUpload(caseId: string, file: File): Promise<UploadSession> {
+export function submitDesign(caseId: string, fileVersionId: string): Promise<DentalCase> {
+  return csrfRequest(`/api/cases/${caseId}/design-submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_version_id: fileVersionId }),
+  });
+}
+
+export function dentistDecideDesign(
+  caseId: string,
+  decision: Exclude<CaseDecision, "rejected">,
+  fileVersionId: string,
+  reason: string | null,
+): Promise<DentalCase> {
+  return csrfRequest(`/api/cases/${caseId}/dentist-decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      decision,
+      file_version_id: fileVersionId,
+      reason,
+    }),
+  });
+}
+
+export function startUpload(
+  caseId: string,
+  file: File,
+  kind: "scan" | "design",
+): Promise<UploadSession> {
   return csrfRequest(`/api/cases/${caseId}/uploads`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      kind: "scan",
+      kind,
       original_filename: file.name,
       expected_size: file.size,
     }),

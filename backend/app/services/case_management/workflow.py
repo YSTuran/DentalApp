@@ -5,13 +5,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from app.domain.case_workflow import (
-    CaseActionContext,
-    CaseActionDeniedError,
-    CaseReasonRequiredError,
-    InvalidCaseTransitionError,
-    authorize_case_action,
     is_manager_self_approval,
-    next_case_status,
 )
 from app.models import (
     CaseAction,
@@ -19,20 +13,18 @@ from app.models import (
     CaseApprovalType,
     CaseDecision,
     CaseFileKind,
-    CaseStatus,
     DentalCase,
     MeshValidationStatus,
     User,
 )
 from app.schemas.case import ManagerDecisionRequest
 from app.services.audit import record_audit_event
-from app.services.case_management.access import actor_role_assignments
 from app.services.case_management.exceptions import (
-    CaseAccessDeniedError,
     CaseConflictError,
     CaseValidationError,
 )
 from app.services.case_management.repository import add_history, load_case
+from app.services.case_management.transitions import action_context, authorize_transition
 from app.services.case_management.validation import validate_clinic, validate_submit_requirements
 
 MANAGER_DECISION_ACTIONS = {
@@ -48,35 +40,6 @@ MANAGER_AUDIT_ACTIONS = {
 }
 
 
-def _action_context(case: DentalCase, actor: User, *, reason: str | None) -> CaseActionContext:
-    return CaseActionContext(
-        actor_user_id=actor.id,
-        actor_role_assignments=actor_role_assignments(actor),
-        case_clinic_id=case.clinic_id,
-        case_created_by_user_id=case.created_by_user_id,
-        responsible_dentist_user_id=case.responsible_dentist_user_id,
-        reason=reason,
-    )
-
-
-def _authorize_transition(
-    case: DentalCase,
-    actor: User,
-    action: CaseAction,
-    *,
-    reason: str | None,
-) -> CaseStatus:
-    try:
-        authorize_case_action(action, _action_context(case, actor, reason=reason))
-        return next_case_status(case.status, action)
-    except CaseActionDeniedError as error:
-        raise CaseAccessDeniedError from error
-    except CaseReasonRequiredError as error:
-        raise CaseValidationError("case_reason_required") from error
-    except InvalidCaseTransitionError as error:
-        raise CaseConflictError("case_invalid_transition") from error
-
-
 def submit_case(
     db: Session,
     *,
@@ -85,7 +48,7 @@ def submit_case(
     request: Request,
 ) -> DentalCase:
     case = load_case(db, case_id, for_update=True)
-    next_status = _authorize_transition(case, actor, CaseAction.SUBMIT, reason=None)
+    next_status = authorize_transition(case, actor, CaseAction.SUBMIT, reason=None)
     validate_clinic(db, case.clinic_id)
     validate_submit_requirements(case)
     previous_status = case.status
@@ -131,7 +94,7 @@ def cancel_case(
     request: Request,
 ) -> DentalCase:
     case = load_case(db, case_id, for_update=True)
-    next_status = _authorize_transition(case, actor, CaseAction.CANCEL, reason=reason)
+    next_status = authorize_transition(case, actor, CaseAction.CANCEL, reason=reason)
     previous_status = case.status
 
     try:
@@ -177,7 +140,7 @@ def manager_decide_case(
 ) -> DentalCase:
     case = load_case(db, case_id, for_update=True)
     action = MANAGER_DECISION_ACTIONS[payload.decision]
-    next_status = _authorize_transition(case, actor, action, reason=payload.reason)
+    next_status = authorize_transition(case, actor, action, reason=payload.reason)
     validate_clinic(db, case.clinic_id)
 
     scan_versions = [
@@ -203,7 +166,7 @@ def manager_decide_case(
     previous_status = case.status
     self_approval = is_manager_self_approval(
         action,
-        _action_context(case, actor, reason=payload.reason),
+        action_context(case, actor, reason=payload.reason),
     )
     approval = CaseApproval(
         case_id=case.id,

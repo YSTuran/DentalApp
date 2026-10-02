@@ -46,7 +46,7 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: backend/requirements.lock
+          cache-dependency-path: backend/requirements-linux.lock
 
       - uses: actions/setup-node@v4
         with:
@@ -54,8 +54,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Install mesh runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libcom-err2 \
+            libgl1 \
+            libopengl0 \
+            libp11-kit0
+
       - name: Install backend
-        run: pip install -r backend/requirements.lock
+        run: pip install -r backend/requirements-linux.lock
 
       - name: Install frontend
         run: npm ci --prefix frontend
@@ -70,7 +79,7 @@ jobs:
       - name: Backend lint and audit
         run: |
           ruff check backend
-          pip-audit -r backend/requirements.lock
+          pip-audit -r backend/requirements-linux.lock
 
       - name: Frontend tests, lint, build and audit
         run: |

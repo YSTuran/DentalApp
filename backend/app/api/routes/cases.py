@@ -1,11 +1,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import require_csrf
 from app.api.dependencies.cases import case_access
+from app.api.routes.case_errors import raise_case_service_error
 from app.db.session import get_db
 from app.models import CaseStatus, User
 from app.schemas.case import (
@@ -39,31 +40,6 @@ from app.services.cases import (
 )
 
 router = APIRouter()
-
-def _not_found() -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="case_not_found")
-
-
-def _access_denied() -> HTTPException:
-    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="case_access_denied")
-
-
-def _raise_service_error(error: Exception) -> None:
-    if isinstance(error, CaseNotFoundError):
-        raise _not_found() from error
-    if isinstance(error, CaseAccessDeniedError):
-        raise _access_denied() from error
-    if isinstance(error, CaseConflictError):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.detail) from error
-    if isinstance(error, CaseValidationError):
-        detail: str | dict[str, object] = error.detail
-        if error.context:
-            detail = {"code": error.detail, **error.context}
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=detail,
-        ) from error
-    raise error
 
 
 @router.get("/create-options", response_model=CaseCreateOptionsResponse)
@@ -110,7 +86,7 @@ def list_cases(
             offset=offset,
         )
     except (CaseAccessDeniedError, CaseValidationError) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
 
     return CaseListResponse(
         items=[case_to_response(case, actor=actor) for case in cases],
@@ -136,7 +112,7 @@ def create_new_case(
     try:
         case = create_case(db, payload=payload, actor=actor, request=request)
     except (CaseAccessDeniedError, CaseValidationError) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return case_to_response(case, actor=actor)
 
 
@@ -153,7 +129,7 @@ def get_case(
     try:
         case = get_visible_case(db, actor=actor, case_id=case_id)
     except (CaseNotFoundError, CaseAccessDeniedError) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return case_to_response(case, actor=actor)
 
 
@@ -184,7 +160,7 @@ def update_existing_case(
         CaseConflictError,
         CaseValidationError,
     ) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return case_to_response(case, actor=actor)
 
 
@@ -208,7 +184,7 @@ def submit_existing_case(
         CaseConflictError,
         CaseValidationError,
     ) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return case_to_response(case, actor=actor)
 
 
@@ -239,7 +215,7 @@ def decide_manager_review(
         CaseConflictError,
         CaseValidationError,
     ) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return case_to_response(case, actor=actor)
 
 
@@ -270,7 +246,7 @@ def cancel_existing_case(
         CaseConflictError,
         CaseValidationError,
     ) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return case_to_response(case, actor=actor)
 
 
@@ -283,7 +259,7 @@ def get_case_history(
     try:
         history = list_case_history(db, actor=actor, case_id=case_id)
     except (CaseNotFoundError, CaseAccessDeniedError) as error:
-        _raise_service_error(error)
+        raise_case_service_error(error)
     return CaseHistoryListResponse(
         items=[CaseStatusHistoryResponse.model_validate(item) for item in history]
     )

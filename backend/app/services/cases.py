@@ -1,6 +1,7 @@
 """Public facade for the case management service."""
 
 from app.services.case_management.commands import create_case, update_case
+from app.services.case_management.design_workflow import dentist_decide_design, submit_design
 from app.services.case_management.exceptions import (
     CaseAccessDeniedError,
     CaseConflictError,
@@ -33,6 +34,7 @@ __all__ = [
     "case_to_response",
     "complete_upload",
     "create_case",
+    "dentist_decide_design",
     "get_visible_case",
     "get_file_version_for_download",
     "get_upload",
@@ -41,6 +43,7 @@ __all__ = [
     "list_visible_cases",
     "manager_decide_case",
     "submit_case",
+    "submit_design",
     "start_upload",
     "update_case",
 ]

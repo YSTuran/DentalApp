@@ -33,12 +33,31 @@ const ACTION_LABELS: Record<string, string> = {
   "user.role_changed": "Rol veya klinik değiştirildi",
   "user.role_deactivated": "Rol pasifleştirildi",
   "user.role_reactivated": "Rol etkinleştirildi",
+  "case.created": "Vaka oluşturuldu",
+  "case.updated": "Vaka bilgileri güncellendi",
+  "case.submitted": "Vaka yönetici onayına gönderildi",
+  "case.cancelled": "Vaka iptal edildi",
+  "case.manager_approved": "Tarama yönetici tarafından onaylandı",
+  "case.manager_revision_requested": "Tarama düzeltmesi istendi",
+  "case.manager_rejected": "Vaka kesin reddedildi",
+  "case.design_submitted": "Tasarım hekim onayına gönderildi",
+  "case.design_approved": "Tasarım hekim tarafından onaylandı",
+  "case.design_revision_requested": "Tasarım düzeltmesi istendi",
+  "case.file_upload_started": "Dosya yüklemesi başlatıldı",
+  "case.file_uploaded": "Dosya yüklendi",
+  "case.file_upload_failed": "Dosya yüklemesi başarısız oldu",
+  "case.file_upload_expired": "Dosya yükleme süresi doldu",
+  "case.file_downloaded": "Dosya indirildi",
+  "case.file_previewed": "Dosya önizlendi",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
   clinic: "Klinik",
   user: "Kullanıcı",
   user_role_assignment: "Rol ataması",
+  case: "Vaka",
+  case_file_version: "Vaka dosyası",
+  case_upload_session: "Dosya yüklemesi",
 };
 
 function formatDate(value: string): string {

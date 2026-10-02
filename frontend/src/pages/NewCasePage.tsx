@@ -9,7 +9,7 @@ import {
   type DynamicFieldRow,
 } from "../components/cases/DynamicFieldsEditor";
 import { useResumableUpload } from "../hooks/useResumableUpload";
-import { fieldsToObject } from "../lib/case-form";
+import { fieldsToObject, parseToothNumbers } from "../lib/case-form";
 import { createCase, getCaseCreateOptions } from "../lib/cases-api";
 import type { CaseCreateOptions, DentalCase } from "../types/case";
 
@@ -72,7 +72,7 @@ export function NewCasePage() {
         patient_name: patientName.trim() || null,
         appliance_type: applianceType || null,
         material: material || null,
-        tooth_numbers: toothNumbers.split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean),
+        tooth_numbers: parseToothNumbers(toothNumbers),
         special_notes: notes.trim() || null,
         extra_fields: fieldsToObject(extraFields),
         reason: reason.trim() || null,

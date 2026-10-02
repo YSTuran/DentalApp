@@ -12,7 +12,7 @@ interface Props {
 export function StlUploadPanel({ caseId, userId, onCompleted }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const { phase, progress, error, upload, pause } = useResumableUpload(userId);
+  const { phase, progress, error, upload, pause } = useResumableUpload(userId, "scan");
   const busy = ["preparing", "uploading", "finalizing"].includes(phase);
 
   async function handleUpload() {
