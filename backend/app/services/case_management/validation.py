@@ -1,16 +1,23 @@
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
     CaseApprovalType,
     CaseDecision,
     CaseFileKind,
+    CaseFileVersion,
     CaseStatus,
     Clinic,
     DentalCase,
     MeshValidationStatus,
+    ProductionRun,
+    ReturnDecision,
+    ReturnReceipt,
+    ReturnResolution,
     RoleCode,
+    Shipment,
     User,
 )
 from app.services.authorization import has_clinic_role
@@ -40,7 +47,7 @@ def validate_responsible_dentist(db: Session, user_id: UUID, clinic_id: UUID) ->
     return user
 
 
-def validate_submit_requirements(case: DentalCase) -> None:
+def validate_submit_requirements(db: Session, case: DentalCase) -> None:
     missing_fields = []
     if not case.patient_code:
         missing_fields.append("patient_code")
@@ -80,3 +87,27 @@ def validate_submit_requirements(case: DentalCase) -> None:
             )
             if latest_scan.id == latest_request.file_version_id:
                 raise CaseValidationError("case_scan_revision_required")
+
+    if case.status == CaseStatus.RESCAN_REQUESTED:
+        rescan_decision = db.scalar(
+            select(ReturnDecision)
+            .join(ReturnReceipt, ReturnReceipt.id == ReturnDecision.return_receipt_id)
+            .join(Shipment, Shipment.id == ReturnReceipt.shipment_id)
+            .join(ProductionRun, ProductionRun.id == Shipment.production_run_id)
+            .where(
+                ProductionRun.case_id == case.id,
+                ReturnDecision.resolution == ReturnResolution.RESCAN,
+            )
+            .order_by(ReturnDecision.decided_at.desc())
+        )
+        source_scan = (
+            db.get(CaseFileVersion, rescan_decision.source_scan_file_version_id)
+            if rescan_decision is not None
+            else None
+        )
+        if (
+            source_scan is None
+            or latest_scan.id == source_scan.id
+            or latest_scan.version_number <= source_scan.version_number
+        ):
+            raise CaseValidationError("case_rescan_required")

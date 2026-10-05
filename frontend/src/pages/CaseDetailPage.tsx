@@ -12,6 +12,8 @@ import { DentistDesignDecisionPanel } from "../components/cases/DentistDesignDec
 import { LabDesignPanel } from "../components/cases/LabDesignPanel";
 import { ManagerDecisionPanel } from "../components/cases/ManagerDecisionPanel";
 import { StlUploadPanel } from "../components/cases/StlUploadPanel";
+import { CaseOperationsPanel } from "../components/cases/operations/CaseOperationsPanel";
+import { ApiError } from "../lib/api";
 import { caseActionLabels, caseStatusLabels, formatDate } from "../lib/case-format";
 import { getCase, getCaseHistory, submitCase } from "../lib/cases-api";
 import type { CaseHistoryItem, DentalCase } from "../types/case";
@@ -92,8 +94,12 @@ export function CaseDetailPage() {
       setSuccess("Vaka yönetici hekim onayına gönderildi.");
       const result = await getCaseHistory(dentalCase.id);
       setHistory(result.items);
-    } catch {
-      setError("Vaka gönderilemedi. Zorunlu alanların dolu ve en son taramanın geçerli olduğundan emin olun.");
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.detail === "case_rescan_required") {
+        setError("Vakanın yeniden gönderilebilmesi için yeni bir tarama sürümü yüklemelisiniz.");
+      } else {
+        setError("Vaka gönderilemedi. Zorunlu alanların dolu ve en son taramanın geçerli olduğundan emin olun.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -147,6 +153,7 @@ export function CaseDetailPage() {
                 <CaseFileList caseId={dentalCase.id} caseNumber={dentalCase.case_number} files={dentalCase.file_versions} />
                 {canEdit && user && <StlUploadPanel caseId={dentalCase.id} userId={user.id} onCompleted={() => void load(true)} />}
                 {canLabDesign && user && <LabDesignPanel dentalCase={dentalCase} userId={user.id} onRefresh={() => void load(true)} onUpdated={handleCaseUpdated} />}
+                <CaseOperationsPanel dentalCase={dentalCase} onUpdated={handleCaseUpdated} />
               </div>
 
               <aside className="case-side-column">

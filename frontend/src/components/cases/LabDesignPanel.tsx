@@ -44,6 +44,8 @@ export function LabDesignPanel({ dentalCase, userId, onRefresh, onUpdated }: Pro
     } catch (caught) {
       if (caught instanceof ApiError && caught.detail === "case_design_revision_required") {
         setSubmitError("Düzeltme talebi için yeni bir tasarım sürümü yüklemelisiniz.");
+      } else if (caught instanceof ApiError && caught.detail === "case_new_design_required") {
+        setSubmitError("Yeni tarama sonrasında yeni bir tasarım sürümü yüklemelisiniz.");
       } else if (caught instanceof ApiError && caught.detail === "case_design_version_changed") {
         setSubmitError("Tasarım sürümü değişti. Vakayı yenileyip en son sürümü kontrol edin.");
       } else {

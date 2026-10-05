@@ -19,9 +19,19 @@ from app.models.enums import (
     CaseStatus,
     ColorPalette,
     MeshValidationStatus,
+    ReturnReasonCode,
+    ReturnResolution,
     RoleCode,
     ThemeMode,
     UploadStatus,
+)
+from app.models.fulfillment import (
+    DeliveryConfirmation,
+    ProductionCompletion,
+    ProductionRun,
+    ReturnDecision,
+    ReturnReceipt,
+    Shipment,
 )
 from app.models.role_assignment import UserRoleAssignment
 from app.models.user import User
@@ -43,8 +53,16 @@ __all__ = [
     "Clinic",
     "ColorPalette",
     "DentalCase",
+    "DeliveryConfirmation",
     "MeshValidationStatus",
+    "ProductionCompletion",
+    "ProductionRun",
     "RoleCode",
+    "ReturnDecision",
+    "ReturnReasonCode",
+    "ReturnReceipt",
+    "ReturnResolution",
+    "Shipment",
     "ThemeMode",
     "UploadStatus",
     "User",

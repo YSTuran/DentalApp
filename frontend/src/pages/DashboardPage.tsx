@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import type { RoleCode } from "../types/auth";
+import { ManagerApprovalCard } from "../components/dashboard/ManagerApprovalCard";
 
 const roleLabels: Record<RoleCode, string> = {
   system_admin: "Sistem yöneticisi",
@@ -41,6 +42,9 @@ export function DashboardPage() {
   const isSystemAdmin = user.global_roles.includes("system_admin");
   const isClinicManager = user.clinic_roles.some(
     (assignment) => assignment.role === "clinic_manager",
+  );
+  const isManagingDentist = user.clinic_roles.some(
+    (assignment) => assignment.role === "managing_dentist",
   );
 
   return (
@@ -129,22 +133,23 @@ export function DashboardPage() {
             </p>
           </section>
 
-          <section className="info-card next-step-card">
-            <p className="card-label">{isSystemAdmin ? "SİSTEM YÖNETİMİ" : "KLİNİK YÖNETİMİ"}</p>
-            <h2>{isSystemAdmin ? "Klinik, kullanıcı ve audit yönetimi" : "Klinik personeli görünümü"}</h2>
-            <p>
-              {isSystemAdmin
-                ? "Klinik kayıtlarını, personel hesaplarını ve değiştirilemez işlem geçmişini yönetin."
-                : "Yetkili olduğunuz klinikleri ve bu kliniklerdeki hekimleri görüntüleyin."}
-            </p>
-            {(isSystemAdmin || isClinicManager) && (
+          {(isSystemAdmin || isClinicManager) && (
+            <section className="info-card next-step-card">
+              <p className="card-label">{isSystemAdmin ? "SİSTEM YÖNETİMİ" : "KLİNİK YÖNETİMİ"}</p>
+              <h2>{isSystemAdmin ? "Klinik, kullanıcı ve audit yönetimi" : "Klinik personeli görünümü"}</h2>
+              <p>
+                {isSystemAdmin
+                  ? "Klinik kayıtlarını, personel hesaplarını ve değiştirilemez işlem geçmişini yönetin."
+                  : "Yetkili olduğunuz klinikleri ve bu kliniklerdeki hekimleri görüntüleyin."}
+              </p>
               <div className="dashboard-management-links">
                 <Link className="primary-link" to="/yonetim/klinikler">Klinikler</Link>
                 <Link className="primary-link" to="/yonetim/kullanicilar">Kullanıcılar</Link>
                 {isSystemAdmin && <Link className="primary-link" to="/yonetim/audit-kayitlari">Audit kayıtları</Link>}
               </div>
-            )}
-          </section>
+            </section>
+          )}
+          {isManagingDentist && <ManagerApprovalCard />}
         </div>
       </main>
     </div>

@@ -27,6 +27,14 @@ export function auditToneFor(action: string, entityType: string): AuditTone {
   if (action.startsWith("clinic.") || entityType === "clinic") return "clinic";
   if (action.startsWith("user.role_") || entityType === "user_role_assignment") return "role";
   if (action.startsWith("user.") || entityType === "user") return "user";
+  if (action.startsWith("case.production_")) return "production";
+  if (
+    action.startsWith("case.shipped")
+    || action.startsWith("case.delivery_")
+    || action.startsWith("case.return_")
+    || action.startsWith("case.reproduction_")
+    || action.startsWith("case.rescan_")
+  ) return "delivery";
   if (
     action.startsWith("case.") ||
     action.startsWith("scan.") ||

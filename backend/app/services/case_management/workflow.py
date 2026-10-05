@@ -50,7 +50,7 @@ def submit_case(
     case = load_case(db, case_id, for_update=True)
     next_status = authorize_transition(case, actor, CaseAction.SUBMIT, reason=None)
     validate_clinic(db, case.clinic_id)
-    validate_submit_requirements(case)
+    validate_submit_requirements(db, case)
     previous_status = case.status
 
     try:

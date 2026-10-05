@@ -79,6 +79,14 @@ def submit_design(
     _require_manager_approval(case)
     design = _validate_design_version(case, file_version_id=file_version_id)
 
+    if any(
+        approval.approval_type == CaseApprovalType.DENTIST_DESIGN
+        and approval.decision == CaseDecision.APPROVED
+        and approval.file_version_id == design.id
+        for approval in case.approvals
+    ):
+        raise CaseValidationError("case_new_design_required")
+
     if case.status == CaseStatus.DESIGN_REVISION_REQUESTED:
         revision_requests = [
             approval

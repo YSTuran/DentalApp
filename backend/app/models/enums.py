@@ -100,3 +100,15 @@ class CaseDecision(StrEnum):
     APPROVED = "approved"
     REVISION_REQUESTED = "revision_requested"
     REJECTED = "rejected"
+
+
+class ReturnReasonCode(StrEnum):
+    FIT_ISSUE = "fit_issue"
+    DAMAGED = "damaged"
+    MANUFACTURING_DEFECT = "manufacturing_defect"
+    OTHER = "other"
+
+
+class ReturnResolution(StrEnum):
+    REPRODUCTION = "reproduction"
+    RESCAN = "rescan"

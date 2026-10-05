@@ -36,6 +36,13 @@ export const caseActionLabels: Record<string, string> = {
   upload_design: "Tasarım hekim onayına gönderildi",
   dentist_approve_design: "Tasarım onaylandı",
   dentist_request_design_revision: "Tasarım düzeltmesi istendi",
+  start_production: "Üretim başlatıldı",
+  complete_production: "Üretim tamamlandı",
+  ship: "Kargoya verildi",
+  confirm_delivery: "Şube teslimi doğrulandı",
+  register_return_received: "İade laboratuvara ulaştı",
+  decide_reproduction: "Yeniden üretim kararı verildi",
+  decide_rescan: "Yeni tarama kararı verildi",
 };
 
 export function formatDate(value: string | null | undefined): string {
