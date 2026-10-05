@@ -48,6 +48,9 @@ def _self_intersecting_face_count(path: Path) -> int:
 
 
 def inspect_stl(path: Path) -> MeshInspectionResult:
+    if not path.is_file():
+        raise MeshInspectionError("STL depolama dosyası bulunamadı.")
+
     declared_face_count = _declared_binary_face_count(path)
     maximum_faces = get_settings().mesh_validation_max_faces
     if declared_face_count is not None and declared_face_count > maximum_faces:

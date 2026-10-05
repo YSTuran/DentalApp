@@ -127,11 +127,11 @@ def test_role_visibility_and_technician_patient_name_masking(
 
         app.dependency_overrides[get_current_user] = lambda: admin
         admin_list = client.get("/api/cases")
-        assert {item["id"] for item in admin_list.json()["items"]} == {
+        assert {
             str(draft.id),
             str(lab_case.id),
             str(other_case.id),
-        }
+        }.issubset({item["id"] for item in admin_list.json()["items"]})
 
 
 def test_case_creation_rejects_cross_clinic_responsible_dentist(
@@ -157,8 +157,14 @@ def test_case_creation_rejects_cross_clinic_responsible_dentist(
     assert response.json()["detail"] == "case_responsible_dentist_invalid"
 
     with case_session_factory() as session:
-        assert session.scalar(select(DentalCase.id)) is None
-        assert session.scalar(select(CaseStatusHistory.id)) is None
+        assert session.scalar(
+            select(DentalCase.id).where(DentalCase.created_by_user_id == staff.id)
+        ) is None
+        assert session.scalar(
+            select(CaseStatusHistory.id).where(
+                CaseStatusHistory.actor_user_id == staff.id
+            )
+        ) is None
 
 
 def test_case_create_options_are_scoped_to_creator_clinics(

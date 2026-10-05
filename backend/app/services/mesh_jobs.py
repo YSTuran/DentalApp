@@ -10,6 +10,7 @@ from app.db.session import SessionLocal
 from app.models import CaseFileVersion, MeshValidationStatus, User
 from app.services.audit import record_audit_event
 from app.services.local_storage import LocalFileStorage
+from app.services.mesh_policy import apply_mesh_policy
 from app.services.mesh_validation import (
     MeshInspectionError,
     MeshResourceLimitError,
@@ -55,21 +56,35 @@ def process_mesh_validation(
         claimed_attempt = version.mesh_validation_attempts
         version.mesh_validation_started_at = now
         storage_key = version.storage_key
+        file_kind = version.kind
         db.commit()
 
     try:
         path = LocalFileStorage(settings.storage_path).path_for(storage_key)
-        result = inspect_stl_isolated(
-            path,
-            timeout_seconds=settings.mesh_validation_timeout_seconds,
+        result = apply_mesh_policy(
+            inspect_stl_isolated(
+                path,
+                timeout_seconds=settings.mesh_validation_timeout_seconds,
+            ),
+            file_kind=file_kind,
         )
         error_code = None
         terminal_error = False
-    except MeshResourceLimitError:
+    except MeshResourceLimitError as error:
+        logger.warning(
+            "Mesh doğrulaması kaynak sınırına takıldı (file_version_id=%s): %s",
+            file_version_id,
+            error,
+        )
         result = None
         error_code = "mesh_resource_limit"
         terminal_error = True
-    except MeshInspectionError:
+    except MeshInspectionError as error:
+        logger.warning(
+            "Mesh doğrulaması tamamlanamadı (file_version_id=%s): %s",
+            file_version_id,
+            error,
+        )
         result = None
         error_code = "mesh_parse_failed"
         terminal_error = False

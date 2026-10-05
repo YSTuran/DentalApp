@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { downloadCaseFile } from "../../lib/cases-api";
 import { formatBytes, formatDate } from "../../lib/case-format";
+import { hasMeshWarnings } from "../../lib/mesh-report";
 import type { CaseFileVersion } from "../../types/case";
 import { MeshStatusBadge } from "./CaseStatusBadge";
 
@@ -42,7 +43,7 @@ export function CaseFileList({ caseId, caseNumber, files }: Props) {
                 <span>{file.original_filename ?? "Gizli dosya adı"} · {formatBytes(file.size_bytes)}</span>
                 <small>{formatDate(file.created_at)}{file.is_locked ? " · Kilitli" : ""}</small>
               </div>
-              <MeshStatusBadge status={file.mesh_status} />
+              <MeshStatusBadge status={file.mesh_status} hasWarnings={hasMeshWarnings(file.mesh_report)} />
               <button className="secondary-button compact-button" disabled={downloading === file.id} onClick={() => void download(file)}>
                 {downloading === file.id ? "İndiriliyor…" : "İndir"}
               </button>

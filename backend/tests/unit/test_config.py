@@ -1,7 +1,20 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
-from app.core.config import Settings
+from app.core.config import BACKEND_DIR, Settings
+
+
+def test_relative_storage_path_is_resolved_from_backend_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    settings = Settings(storage_path=Path("../storage"))
+
+    assert settings.storage_path == (BACKEND_DIR / "../storage").resolve()
 
 
 def test_production_rejects_development_security_flags() -> None:

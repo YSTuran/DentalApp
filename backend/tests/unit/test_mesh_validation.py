@@ -1,13 +1,19 @@
 from pathlib import Path
 
+import pytest
 import trimesh
 
 from app.models import MeshValidationStatus
-from app.services.mesh_validation import inspect_stl
+from app.services.mesh_validation import MeshInspectionError, inspect_stl
 
 
 def _export_stl(mesh: trimesh.Trimesh, path: Path) -> None:
     path.write_bytes(mesh.export(file_type="stl"))
+
+
+def test_missing_storage_file_has_clear_error(tmp_path: Path) -> None:
+    with pytest.raises(MeshInspectionError, match="depolama dosyası bulunamadı"):
+        inspect_stl(tmp_path / "missing.stl")
 
 
 def test_closed_mesh_is_valid(tmp_path: Path) -> None:

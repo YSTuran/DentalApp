@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     firebase_session_cookie_name: str = "dentalapp_session"
     csrf_cookie_name: str = "dentalapp_csrf"
     cookie_secure: bool = False
+
+    @field_validator("storage_path")
+    @classmethod
+    def resolve_storage_path_from_backend(cls, value: Path) -> Path:
+        if value.is_absolute():
+            return value.resolve()
+        return (BACKEND_DIR / value).resolve()
 
     @model_validator(mode="after")
     def reject_unsafe_production_configuration(self) -> "Settings":

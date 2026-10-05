@@ -1922,6 +1922,7 @@ input:disabled {
 .case-status-design_revision_requested,
 .case-status-rescan_requested,
 .case-status-reproduction_requested,
+.mesh-status-warning,
 .mesh-status-invalid {
   color: var(--warning);
   background: var(--warning-bg);
@@ -2561,6 +2562,11 @@ input:disabled {
 .mesh-issues ul {
   margin: 0.45rem 0 0;
   padding-left: 1.2rem;
+}
+
+.mesh-issues p {
+  margin: 0.4rem 0 0;
+  line-height: 1.45;
 }
 
 .manager-decision-panel {

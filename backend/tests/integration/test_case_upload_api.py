@@ -46,8 +46,12 @@ def test_resumable_upload_validation_download_and_submit(
     clinic = create_clinic(case_session_factory, "UPLOAD")
     dentist = create_user(case_session_factory, RoleCode.DENTIST, clinic.id)
     app.dependency_overrides[get_current_user] = lambda: dentist
-    stl_bytes = trimesh.creation.icosphere(subdivisions=1, radius=10).export(
-        file_type="stl"
+    stl_bytes = trimesh.Trimesh(
+        vertices=[[0, 0, 0], [10, 0, 0], [0, 10, 0]],
+        faces=[[0, 1, 2]],
+        process=False,
+    ).export(
+        file_type="stl",
     )
     digest = hashlib.sha256(stl_bytes).hexdigest()
 
@@ -148,7 +152,10 @@ def test_resumable_upload_validation_download_and_submit(
             headers = csrf_headers(client)
             detail_response = client.get(f"/api/cases/{case_id}")
             assert detail_response.status_code == 200
-            assert detail_response.json()["file_versions"][0]["mesh_status"] == "valid"
+            validated_file = detail_response.json()["file_versions"][0]
+            assert validated_file["mesh_status"] == "valid"
+            assert validated_file["mesh_report"]["validation_policy"] == "scan_reviewable"
+            assert "mesh_open_boundary" in validated_file["mesh_report"]["warnings"]
 
             download_response = client.get(
                 f"/api/cases/{case_id}/files/{file_version_id}"

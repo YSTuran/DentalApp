@@ -4,6 +4,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { getCaseFileBuffer } from "../../lib/cases-api";
 import { formatBytes } from "../../lib/case-format";
+import { hasMeshWarnings, meshReportItems } from "../../lib/mesh-report";
 import type { CaseFileVersion } from "../../types/case";
 import { MeshStatusBadge } from "./CaseStatusBadge";
 
@@ -42,11 +43,6 @@ function numberFromReport(report: Record<string, unknown> | null, key: string): 
 function booleanFromReport(report: Record<string, unknown> | null, key: string): boolean | null {
   const value = report?.[key];
   return typeof value === "boolean" ? value : null;
-}
-
-function issuesFromReport(report: Record<string, unknown> | null): string[] {
-  const value = report?.issues;
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 export function StlViewerPanel({ caseId, files }: Props) {
@@ -259,7 +255,8 @@ export function StlViewerPanel({ caseId, files }: Props) {
   }
 
   const report = selectedFile.mesh_report;
-  const issues = issuesFromReport(report);
+  const issues = meshReportItems(report, "issues");
+  const reviewWarning = hasMeshWarnings(report);
   const vertexCount = numberFromReport(report, "vertex_count");
   const faceCount = numberFromReport(report, "face_count");
   const watertight = booleanFromReport(report, "is_watertight");
@@ -268,7 +265,7 @@ export function StlViewerPanel({ caseId, files }: Props) {
     <section className="case-panel stl-viewer-panel">
       <div className="panel-heading viewer-heading">
         <div><p className="card-label">3D ÖNİZLEME</p><h2>STL inceleyici</h2></div>
-        <MeshStatusBadge status={selectedFile.mesh_status} />
+        <MeshStatusBadge status={selectedFile.mesh_status} hasWarnings={reviewWarning} />
       </div>
       <div className="viewer-toolbar">
         <label>Sürüm
@@ -298,7 +295,7 @@ export function StlViewerPanel({ caseId, files }: Props) {
       </div>
       {previewNotice && <p className="viewer-preview-notice">{previewNotice}</p>}
       {issues.length > 0 && (
-        <div className="mesh-issues"><strong>Tespit edilen sorunlar</strong><ul>{issues.map((issue) => <li key={issue}>{issueLabels[issue] ?? issue}</li>)}</ul></div>
+        <div className="mesh-issues"><strong>{reviewWarning ? "Yönetici inceleme uyarıları" : "Tespit edilen sorunlar"}</strong>{reviewWarning && <p>Tarama görüntülenebilir; yönetici hekim bu uyarıları onay sırasında değerlendirmelidir.</p>}<ul>{issues.map((issue) => <li key={issue}>{issueLabels[issue] ?? issue}</li>)}</ul></div>
       )}
     </section>
   );
