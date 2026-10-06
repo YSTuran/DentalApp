@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
+import { NotificationBell } from "../components/NotificationBell";
 import { AccountSettingsSection } from "../components/settings/AccountSettingsSection";
 import { AppearanceSettingsSection } from "../components/settings/AppearanceSettingsSection";
 import { SecuritySettingsSection } from "../components/settings/SecuritySettingsSection";
@@ -25,6 +26,7 @@ export function SettingsPage() {
           <div><strong>DentalApp</strong><span>Hesap ayarları</span></div>
         </Link>
         <div className="topbar-actions">
+          <NotificationBell />
           <Link className="text-link" to="/">Panele dön</Link>
           <button className="secondary-button" onClick={() => void logout()}>Çıkış yap</button>
         </div>

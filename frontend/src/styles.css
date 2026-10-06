@@ -1579,6 +1579,14 @@ input:disabled {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.audit-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
 .audit-filters label {
   display: grid;
   gap: 0.4rem;
@@ -1952,8 +1960,68 @@ input:disabled {
   background: var(--primary-soft);
 }
 
-.case-filters .filter-select {
-  grid-template-columns: auto minmax(190px, 1fr);
+.case-list-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.2rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.case-view-filter {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.case-filter-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.case-lifecycle-tabs {
+  display: inline-flex;
+  gap: 0.2rem;
+  width: fit-content;
+  padding: 0.25rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.case-lifecycle-tabs button {
+  min-height: 38px;
+  padding: 0.45rem 0.85rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.case-lifecycle-tabs button:hover,
+.case-lifecycle-tabs button:focus-visible {
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  outline: none;
+}
+
+.case-lifecycle-tabs button.is-active {
+  color: var(--on-primary);
+  background: var(--primary);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.case-list-toolbar .search-form {
+  width: min(460px, 100%);
 }
 
 .empty-state {
@@ -2227,6 +2295,41 @@ input:disabled {
 .case-detail-heading > div > p:last-child {
   margin-top: 0.35rem;
   color: var(--muted);
+}
+
+.case-completion-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+  border-radius: 14px;
+}
+
+.case-completion-banner .completion-check {
+  display: grid;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: var(--success-bg);
+  background: var(--success);
+  border-radius: 50%;
+  font-weight: 900;
+}
+
+.case-completion-banner div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.case-completion-banner p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.9rem;
 }
 
 .case-heading-actions {
@@ -2728,6 +2831,25 @@ input:disabled {
 
   .filter-select {
     grid-template-columns: auto 1fr;
+  }
+
+  .case-list-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .case-lifecycle-tabs {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .case-lifecycle-tabs button {
+    flex: 1 0 auto;
+  }
+
+  .case-list-toolbar .search-form {
+    width: 100%;
   }
 
   .management-topbar .topbar-actions .text-link:first-child {

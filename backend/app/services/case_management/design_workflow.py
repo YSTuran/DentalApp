@@ -21,6 +21,7 @@ from app.services.case_management.exceptions import CaseConflictError, CaseValid
 from app.services.case_management.repository import add_history, load_case
 from app.services.case_management.transitions import authorize_transition
 from app.services.case_management.validation import validate_clinic
+from app.services.case_notifications import create_case_notifications
 
 DENTIST_DECISION_ACTIONS = {
     CaseDecision.APPROVED: CaseAction.DENTIST_APPROVE_DESIGN,
@@ -127,6 +128,7 @@ def submit_design(
             context={"source": "api"},
             request=request,
         )
+        create_case_notifications(db, case=case, action="case.design_submitted", actor=actor)
         db.commit()
     except Exception:
         db.rollback()
@@ -181,9 +183,10 @@ def dentist_decide_design(
             to_status=next_status,
             reason=payload.reason,
         )
+        audit_action = DENTIST_AUDIT_ACTIONS[payload.decision]
         record_audit_event(
             db,
-            action=DENTIST_AUDIT_ACTIONS[payload.decision],
+            action=audit_action,
             entity_type="case",
             entity_id=case.id,
             actor=actor,
@@ -199,6 +202,7 @@ def dentist_decide_design(
             context={"source": "api", "approval_type": CaseApprovalType.DENTIST_DESIGN},
             request=request,
         )
+        create_case_notifications(db, case=case, action=audit_action, actor=actor)
         db.commit()
     except Exception:
         db.rollback()

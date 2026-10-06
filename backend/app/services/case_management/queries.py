@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -19,6 +20,11 @@ from app.services.case_management.access import (
     require_case_visibility,
 )
 from app.services.case_management.repository import CASE_LOAD_OPTIONS, load_case
+
+CaseLifecycle = Literal["active", "completed", "closed"]
+COMPLETED_CASE_STATUSES = (CaseStatus.DELIVERED,)
+CLOSED_CASE_STATUSES = (CaseStatus.CANCELLED, CaseStatus.MANAGER_REJECTED)
+TERMINAL_CASE_STATUSES = COMPLETED_CASE_STATUSES + CLOSED_CASE_STATUSES
 
 
 def list_case_create_options(
@@ -69,6 +75,7 @@ def list_visible_cases(
     *,
     actor: User,
     status: CaseStatus | None,
+    lifecycle: CaseLifecycle | None,
     clinic_id: UUID | None,
     responsible_dentist_user_id: UUID | None,
     search: str | None,
@@ -81,6 +88,12 @@ def list_visible_cases(
         filters.append(visibility_filter)
     if status is not None:
         filters.append(DentalCase.status == status)
+    if lifecycle == "active":
+        filters.append(DentalCase.status.not_in(TERMINAL_CASE_STATUSES))
+    elif lifecycle == "completed":
+        filters.append(DentalCase.status.in_(COMPLETED_CASE_STATUSES))
+    elif lifecycle == "closed":
+        filters.append(DentalCase.status.in_(CLOSED_CASE_STATUSES))
     if clinic_id is not None:
         filters.append(DentalCase.clinic_id == clinic_id)
     if responsible_dentist_user_id is not None:

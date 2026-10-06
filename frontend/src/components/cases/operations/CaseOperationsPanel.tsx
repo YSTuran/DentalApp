@@ -78,6 +78,13 @@ export function CaseOperationsPanel({ dentalCase, onUpdated }: Props) {
       {error && <div className="form-error" role="alert">{error}</div>}
       {operations && latestRun && <WorkOrderCard dentalCase={dentalCase} productionRun={latestRun} />}
 
+      {dentalCase.status === "delivered" && (
+        <div className="operation-complete-state">
+          <strong>Operasyon tamamlandı</strong>
+          <span>Üretim ve teslim işlemleri kapalıdır. Ürün geri geldiyse yalnızca iade kaydı oluşturulabilir.</span>
+        </div>
+      )}
+
       {isTechnician && startStatuses.has(dentalCase.status) && <ProductionStartAction dentalCase={dentalCase} onUpdated={handleUpdated} />}
       {isTechnician && dentalCase.status === "in_production" && latestRun && <ProductionCompleteAction dentalCase={dentalCase} productionRun={latestRun} onUpdated={handleUpdated} />}
       {isTechnician && dentalCase.status === "production_completed" && latestRun && <ShipmentCreateAction dentalCase={dentalCase} productionRun={latestRun} onUpdated={handleUpdated} />}

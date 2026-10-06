@@ -10,9 +10,35 @@
   border-top: 1px solid var(--line);
 }
 
+.operation-complete-state {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
+  border-radius: 12px;
+}
+
+.operation-complete-state span {
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
 .operation-action h3,
 .operation-history h3 {
   margin: 0;
+}
+
+.operation-action-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.operation-return-trigger {
+  justify-items: start;
 }
 
 .operation-action > p {

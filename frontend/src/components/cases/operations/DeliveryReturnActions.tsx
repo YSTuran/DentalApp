@@ -53,6 +53,7 @@ export function DeliveryConfirmAction({ dentalCase, shipment, onUpdated }: Shipm
 }
 
 export function ReturnReceiptAction({ dentalCase, shipment, onUpdated }: ShipmentActionProps) {
+  const [expanded, setExpanded] = useState(false);
   const [reasonCode, setReasonCode] = useState<ReturnReasonCode>("fit_issue");
   const [reason, setReason] = useState("");
   const [inspectionNotes, setInspectionNotes] = useState("");
@@ -78,9 +79,22 @@ export function ReturnReceiptAction({ dentalCase, shipment, onUpdated }: Shipmen
     }
   }
 
+  if (!expanded) {
+    return (
+      <div className="operation-action operation-return-trigger">
+        <button className="secondary-button" type="button" onClick={() => setExpanded(true)}>
+          İade kaydı oluştur
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="operation-action operation-return">
-      <h3>İadeyi teslim al</h3>
+      <div className="operation-action-heading">
+        <h3>İadeyi teslim al</h3>
+        <button className="text-button" type="button" disabled={saving} onClick={() => setExpanded(false)}>Vazgeç</button>
+      </div>
       <label>İade kategorisi *<select value={reasonCode} disabled={saving} onChange={(event) => setReasonCode(event.target.value as ReturnReasonCode)}>{Object.entries(returnReasonLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label>İade gerekçesi *<textarea rows={3} maxLength={2000} value={reason} disabled={saving} onChange={(event) => setReason(event.target.value)} /></label>
       <label>Teknisyen inceleme notu<textarea rows={3} maxLength={2000} value={inspectionNotes} disabled={saving} onChange={(event) => setInspectionNotes(event.target.value)} /></label>

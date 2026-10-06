@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { OperationsHeader } from "../components/OperationsHeader";
 import { CaseCancelDialog } from "../components/cases/CaseCancelDialog";
+import { CaseCompletionBanner } from "../components/cases/CaseCompletionBanner";
 import { CaseEditDialog } from "../components/cases/CaseEditDialog";
 import { CaseFileList } from "../components/cases/CaseFileList";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
@@ -127,6 +128,7 @@ export function CaseDetailPage() {
             </div>
             {error && <div className="form-error dashboard-error" role="alert">{error}</div>}
             {success && <div className="success-message">{success}</div>}
+            {dentalCase.status === "delivered" && <CaseCompletionBanner />}
 
             <div className="case-detail-grid">
               <div className="case-main-column">
@@ -165,7 +167,7 @@ export function CaseDetailPage() {
                   />
                 )}
                 {canDentistReview && <DentistDesignDecisionPanel dentalCase={dentalCase} onUpdated={handleCaseUpdated} />}
-                <section className="case-panel"><p className="card-label">İŞ AKIŞI</p><h2>{caseStatusLabels[dentalCase.status]}</h2><p className="panel-description">İki onay tamamlanmadan vaka üretim kuyruğuna alınamaz.</p></section>
+                <section className="case-panel"><p className="card-label">İŞ AKIŞI</p><h2>{caseStatusLabels[dentalCase.status]}</h2><p className="panel-description">{dentalCase.status === "delivered" ? "Normal işlem akışı tamamlandı. Yalnızca yeni bir iade kaydıyla yeniden açılabilir." : "İki onay tamamlanmadan vaka üretim kuyruğuna alınamaz."}</p></section>
                 {dentalCase.approvals.length > 0 && (
                   <section className="case-panel">
                     <p className="card-label">DEĞİŞMEZ KARARLAR</p>

@@ -3,14 +3,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
 import { AuditFilters } from "../components/audit/AuditFilters";
+import { AuditReportDocument } from "../components/audit/AuditReportDocument";
+import { PrintPortal } from "../components/printing/PrintPortal";
 import { AUDIT_LEGEND, auditToneFor } from "../lib/audit-colors";
 import { auditDateBoundaries } from "../lib/audit-date";
 import { EMPTY_AUDIT_FILTERS, type AuditFilterValues } from "../lib/audit-filter-values";
 import { formatAuditReason } from "../lib/audit-format";
-import { type AuditFilters as AuditQueryFilters, auditErrorMessage, listAuditEvents } from "../lib/audit-api";
+import { type AuditFilters as AuditQueryFilters, auditErrorMessage, listAllAuditEvents, listAuditEvents } from "../lib/audit-api";
 import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS } from "../lib/audit-labels";
 import { listClinics } from "../lib/clinics-api";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { usePrintDocument } from "../hooks/usePrintDocument";
 import type { AuditEvent } from "../types/audit";
 import type { Clinic } from "../types/clinic";
 
@@ -36,6 +39,9 @@ export function AuditLogPage() {
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [printEvents, setPrintEvents] = useState<AuditEvent[]>([]);
+  const { isPrinting, print } = usePrintDocument();
 
   const clinicNames = useMemo(
     () => new Map(clinics.map((clinic) => [clinic.id, clinic.name])),
@@ -103,6 +109,23 @@ export function AuditLogPage() {
     setOffset(0);
   }
 
+  async function printFilteredAuditEvents() {
+    setExporting(true);
+    setError(null);
+    try {
+      const allEvents = await listAllAuditEvents({
+        ...queryFilters,
+        entityId: filterValues.entityId.trim() || undefined,
+      });
+      setPrintEvents(allEvents);
+      print();
+    } catch (exportError) {
+      setError(auditErrorMessage(exportError));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const pageStart = total === 0 ? 0 : offset + 1;
   const pageEnd = Math.min(offset + PAGE_SIZE, total);
 
@@ -117,7 +140,17 @@ export function AuditLogPage() {
             <h1>Audit kayıtları</h1>
             <p>Kim, ne zaman, hangi kaydı ve hangi gerekçeyle değiştirdi görüntüleyin.</p>
           </div>
-          <span className="immutable-badge">Değiştirilemez kayıt</span>
+          <div className="audit-page-actions">
+            <span className="immutable-badge">Değiştirilemez kayıt</span>
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={loading || total === 0 || exporting}
+              onClick={() => void printFilteredAuditEvents()}
+            >
+              {exporting ? "Rapor hazırlanıyor…" : "PDF olarak yazdır"}
+            </button>
+          </div>
         </div>
 
         {error !== null && <div className="form-error" role="alert">{error}</div>}
@@ -196,6 +229,15 @@ export function AuditLogPage() {
             <div className="modal-actions"><button className="primary-button compact-button" onClick={() => setSelectedEvent(null)}>Kapat</button></div>
           </section>
         </div>
+      )}
+      {isPrinting && (
+        <PrintPortal>
+          <AuditReportDocument
+            events={printEvents}
+            filters={filterValues}
+            clinicNames={clinicNames}
+          />
+        </PrintPortal>
       )}
     </div>
   );

@@ -32,6 +32,10 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
 - İade sonrasında yeniden üretim aynı vaka içinde yeni üretim döngüsü olarak ilerler.
   Yeni tarama kararında vaka tekrar yönetici onayına gönderilir.
 - Sistem yöneticisi kullanıcı ve şube yönetir; klinik onay rollerini devralmaz.
+- Durum değişiklikleri ilgili yönetici hekim, sorumlu hekim, klinik personeli veya
+  teknisyenlere uygulama içi bildirim üretir. Bildirimlerde hasta adı bulunmaz.
+- Bildirimi okundu olarak işaretlemek veya bağlı vaka sayfasını açmak bildirimi aktif
+  listeden kaldırır; kayıt veritabanından silinmez.
 
 Vaka, dosya sürümü, onay ve durum geçmişi tabloları migration ile oluşturulmuştur.
 Onaylanan dosya sürümlerinin kilidi veritabanı trigger'ıyla korunur; onay ve geçmiş

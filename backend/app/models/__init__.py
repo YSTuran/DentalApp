@@ -33,6 +33,7 @@ from app.models.fulfillment import (
     ReturnReceipt,
     Shipment,
 )
+from app.models.notification import Notification
 from app.models.role_assignment import UserRoleAssignment
 from app.models.user import User
 from app.models.user_preference import UserPreference
@@ -55,6 +56,7 @@ __all__ = [
     "DentalCase",
     "DeliveryConfirmation",
     "MeshValidationStatus",
+    "Notification",
     "ProductionCompletion",
     "ProductionRun",
     "RoleCode",

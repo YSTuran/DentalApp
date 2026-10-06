@@ -3,6 +3,7 @@ import type {
   CaseCreateOptions,
   CaseDecision,
   CaseHistoryItem,
+  CaseLifecycle,
   CaseListResponse,
   CaseStatus,
   CaseWritePayload,
@@ -13,6 +14,7 @@ import type {
 
 interface CaseListFilters {
   status?: CaseStatus | "";
+  lifecycle?: CaseLifecycle | "";
   search?: string;
   limit?: number;
   offset?: number;

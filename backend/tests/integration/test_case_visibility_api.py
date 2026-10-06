@@ -175,6 +175,56 @@ def test_case_creation_rejects_cross_clinic_responsible_dentist(
         ) is None
 
 
+def test_case_list_filters_lifecycle_without_breaking_pagination(
+    case_session_factory: sessionmaker[Session],
+) -> None:
+    clinic = create_clinic(case_session_factory, "LIFECYCLE")
+    dentist = create_user(case_session_factory, RoleCode.DENTIST, clinic.id)
+    manager = create_user(case_session_factory, RoleCode.CLINIC_MANAGER, clinic.id)
+
+    with case_session_factory.begin() as session:
+        cases = {
+            status: DentalCase(
+                case_number=f"FILTER-{status.value}-{uuid4().hex[:6]}",
+                clinic_id=clinic.id,
+                created_by_user_id=dentist.id,
+                responsible_dentist_user_id=dentist.id,
+                patient_code=f"P-{status.value}",
+                status=status,
+                details=CaseDetail(),
+            )
+            for status in (
+                CaseStatus.DRAFT,
+                CaseStatus.DELIVERED,
+                CaseStatus.CANCELLED,
+                CaseStatus.MANAGER_REJECTED,
+            )
+        }
+        session.add_all(cases.values())
+        session.flush()
+
+    app.dependency_overrides[get_current_user] = lambda: manager
+    with TestClient(app) as client:
+        active = client.get("/api/cases", params={"lifecycle": "active", "limit": 1})
+        completed = client.get("/api/cases", params={"lifecycle": "completed"})
+        closed = client.get("/api/cases", params={"lifecycle": "closed"})
+        invalid = client.get("/api/cases", params={"lifecycle": "unknown"})
+
+    assert active.status_code == 200
+    assert active.json()["total"] == 1
+    assert [item["id"] for item in active.json()["items"]] == [
+        str(cases[CaseStatus.DRAFT].id)
+    ]
+    assert {item["id"] for item in completed.json()["items"]} == {
+        str(cases[CaseStatus.DELIVERED].id)
+    }
+    assert {item["id"] for item in closed.json()["items"]} == {
+        str(cases[CaseStatus.CANCELLED].id),
+        str(cases[CaseStatus.MANAGER_REJECTED].id),
+    }
+    assert invalid.status_code == 422
+
+
 def test_case_create_options_are_scoped_to_creator_clinics(
     case_session_factory: sessionmaker[Session],
 ) -> None:

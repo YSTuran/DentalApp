@@ -4,7 +4,7 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 
 > DEMO — Gerçek hasta verisi girmeyiniz.
 
-## Mevcut iskelet
+## Uygulanan MVP
 
 - FastAPI uygulama fabrikası
 - Ortam değişkeni tabanlı yapılandırma
@@ -20,12 +20,14 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Firebase ile PostgreSQL'i birlikte yöneten kullanıcı ve rol API'si
 - Liveness ve readiness endpoint'leri
 - Pytest başlangıç testleri
+- Kullanıcıya özel uygulama içi bildirim merkezi
+- Filtrelenmiş ve kategori renkli audit PDF çıktısı
 
 ## Yerel kurulum (PowerShell)
 
 ```powershell
 cd backend
-& 'C:\Users\Yusuf\AppData\Local\Programs\Python\Python313\python.exe' -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.lock
@@ -117,8 +119,25 @@ rolü görüntüleyebilir:
 
 - `GET /api/audit-events`
 
-Endpoint; `action`, `entity_type`, `entity_id`, `actor_user_id` ve `clinic_id`
-filtreleri ile `limit`/`offset` sayfalamasını destekler.
+Endpoint; `action`, `entity_type`, `entity_id`, `actor_user_id`, `clinic_id`,
+`created_from` ve `created_before` filtreleri ile `limit`/`offset` sayfalamasını
+destekler. Audit ekranındaki filtreler otomatik uygulanır. **PDF olarak yazdır**
+düğmesi aktif filtrelerle eşleşen bütün kayıtları kategori renklerini koruyan kutulu
+bir rapora dönüştürür. Açılan sistem penceresinde **PDF olarak kaydet** seçilebilir.
+
+## Bildirimler
+
+Oturum açmış bütün kullanıcılar sayfa başlıklarındaki çan düğmesinden kendilerine
+ait bekleyen bildirimleri görüntüleyebilir:
+
+- `GET /api/notifications`: kullanıcının kapatılmamış bildirimleri.
+- `POST /api/notifications/{notification_id}/dismiss`: bildirimi okundu olarak kapatır.
+
+Vaka onaya gönderildiğinde, düzeltme veya ret kararı verildiğinde, tasarım onayı
+gerektiğinde, ürün kargoya verildiğinde ve iade kararı oluştuğunda ilgili role bildirim
+üretilir. Metinlerde hasta adı kullanılmaz. Bildirime tıklamak ilgili vaka ekranına
+götürür ve bildirimi kapatır. **Okundu** düğmesi de bildirimi listeden kaldırır; kayıt
+fiziksel olarak silinmez, `dismissed_at` zamanı ile saklanır.
 
 Backend yetki katmanı global rol, herhangi bir rol, klinik erişimi ve klinik rolü
 kontrollerini ayrı ayrı uygular. Sistem yöneticisi klinik rolü gerektiren işlemleri
@@ -149,8 +168,8 @@ Frontend sistem yönetimi ekranları:
 - `http://localhost:5173/yonetim/klinikler`: klinik yönetimi.
 - `http://localhost:5173/yonetim/kullanicilar`: personel hesabı oluşturma,
   kullanıcı/rol görüntüleme ve kullanıcıyı pasifleştirme veya etkinleştirme.
-- `http://localhost:5173/yonetim/audit-kayitlari`: işlem, kayıt türü, klinik ve
-  kayıt kimliğine göre filtrelenebilen değiştirilemez denetim kayıtları.
+- `http://localhost:5173/yonetim/audit-kayitlari`: işlem, kayıt türü, klinik, tarih ve
+  kayıt kimliğine göre filtrelenebilen, PDF çıktısı alınabilen değiştirilemez kayıtlar.
 - `http://localhost:5173/ayarlar`: bütün kullanıcıların mevcut parolalarını
   doğrulayarak kendi Firebase parolalarını değiştirebildiği ve görünüm temasını
   seçebildiği hesap ayarları.

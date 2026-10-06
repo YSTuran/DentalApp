@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import { NotificationBell } from "./NotificationBell";
 
 export function ManagementHeader() {
   const { logout, user } = useAuth();
@@ -21,6 +22,7 @@ export function ManagementHeader() {
         {isSystemAdmin && <NavLink to="/yonetim/audit-kayitlari">Audit kayıtları</NavLink>}
       </nav>
       <div className="topbar-actions">
+        <NotificationBell />
         <Link className="text-link" to="/">Panel</Link>
         <Link className="text-link" to="/ayarlar">Ayarlar</Link>
         <button className="secondary-button" onClick={() => void logout()}>Çıkış yap</button>

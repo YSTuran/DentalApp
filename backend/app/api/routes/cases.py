@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -68,6 +68,10 @@ def list_cases(
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(case_access)],
     case_status: Annotated[CaseStatus | None, Query(alias="status")] = None,
+    lifecycle: Annotated[
+        Literal["active", "completed", "closed"] | None,
+        Query(),
+    ] = None,
     clinic_id: UUID | None = None,
     responsible_dentist_user_id: UUID | None = None,
     search: Annotated[str | None, Query(max_length=200)] = None,
@@ -79,6 +83,7 @@ def list_cases(
             db,
             actor=actor,
             status=case_status,
+            lifecycle=lifecycle,
             clinic_id=clinic_id,
             responsible_dentist_user_id=responsible_dentist_user_id,
             search=search,

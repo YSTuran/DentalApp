@@ -38,6 +38,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "case.file_downloaded": "Dosya indirildi",
   "case.file_previewed": "Dosya önizlendi",
   "case.file_mesh_validated": "Dosya doğrulandı",
+  "notification.dismissed": "Bildirim okundu",
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
@@ -47,4 +48,5 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   case: "Vaka",
   case_file_version: "Vaka dosyası",
   case_upload_session: "Dosya yüklemesi",
+  notification: "Bildirim",
 };

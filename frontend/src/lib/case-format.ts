@@ -12,7 +12,7 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
   in_production: "Üretimde",
   production_completed: "Üretim tamamlandı",
   shipped: "Kargoya verildi",
-  delivered: "Şubeye teslim edildi",
+  delivered: "Tamamlandı · Şubeye teslim edildi",
   return_review: "İade değerlendirmesinde",
   reproduction_requested: "Yeniden üretim istendi",
   rescan_requested: "Yeni tarama istendi",

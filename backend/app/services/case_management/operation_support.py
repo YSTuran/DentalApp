@@ -19,6 +19,7 @@ from app.models import (
 from app.services.audit import record_audit_event
 from app.services.case_management.exceptions import CaseConflictError
 from app.services.case_management.repository import add_history
+from app.services.case_notifications import create_case_notifications
 
 
 def approved_design(case: DentalCase, *, expected_id: UUID | None = None) -> CaseFileVersion:
@@ -114,3 +115,4 @@ def apply_operation_transition(
         context={"source": "api"},
         request=request,
     )
+    create_case_notifications(db, case=case, action=audit_action, actor=actor)

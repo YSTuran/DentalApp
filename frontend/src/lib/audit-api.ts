@@ -1,4 +1,4 @@
-import type { AuditEventListResponse } from "../types/audit";
+import type { AuditEvent, AuditEventListResponse } from "../types/audit";
 import { ApiError, apiRequest } from "./api";
 
 export interface AuditFilters {
@@ -26,6 +26,30 @@ export function listAuditEvents(
   query.set("limit", String(filters.limit ?? 20));
   query.set("offset", String(filters.offset ?? 0));
   return apiRequest<AuditEventListResponse>(`/api/audit-events?${query.toString()}`, { signal });
+}
+
+export async function listAllAuditEvents(
+  filters: AuditFilters,
+  signal?: AbortSignal,
+): Promise<AuditEvent[]> {
+  const activeFilters = { ...filters };
+  delete activeFilters.limit;
+  delete activeFilters.offset;
+  const items: AuditEvent[] = [];
+  let offset = 0;
+  let total = 1;
+
+  while (offset < total) {
+    const page = await listAuditEvents(
+      { ...activeFilters, limit: 100, offset },
+      signal,
+    );
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  }
+  return items;
 }
 
 export function auditErrorMessage(error: unknown): string {

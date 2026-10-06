@@ -26,6 +26,7 @@ from app.services.case_management.exceptions import (
 from app.services.case_management.repository import add_history, load_case
 from app.services.case_management.transitions import action_context, authorize_transition
 from app.services.case_management.validation import validate_clinic, validate_submit_requirements
+from app.services.case_notifications import create_case_notifications
 
 MANAGER_DECISION_ACTIONS = {
     CaseDecision.APPROVED: CaseAction.MANAGER_APPROVE,
@@ -77,6 +78,7 @@ def submit_case(
             context={"source": "api"},
             request=request,
         )
+        create_case_notifications(db, case=case, action="case.submitted", actor=actor)
         db.commit()
     except Exception:
         db.rollback()
@@ -122,6 +124,7 @@ def cancel_case(
             context={"source": "api"},
             request=request,
         )
+        create_case_notifications(db, case=case, action="case.cancelled", actor=actor)
         db.commit()
     except Exception:
         db.rollback()
@@ -192,9 +195,10 @@ def manager_decide_case(
             to_status=next_status,
             reason=payload.reason,
         )
+        audit_action = MANAGER_AUDIT_ACTIONS[payload.decision]
         record_audit_event(
             db,
-            action=MANAGER_AUDIT_ACTIONS[payload.decision],
+            action=audit_action,
             entity_type="case",
             entity_id=case.id,
             actor=actor,
@@ -211,6 +215,7 @@ def manager_decide_case(
             context={"source": "api", "approval_type": CaseApprovalType.MANAGER_SCAN},
             request=request,
         )
+        create_case_notifications(db, case=case, action=audit_action, actor=actor)
         db.commit()
     except Exception:
         db.rollback()

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
+import { NotificationBell } from "../components/NotificationBell";
 import { ManagerApprovalCard } from "../components/dashboard/ManagerApprovalCard";
 import { userRoleLabels } from "../lib/role-format";
 
@@ -49,6 +50,7 @@ export function DashboardPage() {
           </div>
         </div>
         <div className="topbar-actions">
+          <NotificationBell />
           <Link className="text-link" to="/ayarlar">Ayarlar</Link>
           <button className="secondary-button" onClick={handleLogout} disabled={loggingOut}>
             {loggingOut ? "Çıkış yapılıyor…" : "Çıkış yap"}

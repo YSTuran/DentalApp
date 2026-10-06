@@ -171,4 +171,16 @@ describe("üretim, teslim ve iade paneli", () => {
       "Yeniden üretilmeli.",
     );
   });
+
+  it("teslim edilen vakada normal işlemleri kapatıp yalnızca iade yolunu açar", async () => {
+    const interaction = userEvent.setup();
+    renderPanel("technician", { ...dentalCase, status: "delivered" });
+
+    expect(await screen.findByText("Operasyon tamamlandı")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Üretimi başlat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kargoya ver" })).not.toBeInTheDocument();
+
+    await interaction.click(screen.getByRole("button", { name: "İade kaydı oluştur" }));
+    expect(screen.getByRole("heading", { name: "İadeyi teslim al" })).toBeInTheDocument();
+  });
 });

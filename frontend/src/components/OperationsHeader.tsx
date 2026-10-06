@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import { NotificationBell } from "./NotificationBell";
 
 const createRoles = new Set(["managing_dentist", "dentist", "clinic_staff"]);
 
@@ -19,6 +20,7 @@ export function OperationsHeader() {
         {canCreate && <NavLink to="/vakalar/yeni">Yeni vaka</NavLink>}
       </nav>
       <div className="topbar-actions">
+        <NotificationBell />
         <Link className="text-link" to="/">Panel</Link>
         <Link className="text-link" to="/ayarlar">Ayarlar</Link>
         <button className="secondary-button" onClick={() => void logout()}>Çıkış yap</button>

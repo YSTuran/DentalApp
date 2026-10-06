@@ -16,6 +16,8 @@ export type CaseStatus =
   | "rescan_requested"
   | "cancelled";
 
+export type CaseLifecycle = "active" | "completed" | "closed";
+
 export type CaseFileKind = "scan" | "design";
 export type MeshStatus = "pending" | "valid" | "invalid" | "failed";
 export type UploadStatus = "pending" | "uploading" | "completed" | "failed" | "expired";
