@@ -15,7 +15,6 @@ def case_to_response(case: DentalCase, *, actor: User) -> CaseResponse:
         response.patient_name = None
         response.created_by_user_id = None
         response.responsible_dentist_user_id = None
-        response.responsible_dentist_name = None
         response.details.special_notes = None
         response.details.extra_fields = {}
         for file_version in response.file_versions:

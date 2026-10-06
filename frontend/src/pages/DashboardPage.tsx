@@ -3,17 +3,8 @@ import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
-import type { RoleCode } from "../types/auth";
 import { ManagerApprovalCard } from "../components/dashboard/ManagerApprovalCard";
-
-const roleLabels: Record<RoleCode, string> = {
-  system_admin: "Sistem yöneticisi",
-  clinic_manager: "Klinik yöneticisi",
-  managing_dentist: "Yönetici hekim",
-  dentist: "Hekim",
-  clinic_staff: "Klinik personeli",
-  technician: "Laboratuvar teknisyeni",
-};
+import { userRoleLabels } from "../lib/role-format";
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
@@ -35,10 +26,7 @@ export function DashboardPage() {
     }
   }
 
-  const roles = [
-    ...user.global_roles.map((role) => roleLabels[role]),
-    ...user.clinic_roles.map((assignment) => roleLabels[assignment.role]),
-  ];
+  const roles = userRoleLabels(user);
   const isSystemAdmin = user.global_roles.includes("system_admin");
   const isClinicManager = user.clinic_roles.some(
     (assignment) => assignment.role === "clinic_manager",
@@ -99,7 +87,7 @@ export function DashboardPage() {
             </div>
           </section>
 
-          <section className="info-card">
+          <section className="info-card dashboard-user-card">
             <p className="card-label">KULLANICI</p>
             <dl>
               <div>
@@ -111,26 +99,14 @@ export function DashboardPage() {
                 <dd>{user.email}</dd>
               </div>
               <div>
+                <dt>Yetki</dt>
+                <dd>{roles.length > 0 ? roles.join(" · ") : "Aktif rol ataması bulunmuyor"}</dd>
+              </div>
+              <div>
                 <dt>Kullanıcı ID</dt>
                 <dd className="technical-value">{user.id}</dd>
               </div>
             </dl>
-          </section>
-
-          <section className="info-card">
-            <p className="card-label">YETKİLER</p>
-            <div className="role-list">
-              {roles.length > 0 ? (
-                roles.map((role) => <span key={role}>{role}</span>)
-              ) : (
-                <p>Aktif rol ataması bulunmuyor.</p>
-              )}
-            </div>
-            <p className="scope-note">
-              {isSystemAdmin
-                ? "Tüm klinikler üzerinde sistem yöneticisi erişimi bulunuyor."
-                : `${user.clinic_roles.length} klinik rolü atanmış.`}
-            </p>
           </section>
 
           {(isSystemAdmin || isClinicManager) && (

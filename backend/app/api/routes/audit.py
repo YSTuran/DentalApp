@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,9 +23,17 @@ def list_audit_events(
     entity_id: str | None = None,
     actor_user_id: UUID | None = None,
     clinic_id: UUID | None = None,
+    created_from: datetime | None = None,
+    created_before: datetime | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> AuditEventListResponse:
+    for boundary in (created_from, created_before):
+        if boundary is not None and boundary.utcoffset() is None:
+            raise HTTPException(status_code=422, detail="audit_date_timezone_required")
+    if created_from is not None and created_before is not None and created_from >= created_before:
+        raise HTTPException(status_code=422, detail="audit_date_range_invalid")
+
     filters = []
     if action is not None:
         filters.append(AuditEvent.action == action)
@@ -36,6 +45,10 @@ def list_audit_events(
         filters.append(AuditEvent.actor_user_id == actor_user_id)
     if clinic_id is not None:
         filters.append(AuditEvent.clinic_id == clinic_id)
+    if created_from is not None:
+        filters.append(AuditEvent.created_at >= created_from)
+    if created_before is not None:
+        filters.append(AuditEvent.created_at < created_before)
 
     total = db.scalar(select(func.count()).select_from(AuditEvent).where(*filters)) or 0
     items = db.scalars(

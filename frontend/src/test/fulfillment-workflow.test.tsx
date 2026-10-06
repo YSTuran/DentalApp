@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 import { CaseOperationsPanel } from "../components/cases/operations/CaseOperationsPanel";
+import { WorkOrderCard } from "../components/cases/operations/WorkOrderCard";
 import type { CurrentUser, RoleCode } from "../types/auth";
 import type { DentalCase } from "../types/case";
 import type { CaseOperations } from "../types/fulfillment";
@@ -25,6 +26,7 @@ const dentalCase: DentalCase = {
   case_number: "VKA-2026-000001",
   clinic_id: "clinic-one",
   clinic_name: "Demo Klinik",
+  responsible_dentist_name: "Demo Hekim",
   patient_code: "DEMO-001",
   status: "ready_for_production",
   submitted_at: "2026-10-05T08:00:00Z",
@@ -116,7 +118,10 @@ function renderPanel(role: RoleCode, currentCase: DentalCase) {
   );
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.body.classList.remove("printing-report");
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -127,6 +132,17 @@ beforeEach(() => {
 });
 
 describe("üretim, teslim ve iade paneli", () => {
+  it("iş emrinde sorumlu hekimi gösterir ve izole baskıyı başlatır", async () => {
+    const interaction = userEvent.setup();
+    const printMock = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    render(<WorkOrderCard dentalCase={dentalCase} productionRun={operations.production_runs[0]} />);
+
+    expect(screen.getByText("Demo Hekim")).toBeInTheDocument();
+    await interaction.click(screen.getByRole("button", { name: "Yazdır" }));
+    await waitFor(() => expect(printMock).toHaveBeenCalledOnce());
+    printMock.mockRestore();
+  });
+
   it("teknisyen onaylı tasarımla üretimi başlatır", async () => {
     const interaction = userEvent.setup();
     renderPanel("technician", dentalCase);

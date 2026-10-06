@@ -926,6 +926,10 @@ input:disabled {
   margin-top: 1rem;
 }
 
+.dashboard-user-card {
+  grid-column: 1 / -1;
+}
+
 .info-card {
   padding: 1.6rem;
   background: var(--surface);
@@ -1568,7 +1572,7 @@ input:disabled {
 
 .audit-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
   align-items: end;
   gap: 0.8rem;
   padding: 1.2rem;
@@ -1585,11 +1589,15 @@ input:disabled {
 
 .audit-filter-actions {
   display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
 }
 
-.audit-filter-actions .primary-button {
-  margin: 0;
+.audit-filter-actions span {
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .audit-legend {

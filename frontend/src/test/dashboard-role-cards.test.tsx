@@ -12,12 +12,13 @@ vi.mock("../lib/cases-api", () => ({ listCases: vi.fn() }));
 const listCasesMock = vi.mocked(listCases);
 
 function currentUser(role: RoleCode): CurrentUser {
+  const isGlobalRole = role === "system_admin" || role === "technician";
   return {
     id: "9b2b1354-2454-4196-859c-daa00f27cf3e",
     email: "user@example.test",
     full_name: "Test Kullanıcısı",
-    global_roles: role === "system_admin" ? [role] : [],
-    clinic_roles: role === "system_admin" ? [] : [{ clinic_id: "clinic-1", role }],
+    global_roles: isGlobalRole ? [role] : [],
+    clinic_roles: isGlobalRole ? [] : [{ clinic_id: "clinic-1", role }],
     preferences: { theme_mode: "light", color_palette: "default", updated_at: null },
   };
 }
@@ -67,4 +68,13 @@ it("klinik yöneticisine yalnızca klinik yönetimi kartını gösterir", () => 
   expect(screen.getByRole("heading", { name: "Klinik personeli görünümü" })).toBeInTheDocument();
   expect(screen.queryByText("Onay bekleyen vakalar")).not.toBeInTheDocument();
   expect(listCasesMock).not.toHaveBeenCalled();
+});
+
+it("rol bilgisini kullanıcı kartında gösterir ve ayrı yetkiler kartını kaldırır", () => {
+  renderDashboard("technician");
+
+  expect(screen.getByText("Yetki")).toBeInTheDocument();
+  expect(screen.getByText("Laboratuvar teknisyeni")).toBeInTheDocument();
+  expect(screen.queryByText("YETKİLER")).not.toBeInTheDocument();
+  expect(screen.queryByText(/klinik rolü atanmış/i)).not.toBeInTheDocument();
 });

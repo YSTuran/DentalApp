@@ -6,19 +6,26 @@ export interface AuditFilters {
   entityType?: string;
   entityId?: string;
   clinicId?: string;
+  createdFrom?: string;
+  createdBefore?: string;
   limit?: number;
   offset?: number;
 }
 
-export function listAuditEvents(filters: AuditFilters): Promise<AuditEventListResponse> {
+export function listAuditEvents(
+  filters: AuditFilters,
+  signal?: AbortSignal,
+): Promise<AuditEventListResponse> {
   const query = new URLSearchParams();
   if (filters.action) query.set("action", filters.action);
   if (filters.entityType) query.set("entity_type", filters.entityType);
   if (filters.entityId) query.set("entity_id", filters.entityId);
   if (filters.clinicId) query.set("clinic_id", filters.clinicId);
+  if (filters.createdFrom) query.set("created_from", filters.createdFrom);
+  if (filters.createdBefore) query.set("created_before", filters.createdBefore);
   query.set("limit", String(filters.limit ?? 20));
   query.set("offset", String(filters.offset ?? 0));
-  return apiRequest<AuditEventListResponse>(`/api/audit-events?${query.toString()}`);
+  return apiRequest<AuditEventListResponse>(`/api/audit-events?${query.toString()}`, { signal });
 }
 
 export function auditErrorMessage(error: unknown): string {

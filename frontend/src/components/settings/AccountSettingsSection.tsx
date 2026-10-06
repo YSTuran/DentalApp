@@ -1,13 +1,5 @@
-import type { CurrentUser, RoleCode } from "../../types/auth";
-
-const ROLE_LABELS: Record<RoleCode, string> = {
-  system_admin: "Sistem yöneticisi",
-  clinic_manager: "Klinik yöneticisi",
-  managing_dentist: "Yönetici hekim",
-  dentist: "Hekim",
-  clinic_staff: "Klinik personeli / asistan",
-  technician: "Laboratuvar teknisyeni",
-};
+import { userRoleLabels } from "../../lib/role-format";
+import type { CurrentUser } from "../../types/auth";
 
 function initials(fullName: string): string {
   return fullName
@@ -31,11 +23,7 @@ interface AccountSettingsSectionProps {
 }
 
 export function AccountSettingsSection({ user }: AccountSettingsSectionProps) {
-  const roles = [
-    ...user.global_roles.map((role) => ROLE_LABELS[role]),
-    ...user.clinic_roles.map(({ role }) => ROLE_LABELS[role]),
-  ];
-  const uniqueRoles = [...new Set(roles)];
+  const roles = userRoleLabels(user);
 
   return (
     <section className="settings-panel" aria-labelledby="account-settings-title">
@@ -61,7 +49,7 @@ export function AccountSettingsSection({ user }: AccountSettingsSectionProps) {
         <div>
           <dt>Roller</dt>
           <dd className="settings-role-list">
-            {uniqueRoles.map((role) => <span key={role}>{role}</span>)}
+            {roles.map((role) => <span key={role}>{role}</span>)}
           </dd>
         </div>
         <div><dt>Klinik kapsamı</dt><dd>{clinicScope(user)}</dd></div>

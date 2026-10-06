@@ -60,6 +60,10 @@
   background: var(--surface-soft);
 }
 
+.print-root {
+  display: none;
+}
+
 .work-order-heading,
 .operation-attempt-heading {
   display: flex;
@@ -156,22 +160,36 @@
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: A4;
+    margin: 12mm;
   }
 
-  .work-order-print,
-  .work-order-print * {
-    visibility: visible;
+  body.printing-report {
+    background: #fff;
   }
 
-  .work-order-print {
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 100%;
+  body.printing-report > #root {
+    display: none !important;
+  }
+
+  body.printing-report > .print-root {
+    display: block !important;
+  }
+
+  .print-root .work-order-print {
+    position: static;
+    width: auto;
+    padding: 0;
     border: 0;
+    border-radius: 0;
     background: #fff;
     color: #000;
+  }
+
+  .print-root .work-order-print dl div,
+  .print-root .work-order-print > p {
+    break-inside: avoid;
   }
 
   .no-print {

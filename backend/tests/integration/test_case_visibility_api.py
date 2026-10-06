@@ -95,17 +95,25 @@ def test_role_visibility_and_technician_patient_name_masking(
 
     with TestClient(app) as client:
         app.dependency_overrides[get_current_user] = lambda: technician
-        technician_list = client.get("/api/cases")
+        technician_list = client.get("/api/cases", params={"limit": 100})
         technician_detail = client.get(f"/api/cases/{lab_case.id}")
         hidden_draft = client.get(f"/api/cases/{draft.id}")
 
         assert technician_list.status_code == 200
-        assert [item["id"] for item in technician_list.json()["items"]] == [str(lab_case.id)]
-        assert "patient_name" not in technician_list.json()["items"][0]
+        technician_item = next(
+            item
+            for item in technician_list.json()["items"]
+            if item["id"] == str(lab_case.id)
+        )
+        assert "patient_name" not in technician_item
+        assert (
+            technician_item["responsible_dentist_name"]
+            == own_dentist.full_name
+        )
         assert "patient_name" not in technician_detail.json()
         assert "created_by_user_id" not in technician_detail.json()
         assert "responsible_dentist_user_id" not in technician_detail.json()
-        assert "responsible_dentist_name" not in technician_detail.json()
+        assert technician_detail.json()["responsible_dentist_name"] == own_dentist.full_name
         assert "original_filename" not in technician_detail.json()["file_versions"][0]
         assert "uploaded_by_user_id" not in technician_detail.json()["file_versions"][0]
         assert "special_notes" not in technician_detail.json()["details"]

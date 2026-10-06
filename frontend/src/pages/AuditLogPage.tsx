@@ -1,71 +1,20 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
+import { AuditFilters } from "../components/audit/AuditFilters";
 import { AUDIT_LEGEND, auditToneFor } from "../lib/audit-colors";
+import { auditDateBoundaries } from "../lib/audit-date";
+import { EMPTY_AUDIT_FILTERS, type AuditFilterValues } from "../lib/audit-filter-values";
 import { formatAuditReason } from "../lib/audit-format";
-import { type AuditFilters, auditErrorMessage, listAuditEvents } from "../lib/audit-api";
+import { type AuditFilters as AuditQueryFilters, auditErrorMessage, listAuditEvents } from "../lib/audit-api";
+import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS } from "../lib/audit-labels";
 import { listClinics } from "../lib/clinics-api";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { AuditEvent } from "../types/audit";
 import type { Clinic } from "../types/clinic";
 
 const PAGE_SIZE = 15;
-const EMPTY_FILTERS = {
-  action: "",
-  entityType: "",
-  entityId: "",
-  clinicId: "",
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  "auth.session_created": "Oturum açıldı",
-  "auth.session_ended": "Oturum kapatıldı",
-  "account.password_changed": "Parola değiştirildi",
-  "clinic.created": "Klinik oluşturuldu",
-  "clinic.updated": "Klinik güncellendi",
-  "clinic.deactivated": "Klinik pasifleştirildi",
-  "clinic.reactivated": "Klinik etkinleştirildi",
-  "user.created": "Kullanıcı oluşturuldu",
-  "user.updated": "Kullanıcı güncellendi",
-  "user.deactivated": "Kullanıcı pasifleştirildi",
-  "user.reactivated": "Kullanıcı etkinleştirildi",
-  "user.role_assigned": "Rol atandı",
-  "user.role_changed": "Rol veya klinik değiştirildi",
-  "user.role_deactivated": "Rol pasifleştirildi",
-  "user.role_reactivated": "Rol etkinleştirildi",
-  "case.created": "Vaka oluşturuldu",
-  "case.updated": "Vaka bilgileri güncellendi",
-  "case.submitted": "Vaka yönetici onayına gönderildi",
-  "case.cancelled": "Vaka iptal edildi",
-  "case.manager_approved": "Tarama yönetici tarafından onaylandı",
-  "case.manager_revision_requested": "Tarama düzeltmesi istendi",
-  "case.manager_rejected": "Vaka kesin reddedildi",
-  "case.design_submitted": "Tasarım hekim onayına gönderildi",
-  "case.design_approved": "Tasarım hekim tarafından onaylandı",
-  "case.design_revision_requested": "Tasarım düzeltmesi istendi",
-  "case.production_started": "Üretim başlatıldı",
-  "case.production_completed": "Üretim tamamlandı",
-  "case.shipped": "Ürün kargoya verildi",
-  "case.delivery_confirmed": "Şube teslimi doğrulandı",
-  "case.return_received": "İade laboratuvara ulaştı",
-  "case.reproduction_requested": "Yeniden üretim istendi",
-  "case.rescan_requested": "Yeni tarama istendi",
-  "case.file_upload_started": "Dosya yüklemesi başlatıldı",
-  "case.file_uploaded": "Dosya yüklendi",
-  "case.file_upload_failed": "Dosya yüklemesi başarısız oldu",
-  "case.file_upload_expired": "Dosya yükleme süresi doldu",
-  "case.file_downloaded": "Dosya indirildi",
-  "case.file_previewed": "Dosya önizlendi",
-};
-
-const ENTITY_LABELS: Record<string, string> = {
-  clinic: "Klinik",
-  user: "Kullanıcı",
-  user_role_assignment: "Rol ataması",
-  case: "Vaka",
-  case_file_version: "Vaka dosyası",
-  case_upload_session: "Dosya yüklemesi",
-};
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("tr-TR", {
@@ -83,8 +32,7 @@ export function AuditLogPage() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
-  const [filterForm, setFilterForm] = useState(EMPTY_FILTERS);
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filterValues, setFilterValues] = useState<AuditFilterValues>(EMPTY_AUDIT_FILTERS);
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,32 +42,46 @@ export function AuditLogPage() {
     [clinics],
   );
 
-  const loadEvents = useCallback(async () => {
+  const debouncedEntityId = useDebouncedValue(filterValues.entityId.trim(), 400);
+  const queryFilters = useMemo<AuditQueryFilters>(() => ({
+    action: filterValues.action || undefined,
+    entityType: filterValues.entityType || undefined,
+    entityId: debouncedEntityId || undefined,
+    clinicId: filterValues.clinicId || undefined,
+    ...auditDateBoundaries(filterValues.dateFrom, filterValues.dateTo),
+    limit: PAGE_SIZE,
+    offset,
+  }), [
+    debouncedEntityId,
+    filterValues.action,
+    filterValues.clinicId,
+    filterValues.dateFrom,
+    filterValues.dateTo,
+    filterValues.entityType,
+    offset,
+  ]);
+
+  const loadEvents = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     setError(null);
-    const query: AuditFilters = {
-      action: filters.action || undefined,
-      entityType: filters.entityType || undefined,
-      entityId: filters.entityId || undefined,
-      clinicId: filters.clinicId || undefined,
-      limit: PAGE_SIZE,
-      offset,
-    };
     try {
-      const result = await listAuditEvents(query);
+      const result = await listAuditEvents(queryFilters, signal);
       setEvents(result.items);
       setTotal(result.total);
     } catch (loadError) {
+      if (signal.aborted) return;
       setError(auditErrorMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
-  }, [filters, offset]);
+  }, [queryFilters]);
 
   useEffect(() => {
+    const controller = new AbortController();
     // Remote list synchronization is intentionally performed in this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadEvents();
+    void loadEvents(controller.signal);
+    return () => controller.abort();
   }, [loadEvents]);
 
   useEffect(() => {
@@ -136,20 +98,8 @@ export function AuditLogPage() {
     };
   }, []);
 
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setOffset(0);
-    setFilters({
-      action: filterForm.action.trim(),
-      entityType: filterForm.entityType.trim(),
-      entityId: filterForm.entityId.trim(),
-      clinicId: filterForm.clinicId,
-    });
-  }
-
-  function clearFilters() {
-    setFilterForm(EMPTY_FILTERS);
-    setFilters(EMPTY_FILTERS);
+  function changeFilters(nextFilters: AuditFilterValues) {
+    setFilterValues(nextFilters);
     setOffset(0);
   }
 
@@ -173,35 +123,7 @@ export function AuditLogPage() {
         {error !== null && <div className="form-error" role="alert">{error}</div>}
 
         <section className="management-card">
-          <form className="audit-filters" onSubmit={applyFilters}>
-            <label>İşlem
-              <input list="audit-actions" value={filterForm.action} onChange={(event) => setFilterForm({ ...filterForm, action: event.target.value })} placeholder="Örn. user.created" />
-              <datalist id="audit-actions">
-                {Object.entries(ACTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </datalist>
-            </label>
-            <label>Kayıt türü
-              <select value={filterForm.entityType} onChange={(event) => setFilterForm({ ...filterForm, entityType: event.target.value })}>
-                <option value="">Tümü</option>
-                <option value="user">Kullanıcı</option>
-                <option value="user_role_assignment">Rol ataması</option>
-                <option value="clinic">Klinik</option>
-              </select>
-            </label>
-            <label>Klinik
-              <select value={filterForm.clinicId} onChange={(event) => setFilterForm({ ...filterForm, clinicId: event.target.value })}>
-                <option value="">Tümü</option>
-                {clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}
-              </select>
-            </label>
-            <label>Kayıt ID
-              <input value={filterForm.entityId} onChange={(event) => setFilterForm({ ...filterForm, entityId: event.target.value })} placeholder="Tam kayıt kimliği" />
-            </label>
-            <div className="audit-filter-actions">
-              <button type="button" className="secondary-button" onClick={clearFilters}>Temizle</button>
-              <button className="primary-button compact-button">Filtrele</button>
-            </div>
-          </form>
+          <AuditFilters clinics={clinics} value={filterValues} onChange={changeFilters} />
 
           <div className="audit-legend" aria-label="Audit kayıt renkleri">
             <span className="audit-legend-title">Renk anahtarı</span>
@@ -226,9 +148,9 @@ export function AuditLogPage() {
                     return (
                     <tr className={`audit-row audit-tone-${tone}`} key={auditEvent.id}>
                       <td><strong>{formatDate(auditEvent.created_at)}</strong><small>{auditEvent.ip_address ?? "IP bilgisi yok"}</small></td>
-                      <td><span className={`action-chip audit-tone-${tone}`}>{ACTION_LABELS[auditEvent.action] ?? auditEvent.action}</span><small>{auditEvent.action}</small></td>
+                      <td><span className={`action-chip audit-tone-${tone}`}>{AUDIT_ACTION_LABELS[auditEvent.action] ?? auditEvent.action}</span><small>{auditEvent.action}</small></td>
                       <td>{auditEvent.actor_email ?? "Sistem"}</td>
-                      <td><strong>{ENTITY_LABELS[auditEvent.entity_type] ?? auditEvent.entity_type}</strong><small className="audit-entity-id">{auditEvent.entity_id}</small></td>
+                      <td><strong>{AUDIT_ENTITY_LABELS[auditEvent.entity_type] ?? auditEvent.entity_type}</strong><small className="audit-entity-id">{auditEvent.entity_id}</small></td>
                       <td>{auditEvent.clinic_id === null ? "—" : (clinicNames.get(auditEvent.clinic_id) ?? auditEvent.clinic_id)}</td>
                       <td><span className="reason-preview">{formatAuditReason(auditEvent.reason)}</span></td>
                       <td><div className="row-actions"><button onClick={() => setSelectedEvent(auditEvent)}>Detay</button></div></td>
@@ -254,7 +176,7 @@ export function AuditLogPage() {
         <div className="modal-backdrop" role="presentation">
           <section className={`modal-card audit-detail-modal audit-tone-${auditToneFor(selectedEvent.action, selectedEvent.entity_type)}`} role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
             <div className="modal-heading">
-              <div><p className="eyebrow">AUDIT DETAYI</p><h2 id="audit-detail-title">{ACTION_LABELS[selectedEvent.action] ?? selectedEvent.action}</h2></div>
+              <div><p className="eyebrow">AUDIT DETAYI</p><h2 id="audit-detail-title">{AUDIT_ACTION_LABELS[selectedEvent.action] ?? selectedEvent.action}</h2></div>
               <button className="icon-button" onClick={() => setSelectedEvent(null)} aria-label="Pencereyi kapat">×</button>
             </div>
             <dl className="audit-metadata">

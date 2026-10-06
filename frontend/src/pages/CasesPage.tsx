@@ -94,14 +94,14 @@ export function CasesPage() {
           ) : (
             <div className="table-scroll">
               <table className="data-table case-table">
-                <thead><tr><th>Vaka</th><th>Hasta kodu</th><th>Klinik</th>{!technicianOnly && <th>Sorumlu hekim</th>}<th>Durum</th><th>Güncelleme</th><th /></tr></thead>
+                <thead><tr><th>Vaka</th><th>Hasta kodu</th><th>Klinik</th><th>Sorumlu hekim</th><th>Durum</th><th>Güncelleme</th><th /></tr></thead>
                 <tbody>
                   {data?.items.map((item) => (
                     <tr key={item.id}>
                       <td><strong>{item.case_number}</strong><small>{item.patient_name ?? (technicianOnly ? "Hasta adı gizli" : "Hasta adı girilmedi")}</small></td>
                       <td><span className="code-chip">{item.patient_code ?? "—"}</span></td>
                       <td>{item.clinic_name}</td>
-                      {!technicianOnly && <td>{item.responsible_dentist_name}</td>}
+                      <td>{item.responsible_dentist_name}</td>
                       <td><CaseStatusBadge status={item.status} /></td>
                       <td>{formatDate(item.updated_at)}</td>
                       <td><Link className="primary-link" to={`/vakalar/${item.id}`}>İncele</Link></td>

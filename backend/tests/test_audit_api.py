@@ -69,3 +69,23 @@ def test_audit_event_list_rejects_non_admin() -> None:
 
     assert response.status_code == 403
     assert response.json()["detail"] == "insufficient_permissions"
+
+
+def test_audit_event_list_rejects_invalid_date_range() -> None:
+    app.dependency_overrides[get_current_user] = lambda: build_user(RoleCode.SYSTEM_ADMIN)
+    app.dependency_overrides[get_db] = lambda: EmptyAuditSession()
+
+    try:
+        with TestClient(app) as client:
+            response = client.get(
+                "/api/audit-events",
+                params={
+                    "created_from": "2026-10-06T00:00:00Z",
+                    "created_before": "2026-10-05T00:00:00Z",
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "audit_date_range_invalid"
