@@ -102,11 +102,22 @@ def test_role_visibility_and_technician_patient_name_masking(
                 uploaded_by_user_id=own_dentist.id,
             )
         )
+        session.add(
+            CaseStatusHistory(
+                case_id=lab_case.id,
+                from_status=CaseStatus.MANAGER_REVIEW,
+                to_status=CaseStatus.LAB_DESIGN,
+                action="lab_design_started",
+                actor_user_id=own_dentist.id,
+                reason="Gizli Laboratuvar Hastası için not",
+            )
+        )
 
     with TestClient(app) as client:
         app.dependency_overrides[get_current_user] = lambda: technician
         technician_list = client.get("/api/cases", params={"limit": 100})
         technician_detail = client.get(f"/api/cases/{lab_case.id}")
+        technician_history = client.get(f"/api/cases/{lab_case.id}/history")
         hidden_draft = client.get(f"/api/cases/{draft.id}")
 
         assert technician_list.status_code == 200
@@ -130,6 +141,8 @@ def test_role_visibility_and_technician_patient_name_masking(
         assert technician_detail.json()["details"]["extra_fields"] == {}
         assert technician_detail.json()["details"]["material"] == "PET-G"
         assert technician_detail.json()["patient_code"] == "P-LAB"
+        assert "reason" not in technician_history.json()["items"][0]
+        assert "actor_user_id" not in technician_history.json()["items"][0]
         assert hidden_draft.status_code == 403
 
         app.dependency_overrides[get_current_user] = lambda: manager

@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     mesh_validation_stale_minutes: int = 30
     mesh_validation_max_attempts: int = 3
     mesh_validation_max_faces: int = 5_500_000
+    mesh_validation_max_ascii_bytes: int = 67_108_864
     mesh_validation_timeout_seconds: int = 600
 
     email_enabled: bool = True

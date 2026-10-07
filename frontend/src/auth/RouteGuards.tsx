@@ -5,28 +5,28 @@ import { LoadingScreen } from "../components/LoadingScreen";
 import { useAuth } from "./AuthContext";
 
 export function ProtectedRoute() {
-  const { retrySession, status } = useAuth();
+  const { logout, retrySession, status } = useAuth();
 
   if (status === "loading") {
     return <LoadingScreen />;
   }
 
   if (status === "unavailable") {
-    return <AuthUnavailableScreen onRetry={retrySession} />;
+    return <AuthUnavailableScreen onRetry={retrySession} onLogout={logout} />;
   }
 
   return status === "authenticated" ? <Outlet /> : <Navigate to="/giris" replace />;
 }
 
 export function PublicOnlyRoute() {
-  const { retrySession, status } = useAuth();
+  const { logout, retrySession, status } = useAuth();
 
   if (status === "loading") {
     return <LoadingScreen />;
   }
 
   if (status === "unavailable") {
-    return <AuthUnavailableScreen onRetry={retrySession} />;
+    return <AuthUnavailableScreen onRetry={retrySession} onLogout={logout} />;
   }
 
   return status === "unauthenticated" ? <Outlet /> : <Navigate to="/" replace />;

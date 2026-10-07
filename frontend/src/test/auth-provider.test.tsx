@@ -61,6 +61,7 @@ vi.mock("../lib/api", () => ({
 
 import { AuthProvider } from "../auth/AuthProvider";
 import { useAuth } from "../auth/AuthContext";
+import { ApiError } from "../lib/api";
 
 const currentUser: CurrentUser = {
   id: "9b2b1354-2454-4196-859c-daa00f27cf3e",
@@ -92,6 +93,20 @@ function PasswordChangeHarness() {
         }}
       >
         Parolayı güncelle
+      </button>
+    </>
+  );
+}
+
+function SessionHarness() {
+  const { logout, status, user } = useAuth();
+
+  return (
+    <>
+      <span>{status}</span>
+      <span>{user?.email ?? "no-user"}</span>
+      <button type="button" onClick={() => void logout()}>
+        Oturumu kapat
       </button>
     </>
   );
@@ -139,4 +154,38 @@ describe("AuthProvider parola değişikliği", () => {
       );
     });
   });
+
+  it("backend erişilemiyorsa bile Firebase ve yerel oturumu kapatır", async () => {
+    const user = userEvent.setup();
+    apiMocks.destroySession.mockRejectedValueOnce(new TypeError("network down"));
+
+    render(
+      <AuthProvider>
+        <SessionHarness />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Oturumu kapat" }));
+
+    expect(await screen.findByText("unauthenticated")).toBeInTheDocument();
+    expect(screen.getByText("no-user")).toBeInTheDocument();
+    expect(firebaseMocks.signOut).toHaveBeenCalled();
+  });
+
+  it.each(["account_not_provisioned", "account_inactive"])(
+    "%s yanıtını servis kesintisi yerine giriş yapılmamış olarak gösterir",
+    async (detail) => {
+      apiMocks.getCurrentUser.mockRejectedValueOnce(new ApiError(403, detail));
+
+      render(
+        <AuthProvider>
+          <SessionHarness />
+        </AuthProvider>,
+      );
+
+      expect(await screen.findByText("unauthenticated")).toBeInTheDocument();
+      expect(screen.getByText("no-user")).toBeInTheDocument();
+    },
+  );
 });

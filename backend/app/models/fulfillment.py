@@ -10,13 +10,13 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
     UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
+from app.db.encrypted_types import EncryptedText
 from app.models.enums import ReturnReasonCode, ReturnResolution
 
 RETURN_REASON_ENUM = Enum(
@@ -43,7 +43,7 @@ class ProductionRun(UUIDPrimaryKeyMixin, Base):
     started_by_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(EncryptedText("production_runs.notes"), nullable=True)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -75,7 +75,9 @@ class ProductionCompletion(UUIDPrimaryKeyMixin, Base):
     completed_by_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(
+        EncryptedText("production_completions.notes"), nullable=True
+    )
     completed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -101,7 +103,7 @@ class Shipment(UUIDPrimaryKeyMixin, Base):
     shipped_by_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(EncryptedText("shipments.notes"), nullable=True)
     shipped_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -123,7 +125,9 @@ class DeliveryConfirmation(UUIDPrimaryKeyMixin, Base):
     received_by_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(
+        EncryptedText("delivery_confirmations.notes"), nullable=True
+    )
     delivered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -136,17 +140,15 @@ class ReturnReceipt(UUIDPrimaryKeyMixin, Base):
         ForeignKey("shipments.id", ondelete="RESTRICT"), nullable=False, unique=True
     )
     reason_code: Mapped[ReturnReasonCode] = mapped_column(RETURN_REASON_ENUM, nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
-    inspection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str] = mapped_column(EncryptedText("return_receipts.reason"), nullable=False)
+    inspection_notes: Mapped[str | None] = mapped_column(
+        EncryptedText("return_receipts.inspection_notes"), nullable=True
+    )
     received_by_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
-    __table_args__ = (
-        CheckConstraint("length(btrim(reason)) >= 3", name="return_reason_required"),
     )
 
 
@@ -163,7 +165,7 @@ class ReturnDecision(UUIDPrimaryKeyMixin, Base):
         ForeignKey("cases.id", ondelete="RESTRICT"), nullable=True, unique=True
     )
     resolution: Mapped[ReturnResolution] = mapped_column(RETURN_RESOLUTION_ENUM, nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(EncryptedText("return_decisions.reason"), nullable=False)
     decided_by_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
@@ -172,7 +174,6 @@ class ReturnDecision(UUIDPrimaryKeyMixin, Base):
     )
 
     __table_args__ = (
-        CheckConstraint("length(btrim(reason)) >= 3", name="return_decision_reason_required"),
         CheckConstraint(
             "(resolution = 'reproduction' AND reproduction_case_id IS NOT NULL) OR "
             "(resolution = 'rescan' AND reproduction_case_id IS NULL)",

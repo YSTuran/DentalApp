@@ -1,10 +1,11 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Text, func, text
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
+from app.db.encrypted_types import EncryptedText
 from app.models.enums import CaseTransferStatus
 
 TRANSFER_STATUS_ENUM = Enum(
@@ -40,8 +41,12 @@ class CaseTransfer(UUIDPrimaryKeyMixin, Base):
         default=CaseTransferStatus.PENDING,
         server_default=CaseTransferStatus.PENDING.value,
     )
-    request_reason: Mapped[str] = mapped_column(Text, nullable=False)
-    decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    request_reason: Mapped[str] = mapped_column(
+        EncryptedText("case_transfers.request_reason"), nullable=False
+    )
+    decision_reason: Mapped[str | None] = mapped_column(
+        EncryptedText("case_transfers.decision_reason"), nullable=True
+    )
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -59,19 +64,11 @@ class CaseTransfer(UUIDPrimaryKeyMixin, Base):
             name="different_dentists",
         ),
         CheckConstraint(
-            "length(btrim(request_reason)) >= 3",
-            name="request_reason_required",
-        ),
-        CheckConstraint(
             "(status = 'pending' AND decided_by_user_id IS NULL AND decided_at IS NULL "
             "AND decision_reason IS NULL) OR "
             "(status IN ('accepted', 'rejected') AND decided_by_user_id IS NOT NULL "
             "AND decided_at IS NOT NULL)",
             name="decision_state",
-        ),
-        CheckConstraint(
-            "status <> 'rejected' OR length(btrim(decision_reason)) >= 3",
-            name="rejection_reason_required",
         ),
         Index(
             "uq_case_transfers_pending_case",

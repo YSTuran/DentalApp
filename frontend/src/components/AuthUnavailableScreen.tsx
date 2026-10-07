@@ -1,8 +1,9 @@
 interface AuthUnavailableScreenProps {
   onRetry: () => Promise<void>;
+  onLogout: () => Promise<void>;
 }
 
-export function AuthUnavailableScreen({ onRetry }: AuthUnavailableScreenProps) {
+export function AuthUnavailableScreen({ onRetry, onLogout }: AuthUnavailableScreenProps) {
   return (
     <main className="loading-screen" role="alert">
       <section className="service-unavailable-card">
@@ -12,9 +13,14 @@ export function AuthUnavailableScreen({ onRetry }: AuthUnavailableScreenProps) {
           FastAPI veya Firebase servisine şu anda ulaşılamıyor. Oturumunuz sonlandırılmadı;
           servisleri kontrol edip yeniden deneyebilirsiniz.
         </p>
-        <button type="button" className="primary-button" onClick={() => void onRetry()}>
-          Yeniden dene
-        </button>
+        <div className="button-row">
+          <button type="button" className="primary-button" onClick={() => void onRetry()}>
+            Yeniden dene
+          </button>
+          <button type="button" className="secondary-button" onClick={() => void onLogout()}>
+            Bu cihazdaki oturumu kapat
+          </button>
+        </div>
       </section>
     </main>
   );

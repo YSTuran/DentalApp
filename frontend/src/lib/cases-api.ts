@@ -168,6 +168,7 @@ export function startUpload(
   caseId: string,
   file: File,
   kind: "scan" | "design",
+  expectedSha256: string,
 ): Promise<UploadSession> {
   return csrfRequest(`/api/cases/${caseId}/uploads`, {
     method: "POST",
@@ -176,6 +177,7 @@ export function startUpload(
       kind,
       original_filename: file.name,
       expected_size: file.size,
+      expected_sha256: expectedSha256,
     }),
   });
 }

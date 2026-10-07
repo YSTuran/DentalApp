@@ -94,8 +94,8 @@ export interface CaseHistoryItem {
   from_status: CaseStatus | null;
   to_status: CaseStatus;
   action: string;
-  actor_user_id: string;
-  reason: string | null;
+  actor_user_id?: string;
+  reason?: string | null;
   created_at: string;
 }
 

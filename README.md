@@ -169,10 +169,13 @@ yalnızca ilgili kontrol açıkça izin veriyorsa devralabilir.
 
 ## Hasta kimlik bilgilerinin korunması
 
-Hasta adı ve hasta kodu PostgreSQL'de açık metin olarak tutulmaz. FastAPI bu alanları
-AES-256-GCM ile vaka ve alan bağlamına bağlı biçimde şifreler; yetki kontrolü sonrasında
-yalnızca gerekli alanı çözer. Teknisyen hasta kodunu görebilir ancak hasta adını göremez.
-Sistem yöneticisi de yalnızca global yönetici olduğu için hasta adına erişemez.
+Hasta adı, hasta kodu, diş numaraları, özel ve dinamik vaka alanları, özgün dosya
+adları, onay/ret/düzeltme gerekçeleri ile üretim, teslim ve iade serbest notları
+PostgreSQL'de açık metin olarak tutulmaz. FastAPI bu alanları AES-256-GCM ile tablo ve
+alan bağlamına bağlı biçimde şifreler; yetki kontrolü sonrasında yalnızca gerekli alanı
+çözer. Teknisyen hasta kodunu görebilir ancak hasta adını, klinik serbest notlarını veya
+bu bilgileri içerebilecek geçmiş gerekçelerini göremez. Sistem yöneticisi de yalnızca
+global yönetici olduğu için hasta adına erişemez.
 
 Hasta kodu araması, ayrı bir 256 bit anahtarla oluşturulan HMAC kör indeksi üzerinden
 tam eşleşmeyle yapılır. Vaka numarası kısmi aranabilir; hasta kodunun tamamı girilmelidir.
@@ -291,15 +294,16 @@ proje kökünde:
 npm run dev
 ```
 
-Loglar aynı terminalde `FIREBASE`, `API`, `WORKER`, `BEAT` ve `WEB` etiketleriyle
+Loglar aynı terminalde `FIREBASE`, `MAIL`, `API`, `WORKER`, `MESH`, `BEAT` ve `WEB` etiketleriyle
 gösterilir. `Ctrl+C` servisleri kapatır; Firebase kullanıcıları temiz kapanışta
 `firebase-export` klasörüne kaydedilir. PostgreSQL servisinin ve Redis konteynerinin
 önceden çalışıyor olması gerekir.
 
-`WORKER` mesh doğrulama görevlerini yürütür. `BEAT`, Redis geçici olarak ulaşılamazken
-kuyruğa alınamayan doğrulamaları yeniden bulur ve süresi geçen yarım yüklemeleri,
-veritabanı kayıtlarını silmeden `expired` durumuna geçirerek temizler.
-Worker ayrıca bekleyen e-postaları gönderir; Beat e-posta kuyruğunu ve vaka bekleme
+`MESH` yalnızca kaynak yoğun STL doğrulamalarını, `WORKER` ise e-posta ve bakım gibi
+kısa görevleri yürütür. Böylece büyük bir STL bildirimi ve e-posta gönderimini
+bekletmez. `BEAT`, Redis geçici olarak ulaşılamazken kuyruğa alınamayan doğrulamaları
+yeniden bulur ve süresi geçen yarım yüklemeleri, veritabanı kayıtlarını silmeden
+`expired` durumuna geçirerek temizler. Beat ayrıca e-posta kuyruğunu ve vaka bekleme
 sürelerini düzenli aralıklarla tarar.
 
 Teknisyen, üretim iş emrindeki **Etiket yazdır** düğmesiyle 100 × 50 mm Code 128 vaka
@@ -342,6 +346,9 @@ Kod kalitesi ve üretim derlemesi kontrolleri `npm run lint` ve `npm run build`
 komutlarıyla çalıştırılır. CI, Authentication Emulator'ı geçici olarak başlatıp
 Firebase–PostgreSQL eşgüdüm testlerini de çalıştırır; bu nedenle emülatör testleri
 otomatik doğrulamada atlanmaz.
+
+Firebase Emulator testini de içeren yerel tam kontrol, geliştirme servisleri kapalıyken
+`npm run verify:full` ile çalıştırılır. Bu komut emülatörü geçici olarak açıp kapatır.
 
 ## Vaka iş akışı
 
@@ -411,14 +418,17 @@ STL yükleme endpoint'leri:
 Varsayılan toplam dosya sınırı 512 MB, parça sınırı 8 MB ve yarım yükleme ömrü 24
 saattir. Bu değerler `UPLOAD_MAX_BYTES`, `UPLOAD_CHUNK_MAX_BYTES` ve
 `UPLOAD_SESSION_HOURS` ortam değişkenleriyle değiştirilebilir. Yükleme tamamlanmadan
-`case_file_versions` kaydı oluşmaz. Tamamlanan dosya SHA-256 ile doğrulanır, atomik
+`case_file_versions` kaydı oluşmaz. Tarayıcı dosyanın tamamının SHA-256 özetini ayrı
+bir Web Worker içinde hesaplar; devam eden oturum yalnızca boyut ve tam özet aynıysa
+kullanılır. Tamamlanan dosya SHA-256 ile sunucuda yeniden doğrulanır, atomik
 olarak kalıcı klasöre taşınır ve `pending` mesh durumuyla kaydedilir.
 
 Mesh worker; STL'nin okunabilirliğini, boş veya sonlu olmayan geometriyi, açık
 kenarları, kapalı hacmi, winding tutarlılığını, dejenere ve tekrarlanan yüzleri,
 non-manifold kenarları ve PyMeshLab ile gerçek yüzey kesişimlerini denetler. Doğrulama
 izole alt süreçte çalışır; 5,5 milyon üçgen ve 10 dakika sınırı worker'ın tek bir
-dosya yüzünden kilitlenmesini önler.
+dosya yüzünden kilitlenmesini önler. Binary olmayan STL dosyaları ayrıca
+`MESH_VALIDATION_MAX_ASCII_BYTES` boyut sınırına tabidir.
 
 Taslaklar eksik kaydedilebilir; ancak zorunlu alanları veya geçerli mesh sonucu olan
 bir tarama sürümü bulunmayan vaka yönetici onayına gönderilemez. Düzeltme talebinden
@@ -428,7 +438,10 @@ notları, dinamik alanlar, kullanıcı kimlikleri ve özgün dosya adı yer alma
 binary veya ASCII başlığındaki serbest ad bilgisi de kalıcı saklama öncesinde temizlenir.
 
 Vaka detay ekranındaki Three.js tabanlı 3D önizleme STL dosyasını oturum kontrollü
-dosya endpoint'inden alır. Büyük modellerin ayrıştırılması Web Worker içinde yapılır;
+dosya endpoint'inden alır. Sunucu büyük binary STL dosyaları için en fazla 250 bin
+üçgenlik önizleme kopyasını akış halinde üretir; tarayıcı bu nedenle yüzlerce MB'lık
+orijinali indirmek zorunda kalmaz. Büyük ASCII STL önizlemesi kaynak tüketimini
+sınırlamak için reddedilir ve binary STL dönüşümü istenir. Ayrıştırma Web Worker içinde yapılır;
 görüntüleyicide döndürme, kaydırma, yakınlaştırma, görünümü sıfırlama, tel kafes modu,
 sürüm seçimi ve mesh doğrulama özeti bulunur. Önizleme en fazla 250 bin üçgen çizer;
 orijinal STL üretim ve indirme için tam çözünürlükte saklanır.

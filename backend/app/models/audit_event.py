@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UUIDPrimaryKeyMixin
+from app.db.encrypted_types import EncryptedText
 
 
 class AuditEvent(UUIDPrimaryKeyMixin, Base):
@@ -29,7 +30,7 @@ class AuditEvent(UUIDPrimaryKeyMixin, Base):
         ForeignKey("clinics.id", ondelete="RESTRICT"),
         nullable=True,
     )
-    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(EncryptedText("audit_events.reason"), nullable=True)
     before_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     after_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     context_data: Mapped[dict[str, Any]] = mapped_column(

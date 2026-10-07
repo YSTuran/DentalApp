@@ -8,13 +8,14 @@ from app.api.dependencies.authorization import (
     require_clinic_roles,
     require_system_admin,
 )
-from app.models import RoleCode, User, UserClinicAssignment, UserRoleAssignment
+from app.models import DentalCase, RoleCode, User, UserClinicAssignment, UserRoleAssignment
 from app.services.authorization import (
     can_access_clinic,
     has_any_role,
     has_clinic_role,
     has_global_role,
 )
+from app.services.case_management.access import can_view_patient_name
 
 
 def build_user(*assignments: tuple[RoleCode, UUID | None, bool]) -> User:
@@ -94,3 +95,15 @@ def test_clinic_access_rejects_user_from_another_clinic() -> None:
 
     assert error.value.status_code == 403
     assert error.value.detail == "clinic_access_denied"
+
+
+def test_technician_with_stale_clinic_assignment_cannot_view_patient_name() -> None:
+    clinic_id = uuid4()
+    user = build_user((RoleCode.TECHNICIAN, clinic_id, True))
+    dental_case = DentalCase(
+        clinic_id=clinic_id,
+        created_by_user_id=uuid4(),
+        responsible_dentist_user_id=uuid4(),
+    )
+
+    assert can_view_patient_name(user, dental_case) is False

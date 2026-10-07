@@ -22,6 +22,7 @@ from app.schemas.case import (
     CaseUpdateRequest,
     ManagerDecisionRequest,
 )
+from app.services.case_management.access import can_view_patient_name
 from app.services.cases import (
     CaseAccessDeniedError,
     CaseConflictError,
@@ -255,16 +256,26 @@ def cancel_existing_case(
     return case_to_response(case, actor=actor)
 
 
-@router.get("/{case_id}/history", response_model=CaseHistoryListResponse)
+@router.get(
+    "/{case_id}/history",
+    response_model=CaseHistoryListResponse,
+    response_model_exclude_none=True,
+)
 def get_case_history(
     case_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(case_access)],
 ) -> CaseHistoryListResponse:
     try:
-        history = list_case_history(db, actor=actor, case_id=case_id)
+        case, history = list_case_history(db, actor=actor, case_id=case_id)
     except (CaseNotFoundError, CaseAccessDeniedError) as error:
         raise_case_service_error(error)
+    show_sensitive_details = can_view_patient_name(actor, case)
+    items = [CaseStatusHistoryResponse.model_validate(item) for item in history]
+    if not show_sensitive_details:
+        for item in items:
+            item.actor_user_id = None
+            item.reason = None
     return CaseHistoryListResponse(
-        items=[CaseStatusHistoryResponse.model_validate(item) for item in history]
+        items=items
     )

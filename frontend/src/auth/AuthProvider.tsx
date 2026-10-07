@@ -82,6 +82,12 @@ function friendlyAuthError(error: unknown): Error {
   return error instanceof Error ? error : new Error("Beklenmeyen bir hata oluştu.");
 }
 
+function isAccountUnavailable(error: unknown): boolean {
+  return error instanceof ApiError
+    && error.status === 403
+    && ["account_not_provisioned", "account_inactive"].includes(error.detail);
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -95,7 +101,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setStatus("authenticated");
     } catch (error) {
       setUser(null);
-      if (error instanceof ApiError && error.status === 401) {
+      if ((error instanceof ApiError && error.status === 401) || isAccountUnavailable(error)) {
         setStatus("unauthenticated");
       } else {
         console.error("Oturum bilgisi alınamadı", error);
@@ -120,7 +126,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         setUser(null);
-        if (error instanceof ApiError && error.status === 401) {
+        if ((error instanceof ApiError && error.status === 401) || isAccountUnavailable(error)) {
           setStatus("unauthenticated");
         } else {
           console.error("Oturum bilgisi alınamadı", error);
@@ -211,12 +217,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [user]);
 
   const logout = useCallback(async () => {
-    await destroySession();
     try {
-      await signOut(firebaseAuth);
+      await destroySession();
+    } catch (error) {
+      console.warn("Backend oturumu kapatılamadı; yerel oturum temizleniyor.", error);
     } finally {
-      setUser(null);
-      setStatus("unauthenticated");
+      try {
+        await signOut(firebaseAuth);
+      } finally {
+        setUser(null);
+        setStatus("unauthenticated");
+      }
     }
   }, []);
 

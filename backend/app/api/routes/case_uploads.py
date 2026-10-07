@@ -29,6 +29,7 @@ from app.services.cases import (
     start_upload,
 )
 from app.services.local_storage import LocalFileStorage, StorageError
+from app.services.stl_preview import StlPreviewError, preview_path
 from app.services.task_dispatch import enqueue_mesh_validation
 
 router = APIRouter()
@@ -237,6 +238,18 @@ def download_case_file(
             detail="case_file_not_found",
         ) from error
 
+    response_path = path
+    preview_decimated = False
+    if purpose == "preview":
+        try:
+            response_path, preview_decimated = preview_path(
+                path,
+                cache_root=get_settings().storage_path / "previews",
+                content_hash=version.sha256,
+            )
+        except StlPreviewError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
     record_audit_event(
         db,
         action=(
@@ -259,11 +272,12 @@ def download_case_file(
 
     safe_filename = f"{case.case_number}-{version.kind.value}-v{version.version_number}.stl"
     return FileResponse(
-        path,
+        response_path,
         media_type="model/stl",
         filename=safe_filename,
         headers={
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
+            "X-STL-Preview-Decimated": "true" if preview_decimated else "false",
         },
     )

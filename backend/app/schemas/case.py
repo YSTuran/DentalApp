@@ -346,7 +346,7 @@ class CaseStatusHistoryResponse(BaseModel):
     from_status: CaseStatus | None
     to_status: CaseStatus
     action: str
-    actor_user_id: UUID
+    actor_user_id: UUID | None
     reason: str | None
     created_at: datetime
 

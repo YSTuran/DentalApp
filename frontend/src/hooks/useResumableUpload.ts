@@ -39,17 +39,25 @@ function clearSaved(key: string): void {
   }
 }
 
-async function fingerprintFile(file: File): Promise<string> {
-  const sampleSize = 64 * 1024;
-  const first = await file.slice(0, sampleSize).arrayBuffer();
-  const last = await file.slice(Math.max(0, file.size - sampleSize)).arrayBuffer();
-  const metadata = new TextEncoder().encode(`${file.name}:${file.size}:${file.lastModified}`);
-  const joined = new Uint8Array(metadata.length + first.byteLength + last.byteLength);
-  joined.set(metadata, 0);
-  joined.set(new Uint8Array(first), metadata.length);
-  joined.set(new Uint8Array(last), metadata.length + first.byteLength);
-  const digest = await crypto.subtle.digest("SHA-256", joined);
-  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+function hashFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("../workers/file-hash.worker.ts", import.meta.url), {
+      type: "module",
+    });
+    worker.addEventListener("message", (event: MessageEvent<{ digest?: string; error?: string }>) => {
+      worker.terminate();
+      if (event.data.digest) {
+        resolve(event.data.digest);
+      } else {
+        reject(new Error(event.data.error ?? "Dosya özeti hesaplanamadı."));
+      }
+    });
+    worker.addEventListener("error", () => {
+      worker.terminate();
+      reject(new Error("Dosya özeti hesaplanamadı."));
+    });
+    worker.postMessage(file);
+  });
 }
 
 export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") {
@@ -75,30 +83,31 @@ export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") 
     setError(null);
     setPhase("preparing");
     const key = storageKey(userId, caseId, kind);
-    const fingerprint = await fingerprintFile(file);
-    let session: UploadSession | null = null;
-    const saved = readSaved(key);
+    try {
+      const fingerprint = await hashFile(file);
+      let session: UploadSession | null = null;
+      const saved = readSaved(key);
 
-    if (saved?.fingerprint === fingerprint) {
-      try {
-        const existing = await getUpload(caseId, saved.uploadId);
-        if (
-          ["pending", "uploading"].includes(existing.status)
-          && existing.expected_size === file.size
-          && new Date(existing.expires_at).getTime() > Date.now()
-        ) {
-          session = existing;
+      if (saved?.fingerprint === fingerprint) {
+        try {
+          const existing = await getUpload(caseId, saved.uploadId);
+          if (
+            ["pending", "uploading"].includes(existing.status)
+            && existing.expected_size === file.size
+            && existing.expected_sha256 === fingerprint
+            && new Date(existing.expires_at).getTime() > Date.now()
+          ) {
+            session = existing;
+          }
+        } catch {
+          clearSaved(key);
         }
-      } catch {
+      } else if (saved) {
         clearSaved(key);
       }
-    } else if (saved) {
-      clearSaved(key);
-    }
 
-    try {
       if (session === null) {
-        session = await startUpload(caseId, file, kind);
+        session = await startUpload(caseId, file, kind, fingerprint);
         saveUpload(key, { uploadId: session.id, fingerprint });
       }
 
@@ -132,7 +141,7 @@ export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") 
         return null;
       }
       setPhase("error");
-      setError("Yükleme kesildi. Aynı dosyayı seçerek kaldığınız yerden devam edebilirsiniz.");
+      setError("Dosya hazırlanamadı veya yükleme kesildi. Aynı dosyayı seçerek tekrar deneyin.");
       return null;
     } finally {
       controller.current = null;

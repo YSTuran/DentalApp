@@ -130,7 +130,10 @@ def can_view_patient_name(actor: User, case: DentalCase) -> bool:
         case.responsible_dentist_user_id,
     }:
         return True
-    return any(
-        assignment.is_active and assignment.clinic_id == case.clinic_id
-        for assignment in actor.clinic_assignments
+    return has_clinic_role(
+        actor,
+        case.clinic_id,
+        RoleCode.CLINIC_MANAGER,
+        RoleCode.MANAGING_DENTIST,
+        RoleCode.CLINIC_STAFF,
     )

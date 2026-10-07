@@ -22,13 +22,9 @@ class CaseWaitAlert(UUIDPrimaryKeyMixin, Base):
     notification_id: Mapped[UUID] = mapped_column(
         ForeignKey("notifications.id", ondelete="RESTRICT"), nullable=False, unique=True
     )
-    stage_started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    stage_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     threshold_hours: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
         CheckConstraint("threshold_hours > 0", name="threshold_hours_positive"),

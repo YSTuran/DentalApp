@@ -4,6 +4,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import { getCaseFileBuffer } from "../../lib/cases-api";
 import { formatBytes } from "../../lib/case-format";
+import { ApiError } from "../../lib/api";
 import { hasMeshWarnings, meshReportItems } from "../../lib/mesh-report";
 import type { CaseFileVersion } from "../../types/case";
 import { MeshStatusBadge } from "./CaseStatusBadge";
@@ -196,7 +197,11 @@ export function StlViewerPanel({ caseId, files }: Props) {
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
-        setError("STL dosyası görüntülemek için alınamadı.");
+        setError(
+          caught instanceof ApiError && caught.detail === "large_ascii_stl_preview_unavailable"
+            ? "Bu büyük ASCII STL tarayıcı önizlemesine uygun değil. Dosyayı ikili STL biçimine dönüştürün."
+            : "STL dosyası görüntülemek için alınamadı.",
+        );
         setLoading(false);
       });
 

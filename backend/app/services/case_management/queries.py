@@ -134,13 +134,14 @@ def list_case_history(
     *,
     actor: User,
     case_id: UUID,
-) -> list[CaseStatusHistory]:
+) -> tuple[DentalCase, list[CaseStatusHistory]]:
     case = load_case(db, case_id)
     require_case_visibility(actor, case)
-    return list(
+    history = list(
         db.scalars(
             select(CaseStatusHistory)
             .where(CaseStatusHistory.case_id == case_id)
             .order_by(CaseStatusHistory.sequence_number)
         ).all()
     )
+    return case, history

@@ -13,13 +13,21 @@ PROCESSING_TIMEOUT_MINUTES = 10
 MAX_RETRY_SECONDS = 3600
 
 
-def _send_email(item: EmailOutbox, settings: Settings) -> None:
+def _build_email(item: EmailOutbox, settings: Settings) -> EmailMessage:
     message = EmailMessage()
     message["From"] = f"{settings.email_from_name} <{settings.email_from_address}>"
     message["To"] = item.recipient_email
     message["Subject"] = item.subject
+    message_id_domain = settings.email_from_address.rsplit("@", 1)[-1] or "dentalapp.local"
+    message["Message-ID"] = f"<outbox-{item.id}@{message_id_domain}>"
+    message["X-DentalApp-Outbox-ID"] = str(item.id)
     message.set_content(item.body_text)
     message.add_alternative(item.body_html, subtype="html")
+    return message
+
+
+def _send_email(item: EmailOutbox, settings: Settings) -> None:
+    message = _build_email(item, settings)
 
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as client:
         if settings.smtp_starttls:

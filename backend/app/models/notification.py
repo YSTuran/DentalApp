@@ -35,8 +35,7 @@ class Notification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint("length(btrim(title)) > 0", name="title_required"),
         CheckConstraint("length(btrim(message)) > 0", name="message_required"),
         CheckConstraint(
-            "target_path IS NULL OR "
-            "(left(target_path, 1) = '/' AND left(target_path, 2) <> '//')",
+            "target_path IS NULL OR (left(target_path, 1) = '/' AND left(target_path, 2) <> '//')",
             name="target_path_internal",
         ),
         Index(

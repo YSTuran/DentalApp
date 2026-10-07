@@ -4,6 +4,15 @@ import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
 import { UserClinicAddDialog } from "../components/UserClinicAddDialog";
+import { UserTable } from "../components/users/UserTable";
+import {
+  ASSIGNABLE_ROLE_OPTIONS,
+  EMPTY_USER_FORM,
+  FILTER_ROLE_OPTIONS,
+  GLOBAL_ROLES,
+  PAGE_SIZE,
+  ROLE_LABELS,
+} from "../components/users/user-options";
 import { listClinics } from "../lib/clinics-api";
 import {
   addClinicAssignment,
@@ -25,35 +34,6 @@ import type {
   UserCreateInput,
 } from "../types/user-management";
 
-const PAGE_SIZE = 10;
-const GLOBAL_ROLES = new Set<RoleCode>(["technician"]);
-const ROLE_LABELS: Record<RoleCode, string> = {
-  system_admin: "Sistem yöneticisi",
-  dentist: "Hekim",
-  managing_dentist: "Yönetici hekim",
-  clinic_staff: "Klinik personeli / asistan",
-  clinic_manager: "Klinik yöneticisi",
-  technician: "Laboratuvar teknisyeni",
-};
-const ASSIGNABLE_ROLE_OPTIONS: Array<{ value: RoleCode; label: string }> = [
-  { value: "dentist", label: "Hekim" },
-  { value: "managing_dentist", label: "Yönetici hekim" },
-  { value: "clinic_staff", label: "Klinik personeli / asistan" },
-  { value: "clinic_manager", label: "Klinik yöneticisi" },
-  { value: "technician", label: "Laboratuvar teknisyeni" },
-];
-const FILTER_ROLE_OPTIONS: Array<{ value: RoleCode; label: string }> = [
-  ...ASSIGNABLE_ROLE_OPTIONS,
-  { value: "system_admin", label: "Sistem yöneticisi" },
-];
-const EMPTY_FORM: UserCreateInput = {
-  email: "",
-  full_name: "",
-  role: "dentist",
-  clinic_id: "",
-  reason: "",
-};
-
 interface RoleChangeForm extends RoleAssignmentUpdateInput {
   assignment_id: string;
 }
@@ -71,13 +51,6 @@ const EMPTY_CLINIC_ADD_FORM: ClinicAssignmentCreateInput = {
 
 type StatusFilter = "all" | "active" | "inactive";
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const isSystemAdmin = currentUser?.global_roles.includes("system_admin") === true;
@@ -94,7 +67,7 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState<UserCreateInput>(EMPTY_FORM);
+  const [form, setForm] = useState<UserCreateInput>(EMPTY_USER_FORM);
   const [temporaryPassword, setTemporaryPassword] = useState<{
     email: string;
     password: string;
@@ -181,7 +154,7 @@ export function UsersPage() {
   }
 
   function openCreateForm() {
-    setForm({ ...EMPTY_FORM, clinic_id: activeClinics[0]?.id ?? "" });
+    setForm({ ...EMPTY_USER_FORM, clinic_id: activeClinics[0]?.id ?? "" });
     setCreateOpen(true);
     setError(null);
     setNotice(null);
@@ -354,9 +327,6 @@ export function UsersPage() {
   }
 
   const requiresClinic = !GLOBAL_ROLES.has(form.role);
-  const pageStart = total === 0 ? 0 : offset + 1;
-  const pageEnd = Math.min(offset + PAGE_SIZE, total);
-
   return (
     <div className="dashboard-shell">
       <DemoBanner />
@@ -417,110 +387,29 @@ export function UsersPage() {
             </label>
           </div>
 
-          {loading ? (
-            <div className="table-state">Kullanıcılar yükleniyor…</div>
-          ) : users.length === 0 ? (
-            <div className="table-state">Bu filtrelerle eşleşen kullanıcı bulunamadı.</div>
-          ) : (
-            <div className="table-scroll">
-              <table className="data-table user-table">
-                <thead><tr><th>Kullanıcı</th><th>Rol</th><th>Klinikler</th><th>Durum</th><th>Oluşturulma</th>{isSystemAdmin && <th />}</tr></thead>
-                <tbody>
-                  {users.map((managedUser) => {
-                    const activeAssignments = managedUser.role_assignments.filter(
-                      (assignment) => assignment.is_active,
-                    );
-                    const canChangeRole =
-                      managedUser.is_active && editableAssignments(managedUser).length > 0;
-                    const canAddClinic = managedUser.is_active
-                      && activeAssignments.some((assignment) => (
-                        assignment.role !== "system_admin" && assignment.role !== "technician"
-                      ))
-                      && activeClinics.some((clinic) => !managedUser.clinic_assignments.some(
-                        (assignment) => assignment.clinic_id === clinic.id,
-                      ));
-                    return (
-                    <tr key={managedUser.id}>
-                      <td><strong>{managedUser.full_name}</strong><small>{managedUser.email}</small></td>
-                      <td>
-                        <div className="assignment-list">
-                          {activeAssignments.length > 0 ? (
-                            activeAssignments.map((assignment) => (
-                              <span key={assignment.id}>{ROLE_LABELS[assignment.role]}</span>
-                            ))
-                          ) : <span>-</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="assignment-list clinic-assignment-list">
-                          {managedUser.clinic_assignments.length > 0 ? (
-                            managedUser.clinic_assignments.map((assignment) => (
-                              <span
-                                className={assignment.is_active ? "" : "inactive"}
-                                key={assignment.id}
-                              >
-                                {clinicNames.get(assignment.clinic_id) ?? "Bilinmeyen klinik"}
-                                {isSystemAdmin && managedUser.id !== currentUser?.id && (
-                                  <button
-                                    type="button"
-                                    aria-label={`${assignment.is_active ? "Klinik erişimini kaldır" : "Klinik erişimini yeniden etkinleştir"}: ${clinicNames.get(assignment.clinic_id) ?? "Bilinmeyen klinik"}`}
-                                    onClick={() => {
-                                      setClinicStatusTarget({ user: managedUser, assignment });
-                                      setClinicStatusReason("");
-                                      setError(null);
-                                    }}
-                                  >
-                                    {assignment.is_active ? "Kaldır" : "Etkinleştir"}
-                                  </button>
-                                )}
-                              </span>
-                            ))
-                          ) : <span>-</span>}
-                        </div>
-                      </td>
-                      <td><span className={`state-chip ${managedUser.is_active ? "active" : "inactive"}`}>{managedUser.is_active ? "Aktif" : "Pasif"}</span></td>
-                      <td><small>{formatDate(managedUser.created_at)}</small></td>
-                      {isSystemAdmin && <td>
-                        <div className="row-actions">
-                          {managedUser.id === currentUser?.id ? (
-                            <span className="current-account-label">Mevcut hesap</span>
-                          ) : (
-                            <>
-                              {canChangeRole && (
-                                <button onClick={() => openRoleForm(managedUser)}>
-                                  Rolü düzenle
-                                </button>
-                              )}
-                              {canAddClinic && (
-                                <button onClick={() => openClinicAddForm(managedUser)}>
-                                  Klinik ekle
-                                </button>
-                              )}
-                              <button
-                                className={managedUser.is_active ? "danger-action" : "success-action"}
-                                onClick={() => { setStatusTarget(managedUser); setStatusReason(""); setError(null); }}
-                              >
-                                {managedUser.is_active ? "Pasife al" : "Etkinleştir"}
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>}
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="pagination-row">
-            <span>{pageStart}–{pageEnd} / {total}</span>
-            <div>
-              <button className="secondary-button" disabled={offset === 0 || loading} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>Önceki</button>
-              <button className="secondary-button" disabled={offset + PAGE_SIZE >= total || loading} onClick={() => setOffset(offset + PAGE_SIZE)}>Sonraki</button>
-            </div>
-          </div>
+          <UserTable
+            users={users}
+            clinics={activeClinics}
+            clinicNames={clinicNames}
+            currentUserId={currentUser?.id}
+            isSystemAdmin={isSystemAdmin}
+            loading={loading}
+            total={total}
+            offset={offset}
+            onOffsetChange={setOffset}
+            onRoleEdit={openRoleForm}
+            onClinicAdd={openClinicAddForm}
+            onClinicStatus={(user, assignment) => {
+              setClinicStatusTarget({ user, assignment });
+              setClinicStatusReason("");
+              setError(null);
+            }}
+            onUserStatus={(user) => {
+              setStatusTarget(user);
+              setStatusReason("");
+              setError(null);
+            }}
+          />
         </section>
       </main>
 

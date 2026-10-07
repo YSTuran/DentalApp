@@ -31,4 +31,5 @@ def case_to_response(case: DentalCase, *, actor: User) -> CaseResponse:
             file_version.uploaded_by_user_id = None
         for approval in response.approvals:
             approval.actor_user_id = None
+            approval.reason = None
     return response

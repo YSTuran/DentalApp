@@ -15,16 +15,15 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     String,
-    Text,
     UniqueConstraint,
     false,
     func,
-    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.db.encrypted_types import EncryptedJSON, EncryptedText
 from app.models.enums import (
     CaseApprovalType,
     CaseDecision,
@@ -155,25 +154,20 @@ class CaseDetail(TimestampMixin, Base):
     appliance_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     material: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tooth_numbers: Mapped[list[str]] = mapped_column(
-        JSONB,
+        EncryptedJSON("case_details.tooth_numbers"),
         nullable=False,
         default=list,
-        server_default=text("'[]'::jsonb"),
     )
-    special_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    special_notes: Mapped[str | None] = mapped_column(
+        EncryptedText("case_details.special_notes"), nullable=True
+    )
     extra_fields: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
+        EncryptedJSON("case_details.extra_fields"),
         nullable=False,
         default=dict,
-        server_default=text("'{}'::jsonb"),
     )
 
     case: Mapped[DentalCase] = relationship(back_populates="details")
-
-    __table_args__ = (
-        CheckConstraint("jsonb_typeof(tooth_numbers) = 'array'", name="tooth_numbers_array"),
-        CheckConstraint("jsonb_typeof(extra_fields) = 'object'", name="extra_fields_object"),
-    )
 
 
 class CaseFileVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -184,7 +178,9 @@ class CaseFileVersion(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     kind: Mapped[CaseFileKind] = mapped_column(CASE_FILE_KIND_ENUM, nullable=False)
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    original_filename: Mapped[str] = mapped_column(
+        EncryptedText("case_file_versions.original_filename"), nullable=False
+    )
     storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -246,7 +242,9 @@ class CaseUploadSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
     kind: Mapped[CaseFileKind] = mapped_column(CASE_FILE_KIND_ENUM, nullable=False)
-    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    original_filename: Mapped[str] = mapped_column(
+        EncryptedText("case_upload_sessions.original_filename"), nullable=False
+    )
     expected_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
     received_size: Mapped[int] = mapped_column(
         BigInteger,
@@ -309,13 +307,13 @@ class CaseApproval(UUIDPrimaryKeyMixin, Base):
     )
     approval_type: Mapped[CaseApprovalType] = mapped_column(CASE_APPROVAL_TYPE_ENUM, nullable=False)
     decision: Mapped[CaseDecision] = mapped_column(CASE_DECISION_ENUM, nullable=False)
-    file_version_id: Mapped[UUID] = mapped_column(
-        nullable=False
-    )
+    file_version_id: Mapped[UUID] = mapped_column(nullable=False)
     actor_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(
+        EncryptedText("case_approvals.reason"), nullable=True
+    )
     is_self_approval: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -344,8 +342,7 @@ class CaseApproval(UUIDPrimaryKeyMixin, Base):
             name="uq_case_approval_file_decision",
         ),
         CheckConstraint(
-            "decision = 'approved' OR "
-            "(reason IS NOT NULL AND length(btrim(reason)) >= 3)",
+            "decision = 'approved' OR reason IS NOT NULL",
             name="decision_reason_required",
         ),
         CheckConstraint(
@@ -374,7 +371,9 @@ class CaseStatusHistory(UUIDPrimaryKeyMixin, Base):
     actor_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
-    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(
+        EncryptedText("case_status_history.reason"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

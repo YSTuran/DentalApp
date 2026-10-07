@@ -52,10 +52,18 @@ def inspect_stl(path: Path) -> MeshInspectionResult:
         raise MeshInspectionError("STL depolama dosyası bulunamadı.")
 
     declared_face_count = _declared_binary_face_count(path)
-    maximum_faces = get_settings().mesh_validation_max_faces
+    settings = get_settings()
+    maximum_faces = settings.mesh_validation_max_faces
     if declared_face_count is not None and declared_face_count > maximum_faces:
         raise MeshResourceLimitError(
             f"STL üçgen sayısı güvenli doğrulama sınırını aşıyor ({maximum_faces})."
+        )
+    if (
+        declared_face_count is None
+        and path.stat().st_size > settings.mesh_validation_max_ascii_bytes
+    ):
+        raise MeshResourceLimitError(
+            "ASCII STL güvenli doğrulama boyutunu aşıyor; dosyayı ikili STL biçimine dönüştürün."
         )
 
     try:
@@ -72,6 +80,10 @@ def inspect_stl(path: Path) -> MeshInspectionResult:
         raise MeshInspectionError("STL mesh geometrisi üçgenlerden oluşmuyor.")
     if len(vertices) == 0 or len(faces) == 0:
         raise MeshInspectionError("STL mesh geometrisi boş.")
+    if len(faces) > maximum_faces:
+        raise MeshResourceLimitError(
+            f"STL üçgen sayısı güvenli doğrulama sınırını aşıyor ({maximum_faces})."
+        )
     if int(faces.min()) < 0 or int(faces.max()) >= len(vertices):
         raise MeshInspectionError("STL yüzeyleri geçersiz köşe indeksleri içeriyor.")
 
