@@ -4,6 +4,7 @@ import { ApiError, apiRequest, csrfRequest } from "./api";
 interface ClinicListFilters {
   search?: string;
   isActive?: boolean;
+  clinicId?: string;
   limit?: number;
   offset?: number;
 }
@@ -19,6 +20,7 @@ export function listClinics(filters: ClinicListFilters): Promise<ClinicListRespo
   const query = new URLSearchParams();
   if (filters.search) query.set("search", filters.search);
   if (filters.isActive !== undefined) query.set("is_active", String(filters.isActive));
+  if (filters.clinicId) query.set("clinic_id", filters.clinicId);
   query.set("limit", String(filters.limit ?? 20));
   query.set("offset", String(filters.offset ?? 0));
   return apiRequest<ClinicListResponse>(`/api/clinics?${query.toString()}`);

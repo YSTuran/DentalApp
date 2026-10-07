@@ -6,6 +6,9 @@ import type {
   CaseLifecycle,
   CaseListResponse,
   CaseStatus,
+  CaseTransfer,
+  CaseTransferOption,
+  CaseTransferStatus,
   CaseWritePayload,
   DentalCase,
   UploadCompleteResponse,
@@ -16,6 +19,7 @@ interface CaseListFilters {
   status?: CaseStatus | "";
   lifecycle?: CaseLifecycle | "";
   search?: string;
+  clinicId?: string;
   limit?: number;
   offset?: number;
 }
@@ -30,7 +34,14 @@ function queryString(values: Record<string, string | number | undefined>): strin
 }
 
 export function listCases(filters: CaseListFilters = {}): Promise<CaseListResponse> {
-  return apiRequest(`/api/cases${queryString({ ...filters })}`);
+  return apiRequest(`/api/cases${queryString({
+    status: filters.status,
+    lifecycle: filters.lifecycle,
+    search: filters.search,
+    clinic_id: filters.clinicId,
+    limit: filters.limit,
+    offset: filters.offset,
+  })}`);
 }
 
 export function getCase(caseId: string): Promise<DentalCase> {
@@ -43,6 +54,41 @@ export function getCaseHistory(caseId: string): Promise<{ items: CaseHistoryItem
 
 export function getCaseCreateOptions(): Promise<CaseCreateOptions> {
   return apiRequest("/api/cases/create-options");
+}
+
+export function getCaseTransfers(caseId: string): Promise<{ items: CaseTransfer[] }> {
+  return apiRequest(`/api/cases/${caseId}/transfers`);
+}
+
+export function getCaseTransferOptions(
+  caseId: string,
+): Promise<{ items: CaseTransferOption[] }> {
+  return apiRequest(`/api/cases/${caseId}/transfer-options`);
+}
+
+export function requestCaseTransfer(
+  caseId: string,
+  toDentistUserId: string,
+  reason: string,
+): Promise<CaseTransfer> {
+  return csrfRequest(`/api/cases/${caseId}/transfers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to_dentist_user_id: toDentistUserId, reason }),
+  });
+}
+
+export function decideCaseTransfer(
+  caseId: string,
+  transferId: string,
+  decision: Exclude<CaseTransferStatus, "pending">,
+  reason: string | null,
+): Promise<CaseTransfer> {
+  return csrfRequest(`/api/cases/${caseId}/transfers/${transferId}/decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision, reason }),
+  });
 }
 
 export function createCase(payload: CaseWritePayload): Promise<DentalCase> {

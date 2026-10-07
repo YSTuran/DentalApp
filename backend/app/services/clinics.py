@@ -70,13 +70,15 @@ def list_visible_clinics(
     *,
     actor: User,
     is_active: bool | None,
+    clinic_id: UUID | None,
     search: str | None,
     limit: int,
     offset: int,
 ) -> tuple[list[Clinic], int]:
     filters = []
 
-    if not has_global_role(actor, RoleCode.SYSTEM_ADMIN):
+    is_system_admin = has_global_role(actor, RoleCode.SYSTEM_ADMIN)
+    if not is_system_admin:
         clinic_ids = {
             assignment.clinic_id
             for assignment in actor.role_assignments
@@ -86,7 +88,11 @@ def list_visible_clinics(
         }
         if not clinic_ids:
             raise ClinicAccessDeniedError
+        if clinic_id is not None and clinic_id not in clinic_ids:
+            raise ClinicAccessDeniedError
         filters.append(Clinic.id.in_(clinic_ids))
+    if clinic_id is not None:
+        filters.append(Clinic.id == clinic_id)
 
     if is_active is not None:
         filters.append(Clinic.is_active.is_(is_active))

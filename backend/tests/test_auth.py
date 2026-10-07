@@ -104,6 +104,7 @@ def test_session_sets_http_only_cookie(monkeypatch) -> None:
     assert response.json()["preferences"] == {
         "theme_mode": "light",
         "color_palette": "default",
+        "active_clinic_id": None,
         "updated_at": None,
     }
     assert "dentalapp_session=" in response.headers["set-cookie"]

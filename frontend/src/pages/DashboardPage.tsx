@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { NotificationBell } from "../components/NotificationBell";
+import { ActiveClinicSelector } from "../components/ActiveClinicSelector";
 import { ManagerApprovalCard } from "../components/dashboard/ManagerApprovalCard";
 import { userRoleLabels } from "../lib/role-format";
 
@@ -50,6 +51,7 @@ export function DashboardPage() {
           </div>
         </div>
         <div className="topbar-actions">
+          <ActiveClinicSelector />
           <NotificationBell />
           <Link className="text-link" to="/ayarlar">Ayarlar</Link>
           <button className="secondary-button" onClick={handleLogout} disabled={loggingOut}>
@@ -83,6 +85,7 @@ export function DashboardPage() {
             <p>Rolünüze açık vaka kuyruğunu, STL sürümlerini ve işlem geçmişini tek yerden takip edin.</p>
             <div className="dashboard-management-links">
               <Link className="primary-link" to="/vakalar">Vakalara git</Link>
+              <Link className="primary-link" to="/raporlar">Raporları aç</Link>
               {user.clinic_roles.some((assignment) => ["managing_dentist", "dentist", "clinic_staff"].includes(assignment.role)) && (
                 <Link className="primary-link" to="/vakalar/yeni">Yeni vaka oluştur</Link>
               )}

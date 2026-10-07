@@ -22,6 +22,12 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
   `responsible_dentist_user_id` tutulur.
 - Tasarım onayını yalnızca sorumlu hekim verir. Kaydı klinik personelinin açmış olması
   bu yetkiyi personele vermez.
+- Birden fazla klinikte aktif klinik rolü alabilen tek rol klinik yöneticisidir.
+  Hekim, yönetici hekim ve klinik personeli aynı anda tek kliniğe bağlıdır.
+- Klinik yöneticisi veya yönetici hekim aktif bir vaka için aynı klinikteki başka bir
+  hekime gerekçeli devir talebi açabilir. Sorumlu hekim yalnızca hedef hekim kabul
+  ettiğinde değişir; hedef hekim talebi reddedebilir. Bekleyen talep hedef hekime vaka
+  görünürlüğü sağlar. Devir geçmişi silinmez ve verilen karar değiştirilemez.
 - Yönetici hekim kendi açtığı veya sorumlu hekimi olduğu vakayı onaylayabilir. Bu durum
   `is_manager_self_approval` olarak audit kaydında işaretlenir.
 - Yönetici onayı tarama sürümünü, hekim tasarım onayı tasarım sürümünü kilitler.
@@ -43,6 +49,8 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
   role tekil bir uyarı oluşturulur.
 - Bildirimi okundu olarak işaretlemek veya bağlı vaka sayfasını açmak bildirimi aktif
   listeden kaldırır; kayıt veritabanından silinmez.
+- Operasyon raporları rol ve klinik görünürlüğünü aynen uygular; hasta kimliği taşımadan
+  vaka dağılımı, iş yükü, iade/yeniden üretim ve aşama sürelerini toplulaştırır.
 
 Vaka, dosya sürümü, onay ve durum geçmişi tabloları migration ile oluşturulmuştur.
 Onaylanan dosya sürümlerinin kilidi veritabanı trigger'ıyla korunur; onay ve geçmiş

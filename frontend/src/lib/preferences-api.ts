@@ -12,3 +12,13 @@ export function updateThemePreferences(
     body: JSON.stringify(preferences),
   });
 }
+
+export function updateActiveClinic(activeClinicId: string | null): Promise<ThemePreferences> {
+  return csrfRequest<ThemePreferences>("/api/account/preferences", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ active_clinic_id: activeClinicId }),
+  });
+}

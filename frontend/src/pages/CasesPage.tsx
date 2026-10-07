@@ -27,18 +27,25 @@ export function CasesPage() {
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeClinicId = user?.preferences.active_clinic_id ?? undefined;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setData(await listCases({ lifecycle, search, limit: pageSize, offset }));
+      setData(await listCases({
+        lifecycle,
+        search,
+        clinicId: activeClinicId,
+        limit: pageSize,
+        offset,
+      }));
     } catch {
       setError("Vakalar yüklenemedi. API bağlantısını kontrol edip tekrar deneyin.");
     } finally {
       setLoading(false);
     }
-  }, [lifecycle, offset, search]);
+  }, [activeClinicId, lifecycle, offset, search]);
 
   useEffect(() => {
     // The request synchronizes this route with the current filters.

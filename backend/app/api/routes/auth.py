@@ -43,7 +43,15 @@ def serialize_user(user: User) -> CurrentUserResponse:
         assignment.role for assignment in active_assignments if assignment.clinic_id is None
     ]
     clinic_roles = [
-        ClinicRoleResponse(clinic_id=assignment.clinic_id, role=assignment.role)
+        ClinicRoleResponse(
+            clinic_id=assignment.clinic_id,
+            clinic_name=(
+                assignment.__dict__["clinic"].name
+                if assignment.__dict__.get("clinic") is not None
+                else "Klinik"
+            ),
+            role=assignment.role,
+        )
         for assignment in active_assignments
         if assignment.clinic_id is not None
     ]

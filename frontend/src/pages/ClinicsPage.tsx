@@ -48,6 +48,7 @@ export function ClinicsPage() {
   const [statusTarget, setStatusTarget] = useState<Clinic | null>(null);
   const [statusReason, setStatusReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const activeClinicId = user?.preferences.active_clinic_id ?? undefined;
 
   const loadClinics = useCallback(async () => {
     setLoading(true);
@@ -57,6 +58,7 @@ export function ClinicsPage() {
         search,
         isActive:
           statusFilter === "all" ? undefined : statusFilter === "active",
+        clinicId: activeClinicId,
         limit: PAGE_SIZE,
         offset,
       });
@@ -67,7 +69,7 @@ export function ClinicsPage() {
     } finally {
       setLoading(false);
     }
-  }, [offset, search, statusFilter]);
+  }, [activeClinicId, offset, search, statusFilter]);
 
   useEffect(() => {
     // Fetching remote data is the synchronization performed by this effect.

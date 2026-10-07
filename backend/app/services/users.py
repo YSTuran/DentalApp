@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Clinic, RoleCode, User, UserRoleAssignment
+from app.models import Clinic, RoleCode, User, UserPreference, UserRoleAssignment
 from app.schemas.user_management import (
     RoleAssignmentCreateRequest,
     RoleAssignmentUpdateRequest,
@@ -109,6 +109,61 @@ def _validate_role_scope(
 def _reject_system_admin_assignment(role: RoleCode) -> None:
     if role == RoleCode.SYSTEM_ADMIN:
         raise UserValidationError("system_admin_assignment_not_allowed")
+
+
+def _validate_multi_clinic_assignment(
+    db: Session,
+    *,
+    user_id: UUID,
+    role: RoleCode,
+    clinic_id: UUID | None,
+    exclude_assignment_id: UUID | None = None,
+) -> None:
+    if clinic_id is None:
+        return
+    statement = select(
+        UserRoleAssignment.id,
+        UserRoleAssignment.role,
+        UserRoleAssignment.clinic_id,
+    ).where(
+        UserRoleAssignment.user_id == user_id,
+        UserRoleAssignment.is_active.is_(True),
+        UserRoleAssignment.clinic_id.is_not(None),
+    )
+    if exclude_assignment_id is not None:
+        statement = statement.where(UserRoleAssignment.id != exclude_assignment_id)
+    assignments = list(db.execute(statement).all())
+    clinic_ids = {item.clinic_id for item in assignments} | {clinic_id}
+    roles = {item.role for item in assignments} | {role}
+    if len(clinic_ids) > 1 and roles != {RoleCode.CLINIC_MANAGER}:
+        raise UserValidationError("multi_clinic_role_not_allowed")
+
+
+def _raise_role_integrity_error(error: IntegrityError) -> None:
+    constraint_name = getattr(
+        getattr(getattr(error, "orig", None), "diag", None), "constraint_name", None
+    )
+    if constraint_name == "ck_user_role_assignments_multi_clinic":
+        raise UserValidationError("multi_clinic_role_not_allowed") from error
+    raise UserConflictError("role_assignment_exists") from error
+
+
+def _clear_invalid_active_clinic(db: Session, user: User) -> bool:
+    preference = db.get(UserPreference, user.id)
+    if preference is None or preference.active_clinic_id is None:
+        return False
+    still_managed = db.scalar(
+        select(UserRoleAssignment.id).where(
+            UserRoleAssignment.user_id == user.id,
+            UserRoleAssignment.is_active.is_(True),
+            UserRoleAssignment.role == RoleCode.CLINIC_MANAGER,
+            UserRoleAssignment.clinic_id == preference.active_clinic_id,
+        )
+    )
+    if still_managed is None:
+        preference.active_clinic_id = None
+        return True
+    return False
 
 
 def _active_system_admin_count(db: Session) -> int:
@@ -452,6 +507,12 @@ def assign_role(
         raise UserConflictError("user_inactive")
     _reject_system_admin_assignment(payload.role)
     _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
+    _validate_multi_clinic_assignment(
+        db,
+        user_id=user.id,
+        role=payload.role,
+        clinic_id=payload.clinic_id,
+    )
 
     existing = db.scalar(
         select(UserRoleAssignment).where(
@@ -494,7 +555,7 @@ def assign_role(
         db.commit()
     except IntegrityError as error:
         db.rollback()
-        raise UserConflictError("role_assignment_exists") from error
+        _raise_role_integrity_error(error)
     except Exception:
         db.rollback()
         raise
@@ -534,6 +595,13 @@ def replace_role_assignment(
 
     _reject_system_admin_assignment(payload.role)
     _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
+    _validate_multi_clinic_assignment(
+        db,
+        user_id=user.id,
+        role=payload.role,
+        clinic_id=payload.clinic_id,
+        exclude_assignment_id=current_assignment.id,
+    )
     if (
         current_assignment.role == payload.role
         and current_assignment.clinic_id == payload.clinic_id
@@ -573,6 +641,7 @@ def replace_role_assignment(
             replacement.is_active = True
 
         db.flush()
+        active_clinic_cleared = _clear_invalid_active_clinic(db, user)
         record_audit_event(
             db,
             action="user.role_changed",
@@ -593,13 +662,14 @@ def replace_role_assignment(
                 "user_id": user.id,
                 "replacement_reactivated": previous_replacement_status is False,
                 "replacement_already_active": previous_replacement_status is True,
+                "active_clinic_cleared": active_clinic_cleared,
             },
             request=request,
         )
         db.commit()
     except IntegrityError as error:
         db.rollback()
-        raise UserConflictError("role_assignment_exists") from error
+        _raise_role_integrity_error(error)
     except Exception:
         db.rollback()
         raise
@@ -635,6 +705,13 @@ def change_role_status(
         if not user.is_active:
             raise UserConflictError("user_inactive")
         _validate_role_scope(db, role=assignment.role, clinic_id=assignment.clinic_id)
+        _validate_multi_clinic_assignment(
+            db,
+            user_id=user.id,
+            role=assignment.role,
+            clinic_id=assignment.clinic_id,
+            exclude_assignment_id=assignment.id,
+        )
     elif assignment.role == RoleCode.SYSTEM_ADMIN and user.is_active:
         if user.id == actor.id:
             raise UserConflictError("cannot_remove_own_system_admin_role")
@@ -646,6 +723,7 @@ def change_role_status(
     try:
         assignment.is_active = is_active
         db.flush()
+        active_clinic_cleared = _clear_invalid_active_clinic(db, user)
         record_audit_event(
             db,
             action="user.role_reactivated" if is_active else "user.role_deactivated",
@@ -656,10 +734,17 @@ def change_role_status(
             reason=reason,
             before={"is_active": previous_status},
             after={"is_active": is_active},
-            context={"source": "api", "user_id": user.id},
+            context={
+                "source": "api",
+                "user_id": user.id,
+                "active_clinic_cleared": active_clinic_cleared,
+            },
             request=request,
         )
         db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        _raise_role_integrity_error(error)
     except Exception:
         db.rollback()
         raise

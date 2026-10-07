@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 import { listClinics } from "../lib/clinics-api";
-import { changeRoleAssignment, listUsers } from "../lib/users-api";
+import { addRoleAssignment, changeRoleAssignment, listUsers } from "../lib/users-api";
 import { UsersPage } from "../pages/UsersPage";
 import type { CurrentUser } from "../types/auth";
 
@@ -16,6 +16,7 @@ vi.mock("../lib/clinics-api", () => ({
 vi.mock("../lib/users-api", () => ({
   listUsers: vi.fn(),
   createUser: vi.fn(),
+  addRoleAssignment: vi.fn(),
   changeRoleAssignment: vi.fn(),
   changeUserStatus: vi.fn(),
   userErrorMessage: vi.fn(() => "İşlem tamamlanamadı."),
@@ -143,7 +144,7 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("aktif rolü ve kliniği tek işlemle değiştirebilir", async () => {
+  it("aktif rolü değiştirebilir ve ek klinik yöneticiliği atayabilir", async () => {
     const clinicA = {
       id: "9acfa1ce-cb10-4e29-9bb3-aebdd62f823f",
       code: "K001",
@@ -201,6 +202,14 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
       created_at: "2026-09-28T10:05:00Z",
       updated_at: "2026-09-28T10:05:00Z",
     });
+    vi.mocked(addRoleAssignment).mockResolvedValue({
+      id: "7953100d-92f5-40e3-89af-1a65e4518787",
+      role: "clinic_manager",
+      clinic_id: clinicB.id,
+      is_active: true,
+      created_at: "2026-09-28T10:06:00Z",
+      updated_at: "2026-09-28T10:06:00Z",
+    });
 
     const user = userEvent.setup();
     render(
@@ -227,6 +236,20 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
         role: "dentist",
         clinic_id: clinicB.id,
         reason: "Görev yeri değişti",
+      });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Rol ekle" }));
+    const addDialog = screen.getByRole("dialog", { name: "Rol ekle" });
+    await user.selectOptions(within(addDialog).getByLabelText("Klinik"), clinicB.id);
+    await user.type(within(addDialog).getByLabelText(/Atama gerekçesi/), "İkinci şube");
+    await user.click(within(addDialog).getByRole("button", { name: "Rolü ekle" }));
+
+    await waitFor(() => {
+      expect(addRoleAssignment).toHaveBeenCalledWith(managedUserId, {
+        role: "clinic_manager",
+        clinic_id: clinicB.id,
+        reason: "İkinci şube",
       });
     });
   });

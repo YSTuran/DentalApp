@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { NotificationBell } from "./NotificationBell";
+import { ActiveClinicSelector } from "./ActiveClinicSelector";
 
 export function ManagementHeader() {
   const { logout, user } = useAuth();
@@ -19,9 +20,11 @@ export function ManagementHeader() {
       >
         <NavLink to="/yonetim/klinikler">Klinikler</NavLink>
         <NavLink to="/yonetim/kullanicilar">Kullanıcılar</NavLink>
+        <NavLink to="/raporlar">Raporlar</NavLink>
         {isSystemAdmin && <NavLink to="/yonetim/audit-kayitlari">Audit kayıtları</NavLink>}
       </nav>
       <div className="topbar-actions">
+        <ActiveClinicSelector />
         <NotificationBell />
         <Link className="text-link" to="/">Panel</Link>
         <Link className="text-link" to="/ayarlar">Ayarlar</Link>

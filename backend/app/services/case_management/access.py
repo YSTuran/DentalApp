@@ -1,8 +1,16 @@
 from uuid import UUID
 
-from sqlalchemy import or_
+from sqlalchemy import exists, or_, select
 
-from app.models import CaseStatus, DentalCase, RoleCode, User, UserRoleAssignment
+from app.models import (
+    CaseStatus,
+    CaseTransfer,
+    CaseTransferStatus,
+    DentalCase,
+    RoleCode,
+    User,
+    UserRoleAssignment,
+)
 from app.services.authorization import has_global_role
 from app.services.case_management.exceptions import CaseAccessDeniedError
 
@@ -62,6 +70,13 @@ def case_visibility_filter(actor: User):
             or_(
                 DentalCase.created_by_user_id == actor.id,
                 DentalCase.responsible_dentist_user_id == actor.id,
+                exists(
+                    select(CaseTransfer.id).where(
+                        CaseTransfer.case_id == DentalCase.id,
+                        CaseTransfer.to_dentist_user_id == actor.id,
+                        CaseTransfer.status == CaseTransferStatus.PENDING,
+                    )
+                ),
             )
         )
     if has_role(actor, RoleCode.TECHNICIAN):
@@ -82,10 +97,15 @@ def require_case_visibility(actor: User, case: DentalCase) -> None:
         case.created_by_user_id,
         case.responsible_dentist_user_id,
     }
+    pending_transfer_access = has_role(actor, RoleCode.DENTIST) and any(
+        transfer.to_dentist_user_id == actor.id
+        and transfer.status == CaseTransferStatus.PENDING
+        for transfer in case.transfers
+    )
     technician_access = has_role(actor, RoleCode.TECHNICIAN) and (
         case.status in LAB_VISIBLE_STATUSES
     )
-    if not (clinic_access or dentist_access or technician_access):
+    if not (clinic_access or dentist_access or pending_transfer_access or technician_access):
         raise CaseAccessDeniedError
 
 

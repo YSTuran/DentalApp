@@ -17,6 +17,7 @@ class CsrfResponse(BaseModel):
 
 class ClinicRoleResponse(BaseModel):
     clinic_id: UUID
+    clinic_name: str
     role: RoleCode
 
 

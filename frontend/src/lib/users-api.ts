@@ -78,6 +78,21 @@ export function changeRoleAssignment(
   });
 }
 
+export function addRoleAssignment(
+  userId: string,
+  input: RoleAssignmentUpdateInput,
+): Promise<RoleAssignment> {
+  const isGlobalRole = input.role === "system_admin" || input.role === "technician";
+  return csrfRequest<RoleAssignment>(`/api/users/${userId}/roles`, {
+    method: "POST",
+    ...jsonBody({
+      role: input.role,
+      clinic_id: isGlobalRole ? null : input.clinic_id,
+      reason: input.reason || null,
+    }),
+  });
+}
+
 export function userErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const messages: Record<string, string> = {
@@ -96,6 +111,8 @@ export function userErrorMessage(error: unknown): string {
       role_assignment_no_changes: "Rol veya klinik bilgisinde bir değişiklik yapmadınız.",
       role_assignment_exists: "Bu rol ve klinik ataması kullanıcıda zaten bulunuyor.",
       role_assignment_not_found: "Değiştirilecek rol ataması bulunamadı.",
+      multi_clinic_role_not_allowed:
+        "Birden fazla kliniğe yalnızca klinik yöneticisi rolü atanabilir.",
       cannot_deactivate_self: "Oturum açtığınız hesabı pasifleştiremezsiniz.",
       last_system_admin: "Sistemde en az bir aktif sistem yöneticisi kalmalıdır.",
       firebase_service_unavailable: "Firebase hizmetine ulaşılamadı. Tekrar deneyin.",

@@ -31,6 +31,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "case.return_received": "İade laboratuvara ulaştı",
   "case.reproduction_requested": "Yeniden üretim istendi",
   "case.rescan_requested": "Yeni tarama istendi",
+  "case.transfer_requested": "Vaka devri istendi",
+  "case.transfer_accepted": "Vaka devri kabul edildi",
+  "case.transfer_rejected": "Vaka devri reddedildi",
   "case.file_upload_started": "Dosya yüklemesi başlatıldı",
   "case.file_uploaded": "Dosya yüklendi",
   "case.file_upload_failed": "Dosya yüklemesi başarısız oldu",
@@ -48,5 +51,6 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   case: "Vaka",
   case_file_version: "Vaka dosyası",
   case_upload_session: "Dosya yüklemesi",
+  case_transfer: "Vaka devri",
   notification: "Bildirim",
 };

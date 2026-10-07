@@ -15,6 +15,7 @@ export type ColorPalette =
 export interface ThemePreferences {
   theme_mode: ThemeMode;
   color_palette: ColorPalette;
+  active_clinic_id?: string | null;
   updated_at: string | null;
 }
 

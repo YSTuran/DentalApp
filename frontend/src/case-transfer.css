@@ -1,0 +1,67 @@
+.transfer-form,
+.transfer-history,
+.transfer-decision {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.transfer-form {
+  margin-top: 1rem;
+}
+
+.transfer-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.transfer-form select,
+.transfer-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.7rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.transfer-decision,
+.transfer-history article,
+.transfer-pending {
+  margin-top: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--surface-muted);
+  padding: 0.85rem;
+}
+
+.transfer-history article {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.transfer-history p,
+.transfer-decision p,
+.transfer-pending {
+  margin-bottom: 0;
+}
+
+.transfer-history small {
+  color: var(--muted);
+}
+
+.transfer-status {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.transfer-status.pending { background: #fff0c2; color: #765200; }
+.transfer-status.accepted { background: #d9f4e5; color: #17633d; }
+.transfer-status.rejected { background: #ffe0df; color: #8b2825; }

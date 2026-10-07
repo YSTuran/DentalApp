@@ -112,3 +112,9 @@ class ReturnReasonCode(StrEnum):
 class ReturnResolution(StrEnum):
     REPRODUCTION = "reproduction"
     RESCAN = "rescan"
+
+
+class CaseTransferStatus(StrEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"

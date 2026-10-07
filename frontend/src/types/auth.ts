@@ -10,6 +10,7 @@ export type RoleCode =
 
 export interface ClinicRole {
   clinic_id: string;
+  clinic_name?: string;
   role: RoleCode;
 }
 

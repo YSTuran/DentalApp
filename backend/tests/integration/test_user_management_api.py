@@ -286,7 +286,6 @@ def test_clinic_manager_only_sees_own_clinic_doctors(
     own_dentist = create_user(
         session_factory,
         (RoleCode.DENTIST, own_clinic.id),
-        (RoleCode.MANAGING_DENTIST, other_clinic.id),
         (RoleCode.CLINIC_STAFF, own_clinic.id),
         full_name="Own Dentist",
     )

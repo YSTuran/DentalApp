@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import User
+from app.models import User, UserRoleAssignment
 from app.services.firebase_auth import (
     FirebaseAuthenticationError,
     FirebaseServiceError,
@@ -31,7 +31,7 @@ def load_active_user_by_firebase_uid(db: Session, firebase_uid: str) -> User:
     user = db.scalar(
         select(User)
         .options(
-            selectinload(User.role_assignments),
+            selectinload(User.role_assignments).selectinload(UserRoleAssignment.clinic),
             selectinload(User.preference),
         )
         .where(User.firebase_uid == firebase_uid)

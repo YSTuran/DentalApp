@@ -1,0 +1,30 @@
+.active-clinic-selector {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 10.5rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.active-clinic-selector select {
+  width: 100%;
+  min-height: 2.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 2rem 0 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+@media (max-width: 860px) {
+  .active-clinic-selector {
+    width: 100%;
+  }
+}

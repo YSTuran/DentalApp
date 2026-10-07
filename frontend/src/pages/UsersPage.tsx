@@ -3,8 +3,10 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
+import { UserRoleAddDialog } from "../components/UserRoleAddDialog";
 import { listClinics } from "../lib/clinics-api";
 import {
+  addRoleAssignment,
   changeRoleAssignment,
   changeUserStatus,
   createUser,
@@ -60,6 +62,12 @@ const EMPTY_ROLE_CHANGE_FORM: RoleChangeForm = {
   reason: "",
 };
 
+const EMPTY_ROLE_ADD_FORM: RoleAssignmentUpdateInput = {
+  role: "clinic_manager",
+  clinic_id: "",
+  reason: "",
+};
+
 type StatusFilter = "all" | "active" | "inactive";
 
 function formatDate(value: string): string {
@@ -80,7 +88,7 @@ export function UsersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [roleFilter, setRoleFilter] = useState<RoleCode | "">("");
-  const [clinicFilter, setClinicFilter] = useState("");
+  const [clinicOverride, setClinicOverride] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -95,7 +103,12 @@ export function UsersPage() {
   const [statusReason, setStatusReason] = useState("");
   const [roleTarget, setRoleTarget] = useState<ManagedUser | null>(null);
   const [roleForm, setRoleForm] = useState<RoleChangeForm>(EMPTY_ROLE_CHANGE_FORM);
+  const [roleAddTarget, setRoleAddTarget] = useState<ManagedUser | null>(null);
+  const [roleAddForm, setRoleAddForm] = useState(EMPTY_ROLE_ADD_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const clinicFilter = clinicOverride
+    ?? currentUser?.preferences.active_clinic_id
+    ?? "";
 
   const clinicNames = useMemo(
     () => new Map(clinics.map((clinic) => [clinic.id, clinic.name])),
@@ -259,6 +272,34 @@ export function UsersPage() {
     }
   }
 
+  function openRoleAddForm(user: ManagedUser) {
+    setRoleAddTarget(user);
+    setRoleAddForm({
+      ...EMPTY_ROLE_ADD_FORM,
+      clinic_id: activeClinics[0]?.id ?? "",
+    });
+    setError(null);
+    setNotice(null);
+  }
+
+  async function submitRoleAdd(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (roleAddTarget === null) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await addRoleAssignment(roleAddTarget.id, roleAddForm);
+      setNotice(`${roleAddTarget.full_name} için yeni rol ataması eklendi.`);
+      setRoleAddTarget(null);
+      setRoleAddForm(EMPTY_ROLE_ADD_FORM);
+      await loadUsers();
+    } catch (roleError) {
+      setError(userErrorMessage(roleError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function copyTemporaryPassword() {
     if (temporaryPassword === null) return;
     try {
@@ -319,7 +360,7 @@ export function UsersPage() {
             </label>
             <label className="filter-select">
               <span>Klinik</span>
-              <select value={clinicFilter} onChange={(event) => { setClinicFilter(event.target.value); setOffset(0); }}>
+              <select value={clinicFilter} onChange={(event) => { setClinicOverride(event.target.value); setOffset(0); }}>
                 <option value="">Tümü</option>
                 {clinics.map((clinic) => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}
               </select>
@@ -375,6 +416,11 @@ export function UsersPage() {
                               {canChangeRole && (
                                 <button onClick={() => openRoleForm(managedUser)}>
                                   Rol/Klinik düzenle
+                                </button>
+                              )}
+                              {managedUser.is_active && (
+                                <button onClick={() => openRoleAddForm(managedUser)}>
+                                  Rol ekle
                                 </button>
                               )}
                               <button
@@ -511,6 +557,20 @@ export function UsersPage() {
             </form>
           </section>
         </div>
+      )}
+
+      {isSystemAdmin && roleAddTarget !== null && (
+        <UserRoleAddDialog
+          target={roleAddTarget}
+          form={roleAddForm}
+          clinics={activeClinics}
+          roleOptions={ASSIGNABLE_ROLE_OPTIONS}
+          submitting={submitting}
+          error={error}
+          onChange={setRoleAddForm}
+          onClose={() => setRoleAddTarget(null)}
+          onSubmit={submitRoleAdd}
+        />
       )}
 
       {isSystemAdmin && statusTarget !== null && (

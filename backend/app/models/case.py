@@ -117,6 +117,11 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="case",
         order_by="CaseStatusHistory.sequence_number",
     )
+    transfers = relationship(
+        "CaseTransfer",
+        back_populates="case",
+        order_by="CaseTransfer.requested_at",
+    )
 
     __table_args__ = (
         Index("uq_cases_case_number", "case_number", unique=True),

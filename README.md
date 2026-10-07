@@ -23,6 +23,9 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Kullanıcıya özel uygulama içi bildirim merkezi
 - Filtrelenmiş ve kategori renkli audit PDF çıktısı
 - AES-256-GCM ile uygulama katmanında şifrelenen hasta adı ve hasta kodu
+- Yalnızca klinik yöneticisine açık çoklu şube seçimi
+- Hedef hekimin kabul/ret kararıyla tamamlanan, değiştirilemez vaka devri
+- Yetki kapsamlı operasyon raporları ve hasta bilgisi içermeyen PDF çıktısı
 
 ## Yerel kurulum (PowerShell)
 
@@ -206,7 +209,13 @@ Sistem yöneticisi giriş yaptıktan sonra klinik yönetimi ekranına
 `http://localhost:5173/yonetim/klinikler` adresinden ulaşabilir. Burada arama,
 aktif/pasif filtreleme, sayfalama, klinik ekleme, düzenleme ve gerekçeli durum
 değişikliği yapılabilir. Klinik yöneticisi aynı ekranda yalnızca aktif rolünün
-bulunduğu kliniği ve kullanıcı ekranında o kliniğin hekimlerini salt okunur görür.
+bulunduğu klinikleri ve kullanıcı ekranında bu kliniklerin hekimlerini salt okunur
+görür. Birden fazla klinikte aktif rol alabilen tek klinik rolü `clinic_manager`
+rolüdür. Hekim, yönetici hekim ve klinik personeli aynı anda yalnızca tek kliniğe
+bağlı olabilir; bu kural hem servis doğrulaması hem PostgreSQL tetikleyicisiyle
+korunur. Birden fazla kliniği yöneten kullanıcı üst menüden aktif kliniği veya tüm
+yetkili klinikleri seçebilir. Tercih kullanıcı hesabında saklanır ve vaka, klinik,
+kullanıcı ve rapor ekranlarına uygulanır.
 
 Frontend sistem yönetimi ekranları:
 
@@ -346,6 +355,31 @@ Temel vaka endpoint'leri:
   yönetici ayrıca işaretlenir.
 - `POST /api/cases/{case_id}/cancel`: gerekçeli iptal; kayıt silinmez.
 - `GET /api/cases/{case_id}/history`: değiştirilemez durum geçmişi.
+
+Vaka devri endpoint'leri:
+
+- `GET /api/cases/{case_id}/transfer-options`: aynı klinikteki uygun hedef hekimler.
+- `GET /api/cases/{case_id}/transfers`: vakanın silinmeyen devir geçmişi.
+- `POST /api/cases/{case_id}/transfers`: klinik yöneticisi veya yönetici hekimin
+  gerekçeli devir talebi oluşturması.
+- `POST /api/cases/{case_id}/transfers/{transfer_id}/decision`: yalnızca hedef
+  hekimin talebi kabul veya gerekçeli olarak reddetmesi.
+
+Talep beklerken sorumlu hekim değişmez. Kabul işlemi sorumlu hekimi atomik biçimde
+değiştirir; ret vakanın sorumlusunu etkilemez. Tamamlanmış, iptal edilmiş veya kesin
+reddedilmiş vaka devredilemez. Karar verilmiş devir satırları güncellenemez ve hiçbir
+devir kaydı silinemez. Her adım audit kaydı, uygulama içi bildirim ve e-posta üretir.
+
+## Operasyon raporları
+
+`GET /api/reports/cases`; tarih ve klinik filtreleriyle toplam/aktif/tamamlanan vaka,
+iade, yeniden üretim, geciken iş, ortalama tamamlanma süresi, durum dağılımı, hekim iş
+yükü, klinik dağılımı ve aşama sürelerini döndürür. Sonuç her rol için mevcut vaka
+görünürlüğüyle sınırlandırılır; klinik yöneticisi yalnızca yönettiği klinikleri görür.
+Rapor hasta adı, hasta kodu veya serbest klinik notu içermez.
+
+Frontend rapor ekranı `http://localhost:5173/raporlar` adresindedir. Filtreler anlık
+uygulanır; **PDF olarak yazdır** düğmesi toplulaştırılmış görünümü A4 rapora dönüştürür.
 
 STL yükleme endpoint'leri:
 

@@ -11,6 +11,7 @@ export interface AuthContextValue {
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   retrySession: () => Promise<void>;
+  selectActiveClinic?: (clinicId: string | null) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

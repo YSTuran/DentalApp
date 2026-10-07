@@ -111,6 +111,31 @@ export interface CaseCreateOptions {
   clinics: ClinicCaseOption[];
 }
 
+export type CaseTransferStatus = "pending" | "accepted" | "rejected";
+
+export interface CaseTransferOption {
+  id: string;
+  full_name: string;
+}
+
+export interface CaseTransfer {
+  id: string;
+  case_id: string;
+  from_dentist_user_id: string;
+  from_dentist_name: string;
+  to_dentist_user_id: string;
+  to_dentist_name: string;
+  requested_by_user_id: string;
+  requested_by_name: string;
+  decided_by_user_id: string | null;
+  decided_by_name: string | null;
+  status: CaseTransferStatus;
+  request_reason: string;
+  decision_reason: string | null;
+  requested_at: string;
+  decided_at: string | null;
+}
+
 export interface CaseWritePayload {
   clinic_id: string;
   responsible_dentist_user_id: string;

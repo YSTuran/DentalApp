@@ -25,6 +25,7 @@ import {
   recordPasswordChanged,
 } from "../lib/api";
 import { firebaseAuth } from "../lib/firebase";
+import { updateActiveClinic } from "../lib/preferences-api";
 import type { CurrentUser } from "../types/auth";
 import { AuthContext, type AuthStatus } from "./AuthContext";
 
@@ -219,9 +220,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  const selectActiveClinic = useCallback(async (clinicId: string | null) => {
+    const preferences = await updateActiveClinic(clinicId);
+    setUser((current) => current === null ? null : { ...current, preferences });
+  }, []);
+
   const value = useMemo(
-    () => ({ status, user, login, logout, changePassword, retrySession }),
-    [changePassword, login, logout, retrySession, status, user],
+    () => ({
+      status,
+      user,
+      login,
+      logout,
+      changePassword,
+      retrySession,
+      selectActiveClinic,
+    }),
+    [changePassword, login, logout, retrySession, selectActiveClinic, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

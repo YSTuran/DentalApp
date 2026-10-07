@@ -16,6 +16,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewCasePage } from "./pages/NewCasePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="/vakalar" element={<CasesPage />} />
               <Route path="/vakalar/yeni" element={<NewCasePage />} />
               <Route path="/vakalar/:caseId" element={<CaseDetailPage />} />
+              <Route path="/raporlar" element={<ReportsPage />} />
               <Route path="/yetkisiz" element={<AccessDeniedPage />} />
               <Route element={<ManagementReadRoute />}>
                 <Route path="/yonetim/klinikler" element={<ClinicsPage />} />

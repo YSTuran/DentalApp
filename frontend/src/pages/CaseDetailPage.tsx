@@ -9,6 +9,7 @@ import { CaseCompletionBanner } from "../components/cases/CaseCompletionBanner";
 import { CaseEditDialog } from "../components/cases/CaseEditDialog";
 import { CaseFileList } from "../components/cases/CaseFileList";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
+import { CaseTransferPanel } from "../components/cases/CaseTransferPanel";
 import { DentistDesignDecisionPanel } from "../components/cases/DentistDesignDecisionPanel";
 import { LabDesignPanel } from "../components/cases/LabDesignPanel";
 import { ManagerDecisionPanel } from "../components/cases/ManagerDecisionPanel";
@@ -167,6 +168,13 @@ export function CaseDetailPage() {
                   />
                 )}
                 {canDentistReview && <DentistDesignDecisionPanel dentalCase={dentalCase} onUpdated={handleCaseUpdated} />}
+                {user && (
+                  <CaseTransferPanel
+                    dentalCase={dentalCase}
+                    user={user}
+                    onChanged={() => void load(true)}
+                  />
+                )}
                 <section className="case-panel"><p className="card-label">İŞ AKIŞI</p><h2>{caseStatusLabels[dentalCase.status]}</h2><p className="panel-description">{dentalCase.status === "delivered" ? "Normal işlem akışı tamamlandı. Yalnızca yeni bir iade kaydıyla yeniden açılabilir." : "İki onay tamamlanmadan vaka üretim kuyruğuna alınamaz."}</p></section>
                 {dentalCase.approvals.length > 0 && (
                   <section className="case-panel">

@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { NotificationBell } from "./NotificationBell";
+import { ActiveClinicSelector } from "./ActiveClinicSelector";
 
 const createRoles = new Set(["managing_dentist", "dentist", "clinic_staff"]);
 
@@ -18,8 +19,10 @@ export function OperationsHeader() {
       <nav className="management-nav" aria-label="Vaka navigasyonu">
         <NavLink to="/vakalar" end>Vakalar</NavLink>
         {canCreate && <NavLink to="/vakalar/yeni">Yeni vaka</NavLink>}
+        <NavLink to="/raporlar">Raporlar</NavLink>
       </nav>
       <div className="topbar-actions">
+        <ActiveClinicSelector />
         <NotificationBell />
         <Link className="text-link" to="/">Panel</Link>
         <Link className="text-link" to="/ayarlar">Ayarlar</Link>

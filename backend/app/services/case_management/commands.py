@@ -138,6 +138,8 @@ def update_case(
 
     provided_fields = payload.model_fields_set & CASE_UPDATE_FIELDS
     if "responsible_dentist_user_id" in provided_fields:
+        if case.status != CaseStatus.DRAFT:
+            raise CaseConflictError("case_transfer_required")
         validate_responsible_dentist(
             db,
             payload.responsible_dentist_user_id,
