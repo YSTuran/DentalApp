@@ -30,6 +30,8 @@ const child = spawn(
     stdio: "inherit",
     env: {
       ...process.env,
+      FIREBASE_PROJECT_ID: "dentalapp-7b131",
+      FIREBASE_USE_EMULATOR: "true",
       RUN_DATABASE_INTEGRATION_TESTS: "1",
       RUN_FIREBASE_EMULATOR_TESTS: "1",
     },

@@ -37,6 +37,8 @@ jobs:
       DATABASE_URL: postgresql+psycopg://dentalapp_user:dentalapp_password@localhost:5432/dentalapp
       REDIS_URL: redis://localhost:6379/0
       FIREBASE_USE_EMULATOR: "true"
+      FIREBASE_PROJECT_ID: dentalapp-7b131
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
       RUN_DATABASE_INTEGRATION_TESTS: "1"
       PATIENT_DATA_KEYS: '{"v1":"MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="}'
       PATIENT_DATA_ACTIVE_KEY_ID: v1
