@@ -13,6 +13,7 @@ from app.models.case import (
 from app.models.case_transfer import CaseTransfer
 from app.models.case_wait_alert import CaseWaitAlert
 from app.models.clinic import Clinic
+from app.models.clinic_assignment import UserClinicAssignment
 from app.models.email_outbox import EmailOutbox
 from app.models.enums import (
     CaseAction,
@@ -76,6 +77,7 @@ __all__ = [
     "ThemeMode",
     "UploadStatus",
     "User",
+    "UserClinicAssignment",
     "UserPreference",
     "UserRoleAssignment",
 ]

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db
 from app.main import app
-from app.models import RoleCode, User, UserRoleAssignment
+from app.models import RoleCode, User, UserClinicAssignment, UserRoleAssignment
 
 
 class EmptyScalars:
@@ -33,10 +33,21 @@ def build_user(role: RoleCode, clinic_id=None) -> User:
             id=uuid4(),
             user_id=user.id,
             role=role,
-            clinic_id=clinic_id,
             is_active=True,
         )
     ]
+    user.clinic_assignments = (
+        [
+            UserClinicAssignment(
+                id=uuid4(),
+                user_id=user.id,
+                clinic_id=clinic_id,
+                is_active=True,
+            )
+        ]
+        if clinic_id is not None
+        else []
+    )
     return user
 
 

@@ -35,13 +35,16 @@ def _reload_user(factory: sessionmaker[Session], user_id) -> User:
         user = session.scalar(
             select(User)
             .where(User.id == user_id)
-            .options(selectinload(User.role_assignments))
+            .options(
+                selectinload(User.role_assignments),
+                selectinload(User.clinic_assignments),
+            )
         )
         assert user is not None
         return user
 
 
-def test_only_clinic_manager_can_span_multiple_clinics(
+def test_roles_and_clinic_assignments_are_independent(
     case_session_factory: sessionmaker[Session],
 ) -> None:
     first = create_clinic(case_session_factory, "MULTI-A")
@@ -53,39 +56,45 @@ def test_only_clinic_manager_can_span_multiple_clinics(
 
     with TestClient(app) as client:
         headers = csrf_headers(client)
-        allowed = client.post(
-            f"/api/users/{manager.id}/roles",
+        manager_clinic = client.post(
+            f"/api/users/{manager.id}/clinics",
             headers=headers,
             json={
-                "role": "clinic_manager",
                 "clinic_id": str(second.id),
                 "reason": "İki şubeyi yönetiyor",
             },
         )
-        denied = client.post(
-            f"/api/users/{dentist.id}/roles",
+        dentist_clinic = client.post(
+            f"/api/users/{dentist.id}/clinics",
+            headers=headers,
+            json={
+                "clinic_id": str(second.id),
+                "reason": "İkinci klinikte de çalışıyor",
+            },
+        )
+        conflicting = client.post(
+            f"/api/users/{manager.id}/roles",
             headers=headers,
             json={
                 "role": "dentist",
-                "clinic_id": str(second.id),
-                "reason": "İkinci klinik denemesi",
+                "reason": "Çakışan rol denemesi",
             },
         )
 
-    assert allowed.status_code == 201
-    assert denied.status_code == 422
-    assert denied.json()["detail"] == "multi_clinic_role_not_allowed"
+    assert manager_clinic.status_code == 201
+    assert dentist_clinic.status_code == 201
+    assert conflicting.status_code == 422
+    assert conflicting.json()["detail"] == "conflicting_active_role"
 
     with case_session_factory() as session:
         session.add(
             UserRoleAssignment(
-                user_id=dentist.id,
-                role=RoleCode.CLINIC_MANAGER,
-                clinic_id=second.id,
+                user_id=manager.id,
+                role=RoleCode.TECHNICIAN,
                 is_active=True,
             )
         )
-        with pytest.raises(DBAPIError, match="Only clinic managers"):
+        with pytest.raises(DBAPIError):
             session.flush()
         session.rollback()
 

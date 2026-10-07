@@ -10,7 +10,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.dependencies.auth import get_current_user
 from app.db.session import engine, get_db
 from app.main import app
-from app.models import AuditEvent, Clinic, RoleCode, User, UserRoleAssignment
+from app.models import (
+    AuditEvent,
+    Clinic,
+    RoleCode,
+    User,
+    UserClinicAssignment,
+    UserRoleAssignment,
+)
 from app.services import clinics as clinic_service
 
 pytestmark = [
@@ -64,7 +71,12 @@ def create_user(
             email=f"{uuid4().hex}@example.invalid",
             full_name="Clinic API Test",
         )
-        user.role_assignments = [UserRoleAssignment(role=role, clinic_id=clinic_id, is_active=True)]
+        user.role_assignments = [UserRoleAssignment(role=role, is_active=True)]
+        user.clinic_assignments = (
+            [UserClinicAssignment(clinic_id=clinic_id, is_active=True)]
+            if clinic_id is not None
+            else []
+        )
         session.add(user)
         session.flush()
     return user

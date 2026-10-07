@@ -120,23 +120,37 @@ def test_production_delivery_return_and_reproduction_cycle(
             json={
                 "return_receipt_id": receipt_id,
                 "resolution": "reproduction",
-                "reason": "Mevcut onaylı tasarımla yeniden üretilmeli.",
+                "reason": "Yeni vaka ve yeni onay süreci oluşturulmalı.",
             },
         )
         assert decided.status_code == 200
-        assert decided.json()["status"] == "reproduction_requested"
+        reproduction_case = decided.json()
+        assert reproduction_case["id"] != str(case.id)
+        assert reproduction_case["status"] == "draft"
+        assert reproduction_case["reproduction_source_case_id"] == str(case.id)
+        assert reproduction_case["file_versions"] == []
+        assert reproduction_case["approvals"] == []
+        assert reproduction_case["patient_code"] == "DEMO-FUL"
 
         app.dependency_overrides[get_current_user] = lambda: technician
-        reproduced = client.post(
+        old_case = client.get(f"/api/cases/{case.id}")
+        assert old_case.status_code == 200
+        assert old_case.json()["status"] == "reproduction_requested"
+        assert old_case.json()["reproduction_case_id"] == reproduction_case["id"]
+
+        cannot_reuse_old_case = client.post(
             f"/api/cases/{case.id}/production/start",
             headers=headers,
             json={"design_file_version_id": str(design.id)},
         )
-        assert reproduced.status_code == 200
-        assert reproduced.json()["status"] == "in_production"
+        assert cannot_reuse_old_case.status_code == 409
         final_operations = client.get(f"/api/cases/{case.id}/operations").json()
-        assert [run["attempt_number"] for run in final_operations["production_runs"]] == [1, 2]
+        assert [run["attempt_number"] for run in final_operations["production_runs"]] == [1]
         assert len(final_operations["return_decisions"]) == 1
+        assert (
+            final_operations["return_decisions"][0]["reproduction_case_id"]
+            == reproduction_case["id"]
+        )
 
     expected_actions = {
         "case.production_started",
@@ -153,6 +167,13 @@ def test_production_delivery_return_and_reproduction_cycle(
             ).all()
         )
     assert expected_actions.issubset(actions)
+    with case_session_factory() as session:
+        assert session.scalar(
+            select(AuditEvent.id).where(
+                AuditEvent.action == "case.created_from_return",
+                AuditEvent.entity_id == reproduction_case["id"],
+            )
+        ) is not None
     immutable_rows = [
         ("UPDATE production_runs SET notes = 'changed' WHERE id = :id", first_run["id"]),
         (

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
+    from app.models.clinic_assignment import UserClinicAssignment
     from app.models.role_assignment import UserRoleAssignment
     from app.models.user_preference import UserPreference
 
@@ -24,6 +25,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     role_assignments: Mapped[list["UserRoleAssignment"]] = relationship(
+        back_populates="user",
+    )
+    clinic_assignments: Mapped[list["UserClinicAssignment"]] = relationship(
         back_populates="user",
     )
     preference: Mapped["UserPreference | None"] = relationship(

@@ -11,6 +11,7 @@ from app.models import (
     CaseTransferStatus,
     RoleCode,
     User,
+    UserClinicAssignment,
     UserRoleAssignment,
 )
 from app.schemas.case_transfer import CaseTransferResponse
@@ -107,11 +108,13 @@ def list_transfer_options(db: Session, *, actor: User, case_id: UUID) -> list[Us
         db.scalars(
             select(User)
             .join(UserRoleAssignment, UserRoleAssignment.user_id == User.id)
+            .join(UserClinicAssignment, UserClinicAssignment.user_id == User.id)
             .where(
                 User.is_active.is_(True),
                 User.id != case.responsible_dentist_user_id,
                 UserRoleAssignment.is_active.is_(True),
-                UserRoleAssignment.clinic_id == case.clinic_id,
+                UserClinicAssignment.is_active.is_(True),
+                UserClinicAssignment.clinic_id == case.clinic_id,
                 UserRoleAssignment.role.in_({RoleCode.DENTIST, RoleCode.MANAGING_DENTIST}),
             )
             .distinct()

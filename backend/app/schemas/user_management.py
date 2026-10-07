@@ -26,7 +26,7 @@ class UserCreateRequest(BaseModel):
     email: str = Field(min_length=5, max_length=320)
     full_name: str = Field(min_length=1, max_length=200)
     role: RoleCode
-    clinic_id: UUID | None = None
+    clinic_ids: list[UUID] = Field(default_factory=list, max_length=100)
     reason: str | None = Field(default=None, max_length=2000)
 
     @field_validator("email")
@@ -74,7 +74,6 @@ class ReasonRequest(BaseModel):
 
 class RoleAssignmentCreateRequest(BaseModel):
     role: RoleCode
-    clinic_id: UUID | None = None
     reason: str | None = Field(default=None, max_length=2000)
 
     @field_validator("reason")
@@ -85,7 +84,6 @@ class RoleAssignmentCreateRequest(BaseModel):
 
 class RoleAssignmentUpdateRequest(BaseModel):
     role: RoleCode
-    clinic_id: UUID | None = None
     reason: str = Field(min_length=3, max_length=2000)
 
     @field_validator("reason")
@@ -99,7 +97,26 @@ class RoleAssignmentResponse(BaseModel):
 
     id: UUID
     role: RoleCode
-    clinic_id: UUID | None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ClinicAssignmentCreateRequest(BaseModel):
+    clinic_id: UUID
+    reason: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str | None) -> str | None:
+        return _optional_reason(value)
+
+
+class ClinicAssignmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    clinic_id: UUID
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -115,6 +132,7 @@ class ManagedUserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     role_assignments: list[RoleAssignmentResponse]
+    clinic_assignments: list[ClinicAssignmentResponse]
 
 
 class ManagedUserListResponse(BaseModel):

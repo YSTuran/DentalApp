@@ -1,5 +1,7 @@
 import type { RoleCode } from "../types/auth";
 import type {
+  ClinicAssignment,
+  ClinicAssignmentCreateInput,
   ManagedUser,
   ManagedUserListResponse,
   RoleAssignment,
@@ -44,7 +46,7 @@ export function createUser(input: UserCreateInput): Promise<UserCreatedResponse>
       email: input.email,
       full_name: input.full_name,
       role: input.role,
-      clinic_id: isGlobalRole ? null : input.clinic_id,
+      clinic_ids: isGlobalRole || !input.clinic_id ? [] : [input.clinic_id],
       reason: input.reason || null,
     }),
   });
@@ -67,12 +69,10 @@ export function changeRoleAssignment(
   assignmentId: string,
   input: RoleAssignmentUpdateInput,
 ): Promise<RoleAssignment> {
-  const isGlobalRole = input.role === "system_admin" || input.role === "technician";
   return csrfRequest<RoleAssignment>(`/api/users/${userId}/roles/${assignmentId}`, {
     method: "PATCH",
     ...jsonBody({
       role: input.role,
-      clinic_id: isGlobalRole ? null : input.clinic_id,
       reason: input.reason,
     }),
   });
@@ -82,15 +82,36 @@ export function addRoleAssignment(
   userId: string,
   input: RoleAssignmentUpdateInput,
 ): Promise<RoleAssignment> {
-  const isGlobalRole = input.role === "system_admin" || input.role === "technician";
   return csrfRequest<RoleAssignment>(`/api/users/${userId}/roles`, {
     method: "POST",
     ...jsonBody({
       role: input.role,
-      clinic_id: isGlobalRole ? null : input.clinic_id,
       reason: input.reason || null,
     }),
   });
+}
+
+export function addClinicAssignment(
+  userId: string,
+  input: ClinicAssignmentCreateInput,
+): Promise<ClinicAssignment> {
+  return csrfRequest<ClinicAssignment>(`/api/users/${userId}/clinics`, {
+    method: "POST",
+    ...jsonBody({ clinic_id: input.clinic_id, reason: input.reason || null }),
+  });
+}
+
+export function changeClinicAssignmentStatus(
+  userId: string,
+  assignmentId: string,
+  activate: boolean,
+  reason: string,
+): Promise<ClinicAssignment> {
+  const action = activate ? "reactivate" : "deactivate";
+  return csrfRequest<ClinicAssignment>(
+    `/api/users/${userId}/clinics/${assignmentId}/${action}`,
+    { method: "POST", ...jsonBody({ reason }) },
+  );
 }
 
 export function userErrorMessage(error: unknown): string {
@@ -107,12 +128,17 @@ export function userErrorMessage(error: unknown): string {
       user_already_active: "Kullanıcı zaten aktif durumda.",
       user_already_inactive: "Kullanıcı zaten pasif durumda.",
       user_inactive: "Pasif bir kullanıcının rolü değiştirilemez.",
+      active_role_required: "Klinik ataması için kullanıcının aktif bir rolü olmalıdır.",
       role_assignment_inactive: "Seçilen rol ataması artık aktif değil.",
-      role_assignment_no_changes: "Rol veya klinik bilgisinde bir değişiklik yapmadınız.",
-      role_assignment_exists: "Bu rol ve klinik ataması kullanıcıda zaten bulunuyor.",
+      role_assignment_no_changes: "Rol bilgisinde bir değişiklik yapmadınız.",
+      role_assignment_exists: "Bu rol kullanıcıda zaten bulunuyor.",
       role_assignment_not_found: "Değiştirilecek rol ataması bulunamadı.",
-      multi_clinic_role_not_allowed:
-        "Birden fazla kliniğe yalnızca klinik yöneticisi rolü atanabilir.",
+      clinic_assignment_exists: "Bu klinik kullanıcıya zaten atanmış.",
+      clinic_assignment_not_found: "Klinik ataması bulunamadı.",
+      clinic_assignment_already_active: "Klinik ataması zaten aktif.",
+      clinic_assignment_already_inactive: "Klinik ataması zaten pasif.",
+      conflicting_active_role:
+        "Bir kullanıcı aynı anda farklı rol türlerine sahip olamaz. Önce mevcut rolü değiştirin veya pasifleştirin.",
       cannot_deactivate_self: "Oturum açtığınız hesabı pasifleştiremezsiniz.",
       last_system_admin: "Sistemde en az bir aktif sistem yöneticisi kalmalıdır.",
       firebase_service_unavailable: "Firebase hizmetine ulaşılamadı. Tekrar deneyin.",

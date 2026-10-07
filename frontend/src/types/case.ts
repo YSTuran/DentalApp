@@ -66,6 +66,10 @@ export interface DentalCase {
   created_by_user_id?: string;
   responsible_dentist_user_id?: string;
   responsible_dentist_name?: string;
+  reproduction_source_case_id?: string | null;
+  reproduction_source_case_number?: string | null;
+  reproduction_case_id?: string | null;
+  reproduction_case_number?: string | null;
   patient_code: string | null;
   patient_name?: string;
   status: CaseStatus;

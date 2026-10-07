@@ -11,7 +11,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.dependencies.auth import get_current_user
 from app.db.session import engine, get_db
 from app.main import app
-from app.models import AuditEvent, Clinic, RoleCode, User, UserRoleAssignment
+from app.models import (
+    AuditEvent,
+    Clinic,
+    RoleCode,
+    User,
+    UserClinicAssignment,
+    UserRoleAssignment,
+)
 from app.services import users as user_service
 
 pytestmark = [
@@ -66,8 +73,14 @@ def create_user(
             full_name=full_name,
         )
         user.role_assignments = [
-            UserRoleAssignment(role=role, clinic_id=clinic_id, is_active=True)
-            for role, clinic_id in assignments
+            UserRoleAssignment(role=role, is_active=index == 0)
+            for index, (role, _clinic_id) in enumerate(assignments)
+        ]
+        user.clinic_assignments = [
+            UserClinicAssignment(clinic_id=clinic_id, is_active=True)
+            for clinic_id in dict.fromkeys(
+                clinic_id for _role, clinic_id in assignments if clinic_id is not None
+            )
         ]
         session.add(user)
         session.flush()
@@ -115,7 +128,7 @@ def test_system_admin_can_manage_user_roles_and_status_with_audit(
                 "email": email,
                 "full_name": "  Demo Hekim  ",
                 "role": "dentist",
-                "clinic_id": str(clinic.id),
+                "clinic_ids": [str(clinic.id)],
                 "reason": "Demo hesabı açıldı",
             },
         )
@@ -126,6 +139,7 @@ def test_system_admin_can_manage_user_roles_and_status_with_audit(
         assert created["user"]["full_name"] == "Demo Hekim"
         assert len(temporary_password) == 20
         assert firebase_calls[0] == ("create", email, "Demo Hekim", temporary_password)
+        role_id = created["user"]["role_assignments"][0]["id"]
 
         update_response = client.patch(
             f"/api/users/{user_id}",
@@ -140,12 +154,11 @@ def test_system_admin_can_manage_user_roles_and_status_with_audit(
             headers=headers,
             json={
                 "role": "managing_dentist",
-                "clinic_id": str(clinic.id),
                 "reason": "Yönetici hekim görevi verildi",
             },
         )
-        assert role_response.status_code == 201
-        role_id = role_response.json()["id"]
+        assert role_response.status_code == 422
+        assert role_response.json()["detail"] == "conflicting_active_role"
 
         deactivate_role_response = client.post(
             f"/api/users/{user_id}/roles/{role_id}/deactivate",
@@ -206,11 +219,10 @@ def test_system_admin_can_manage_user_roles_and_status_with_audit(
     assert [call[2] for call in firebase_calls if call[0] == "disable"] == [True, False]
 
 
-def test_system_admin_can_replace_role_and_clinic_without_deleting_history(
+def test_system_admin_can_replace_role_without_deleting_history(
     session_factory: sessionmaker[Session],
 ) -> None:
     source_clinic = create_clinic(session_factory, "SOURCE")
-    target_clinic = create_clinic(session_factory, "TARGET")
     admin = create_user(session_factory, (RoleCode.SYSTEM_ADMIN, None))
     doctor = create_user(
         session_factory,
@@ -231,15 +243,13 @@ def test_system_admin_can_replace_role_and_clinic_without_deleting_history(
             headers=csrf_headers(client),
             json={
                 "role": "dentist",
-                "clinic_id": str(target_clinic.id),
-                "reason": "Hekim başka kliniğe görevlendirildi",
+                "reason": "Yönetici hekim görevi sona erdi",
             },
         )
 
     assert response.status_code == 200
     replacement_id = response.json()["id"]
     assert response.json()["role"] == "dentist"
-    assert response.json()["clinic_id"] == str(target_clinic.id)
     assert response.json()["is_active"] is True
 
     with session_factory() as session:
@@ -249,7 +259,7 @@ def test_system_admin_can_replace_role_and_clinic_without_deleting_history(
             select(func.count())
             .select_from(UserRoleAssignment)
             .where(
-                UserRoleAssignment.clinic_id == source_clinic.id,
+                UserRoleAssignment.user_id.in_([doctor.id, other_manager.id]),
                 UserRoleAssignment.role == RoleCode.MANAGING_DENTIST,
                 UserRoleAssignment.is_active.is_(True),
             )
@@ -268,9 +278,76 @@ def test_system_admin_can_replace_role_and_clinic_without_deleting_history(
     assert active_source_managers == 1
     assert other_manager.id != doctor.id
     assert event is not None
-    assert event.reason == "Hekim başka kliniğe görevlendirildi"
+    assert event.reason == "Yönetici hekim görevi sona erdi"
     assert event.before_data["role"] == "managing_dentist"
     assert event.after_data["role"] == "dentist"
+
+
+def test_system_admin_manages_clinics_independently_from_role_with_audit(
+    session_factory: sessionmaker[Session],
+) -> None:
+    first_clinic = create_clinic(session_factory, "FIRST")
+    second_clinic = create_clinic(session_factory, "SECOND")
+    admin = create_user(session_factory, (RoleCode.SYSTEM_ADMIN, None))
+    doctor = create_user(
+        session_factory,
+        (RoleCode.DENTIST, first_clinic.id),
+        full_name="Multi Clinic Doctor",
+    )
+    role_assignment_id = doctor.role_assignments[0].id
+    app.dependency_overrides[get_current_user] = lambda: admin
+
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        add_response = client.post(
+            f"/api/users/{doctor.id}/clinics",
+            headers=headers,
+            json={"clinic_id": str(second_clinic.id), "reason": "İkinci klinik görevi"},
+        )
+        assert add_response.status_code == 201
+        clinic_assignment_id = add_response.json()["id"]
+
+        deactivate_response = client.post(
+            f"/api/users/{doctor.id}/clinics/{clinic_assignment_id}/deactivate",
+            headers=headers,
+            json={"reason": "Geçici görev tamamlandı"},
+        )
+        assert deactivate_response.status_code == 200
+        assert deactivate_response.json()["is_active"] is False
+
+        reactivate_response = client.post(
+            f"/api/users/{doctor.id}/clinics/{clinic_assignment_id}/reactivate",
+            headers=headers,
+            json={"reason": "Görev yeniden başladı"},
+        )
+        assert reactivate_response.status_code == 200
+        assert reactivate_response.json()["is_active"] is True
+
+        admin_clinic_response = client.post(
+            f"/api/users/{admin.id}/clinics",
+            headers=headers,
+            json={"clinic_id": str(first_clinic.id)},
+        )
+        assert admin_clinic_response.status_code == 422
+        assert admin_clinic_response.json()["detail"] == "global_role_cannot_have_clinic"
+
+    with session_factory() as session:
+        stored_role = session.get(UserRoleAssignment, role_assignment_id)
+        clinic_events = session.scalars(
+            select(AuditEvent)
+            .where(AuditEvent.entity_id == clinic_assignment_id)
+            .order_by(AuditEvent.created_at, AuditEvent.id)
+        ).all()
+
+    assert stored_role is not None
+    assert stored_role.role == RoleCode.DENTIST
+    assert stored_role.is_active is True
+    reasons_by_action = {event.action: event.reason for event in clinic_events}
+    assert reasons_by_action == {
+        "user.clinic_assigned": "İkinci klinik görevi",
+        "user.clinic_deactivated": "Geçici görev tamamlandı",
+        "user.clinic_reactivated": "Görev yeniden başladı",
+    }
 
 
 def test_clinic_manager_only_sees_own_clinic_doctors(
@@ -286,7 +363,6 @@ def test_clinic_manager_only_sees_own_clinic_doctors(
     own_dentist = create_user(
         session_factory,
         (RoleCode.DENTIST, own_clinic.id),
-        (RoleCode.CLINIC_STAFF, own_clinic.id),
         full_name="Own Dentist",
     )
     own_managing_dentist = create_user(
@@ -322,7 +398,7 @@ def test_clinic_manager_only_sees_own_clinic_doctors(
     visible_assignments = own_detail.json()["role_assignments"]
     assert len(visible_assignments) == 1
     assert visible_assignments[0]["role"] == "dentist"
-    assert visible_assignments[0]["clinic_id"] == str(own_clinic.id)
+    assert own_detail.json()["clinic_assignments"][0]["clinic_id"] == str(own_clinic.id)
     assert staff_detail.status_code == 403
     assert other_detail.status_code == 403
     assert forbidden_filter.status_code == 403
@@ -355,7 +431,7 @@ def test_create_user_rolls_back_database_and_firebase_when_audit_fails(
                 "email": email,
                 "full_name": "Must Roll Back",
                 "role": "dentist",
-                "clinic_id": str(clinic.id),
+                "clinic_ids": [str(clinic.id)],
             },
         )
 
@@ -389,7 +465,7 @@ def test_user_creation_validates_role_scope_before_calling_firebase(
                 "email": f"invalid-{uuid4().hex}@example.invalid",
                 "full_name": "Invalid Scope",
                 "role": "dentist",
-                "clinic_id": None,
+                "clinic_ids": [],
             },
         )
 
@@ -423,20 +499,19 @@ def test_system_admin_role_cannot_be_created_or_assigned_through_api(
                 "email": f"admin-{uuid4().hex}@example.invalid",
                 "full_name": "Forbidden Admin",
                 "role": "system_admin",
-                "clinic_id": None,
+                "clinic_ids": [],
             },
         )
         assign_response = client.post(
             f"/api/users/{target.id}/roles",
             headers=headers,
-            json={"role": "system_admin", "clinic_id": None},
+            json={"role": "system_admin"},
         )
         change_response = client.patch(
             f"/api/users/{target.id}/roles/{target.role_assignments[0].id}",
             headers=headers,
             json={
                 "role": "system_admin",
-                "clinic_id": None,
                 "reason": "Yetkisiz sistem yöneticisi atama denemesi",
             },
         )

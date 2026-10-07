@@ -22,10 +22,10 @@ def build_user() -> User:
             id=uuid4(),
             user_id=user.id,
             role=RoleCode.SYSTEM_ADMIN,
-            clinic_id=None,
             is_active=True,
         )
     ]
+    user.clinic_assignments = []
     return user
 
 

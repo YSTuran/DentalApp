@@ -9,6 +9,8 @@ from app.api.dependencies.authorization import require_any_role, require_system_
 from app.db.session import get_db
 from app.models import RoleCode, User
 from app.schemas.user_management import (
+    ClinicAssignmentCreateRequest,
+    ClinicAssignmentResponse,
     ManagedUserListResponse,
     ManagedUserResponse,
     ReasonRequest,
@@ -19,6 +21,8 @@ from app.schemas.user_management import (
     UserCreateRequest,
     UserUpdateRequest,
 )
+from app.services.user_clinics import assign_clinic, change_clinic_assignment_status
+from app.services.user_errors import ClinicAssignmentNotFoundError
 from app.services.users import (
     FirebaseSyncError,
     RoleAssignmentNotFoundError,
@@ -31,6 +35,7 @@ from app.services.users import (
     change_user_status,
     create_user,
     get_visible_user,
+    list_visible_clinic_assignments,
     list_visible_role_assignments,
     list_visible_users,
     replace_role_assignment,
@@ -53,6 +58,10 @@ def _user_response(user: User, actor: User) -> ManagedUserResponse:
             RoleAssignmentResponse.model_validate(assignment)
             for assignment in list_visible_role_assignments(actor=actor, user=user)
         ],
+        clinic_assignments=[
+            ClinicAssignmentResponse.model_validate(assignment)
+            for assignment in list_visible_clinic_assignments(actor=actor, user=user)
+        ],
     )
 
 
@@ -63,6 +72,11 @@ def _translate_service_error(error: Exception) -> HTTPException:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="role_assignment_not_found",
+        )
+    if isinstance(error, ClinicAssignmentNotFoundError):
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="clinic_assignment_not_found",
         )
     if isinstance(error, UserAccessDeniedError):
         return HTTPException(
@@ -370,3 +384,108 @@ def _change_role_status(
     ) as error:
         raise _translate_service_error(error) from error
     return RoleAssignmentResponse.model_validate(assignment)
+
+
+@router.post(
+    "/{user_id}/clinics",
+    response_model=ClinicAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_clinic_assignment(
+    user_id: UUID,
+    payload: ClinicAssignmentCreateRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[User, Depends(require_system_admin)],
+    _csrf: Annotated[None, Depends(require_csrf)],
+) -> ClinicAssignmentResponse:
+    try:
+        assignment = assign_clinic(
+            db,
+            user_id=user_id,
+            clinic_id=payload.clinic_id,
+            reason=payload.reason,
+            actor=actor,
+            request=request,
+        )
+    except (UserNotFoundError, UserConflictError, UserValidationError) as error:
+        raise _translate_service_error(error) from error
+    return ClinicAssignmentResponse.model_validate(assignment)
+
+
+@router.post(
+    "/{user_id}/clinics/{assignment_id}/deactivate",
+    response_model=ClinicAssignmentResponse,
+)
+def deactivate_clinic_assignment(
+    user_id: UUID,
+    assignment_id: UUID,
+    payload: ReasonRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[User, Depends(require_system_admin)],
+    _csrf: Annotated[None, Depends(require_csrf)],
+) -> ClinicAssignmentResponse:
+    return _change_clinic_assignment_status(
+        db=db,
+        user_id=user_id,
+        assignment_id=assignment_id,
+        is_active=False,
+        reason=payload.reason,
+        actor=actor,
+        request=request,
+    )
+
+
+@router.post(
+    "/{user_id}/clinics/{assignment_id}/reactivate",
+    response_model=ClinicAssignmentResponse,
+)
+def reactivate_clinic_assignment(
+    user_id: UUID,
+    assignment_id: UUID,
+    payload: ReasonRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    actor: Annotated[User, Depends(require_system_admin)],
+    _csrf: Annotated[None, Depends(require_csrf)],
+) -> ClinicAssignmentResponse:
+    return _change_clinic_assignment_status(
+        db=db,
+        user_id=user_id,
+        assignment_id=assignment_id,
+        is_active=True,
+        reason=payload.reason,
+        actor=actor,
+        request=request,
+    )
+
+
+def _change_clinic_assignment_status(
+    *,
+    db: Session,
+    user_id: UUID,
+    assignment_id: UUID,
+    is_active: bool,
+    reason: str,
+    actor: User,
+    request: Request,
+) -> ClinicAssignmentResponse:
+    try:
+        assignment = change_clinic_assignment_status(
+            db,
+            user_id=user_id,
+            assignment_id=assignment_id,
+            is_active=is_active,
+            reason=reason,
+            actor=actor,
+            request=request,
+        )
+    except (
+        UserNotFoundError,
+        ClinicAssignmentNotFoundError,
+        UserConflictError,
+        UserValidationError,
+    ) as error:
+        raise _translate_service_error(error) from error
+    return ClinicAssignmentResponse.model_validate(assignment)

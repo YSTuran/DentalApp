@@ -16,6 +16,7 @@ from app.models import (
     MeshValidationStatus,
     RoleCode,
     User,
+    UserClinicAssignment,
     UserRoleAssignment,
 )
 from app.services.case_management.patient_data import set_patient_identity
@@ -40,7 +41,12 @@ def create_user(
             email=f"{uuid4().hex}@example.invalid",
             full_name=f"Case Test {role.value}",
         )
-        user.role_assignments = [UserRoleAssignment(role=role, clinic_id=clinic_id, is_active=True)]
+        user.role_assignments = [UserRoleAssignment(role=role, is_active=True)]
+        user.clinic_assignments = (
+            [UserClinicAssignment(clinic_id=clinic_id, is_active=True)]
+            if clinic_id is not None
+            else []
+        )
         session.add(user)
         session.flush()
     return user

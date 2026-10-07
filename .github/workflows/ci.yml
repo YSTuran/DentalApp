@@ -55,7 +55,9 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
       - name: Install mesh runtime libraries
         run: |
@@ -72,12 +74,19 @@ jobs:
       - name: Install frontend
         run: npm ci --prefix frontend
 
+      - name: Install Firebase tooling
+        run: npm ci
+
       - name: Apply migrations
         working-directory: backend
         run: alembic upgrade head
 
       - name: Backend tests
-        run: python -m pytest -c backend/pyproject.toml backend/tests
+        env:
+          RUN_FIREBASE_EMULATOR_TESTS: "1"
+        run: >-
+          npx firebase emulators:exec --only auth --project dentalapp-7b131
+          "python -m pytest -c backend/pyproject.toml backend/tests"
 
       - name: Backend lint and audit
         run: |

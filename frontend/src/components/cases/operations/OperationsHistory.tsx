@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { formatDate } from "../../../lib/case-format";
 import type { CaseOperations, ProductionRun } from "../../../types/fulfillment";
 
@@ -25,8 +27,8 @@ function eventRows(operations: CaseOperations, run: ProductionRun) {
     shipment && { key: shipment.id, label: "Kargoya verildi", detail: `${shipment.carrier} · ${shipment.tracking_number}`, date: shipment.shipped_at },
     delivery && { key: delivery.id, label: "Şubeye teslim edildi", detail: delivery.notes ?? "Teslim doğrulandı", date: delivery.delivered_at },
     receipt && { key: receipt.id, label: "İade teslim alındı", detail: receipt.reason, date: receipt.received_at },
-    decision && { key: decision.id, label: decision.resolution === "reproduction" ? "Yeniden üretim kararı" : "Yeni tarama kararı", detail: decision.reason, date: decision.decided_at },
-  ].filter((item): item is { key: string; label: string; detail: string; date: string } => Boolean(item));
+    decision && { key: decision.id, label: decision.resolution === "reproduction" ? "Yeni yeniden üretim vakası" : "Yeni tarama kararı", detail: decision.reason, date: decision.decided_at, target: decision.reproduction_case_id ? `/vakalar/${decision.reproduction_case_id}` : undefined },
+  ].filter((item): item is { key: string; label: string; detail: string; date: string; target?: string } => Boolean(item));
 }
 
 export function OperationsHistory({ operations }: Props) {
@@ -39,7 +41,7 @@ export function OperationsHistory({ operations }: Props) {
           <div className="operation-attempt-heading"><strong>Üretim {run.attempt_number}</strong><span>{run.work_order_number}</span></div>
           <ol>
             {eventRows(operations, run).map((event) => (
-              <li key={event.key}><i aria-hidden="true" /><div><strong>{event.label}</strong><span>{event.detail}</span><small>{formatDate(event.date)}</small></div></li>
+              <li key={event.key}><i aria-hidden="true" /><div><strong>{event.label}</strong><span>{event.detail}</span>{event.target && <Link className="text-link" to={event.target}>Yeni vakayı aç</Link>}<small>{formatDate(event.date)}</small></div></li>
             ))}
           </ol>
         </article>

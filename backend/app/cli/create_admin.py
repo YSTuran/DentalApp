@@ -134,7 +134,6 @@ def main() -> None:
                 select(UserRoleAssignment.id).where(
                     UserRoleAssignment.user_id == existing.id,
                     UserRoleAssignment.role == RoleCode.SYSTEM_ADMIN,
-                    UserRoleAssignment.clinic_id.is_(None),
                     UserRoleAssignment.is_active.is_(True),
                 )
             )
@@ -180,7 +179,6 @@ def main() -> None:
                 UserRoleAssignment(
                     user_id=user.id,
                     role=RoleCode.SYSTEM_ADMIN,
-                    clinic_id=None,
                 )
             )
             record_audit_event(

@@ -8,6 +8,7 @@ def test_identity_tables_are_registered() -> None:
         "clinics",
         "email_outbox",
         "users",
+        "user_clinic_assignments",
         "user_role_assignments",
     }.issubset(Base.metadata.tables)
 
@@ -18,11 +19,11 @@ def test_only_system_admin_and_technician_are_global_roles() -> None:
     assert global_roles == {RoleCode.SYSTEM_ADMIN, RoleCode.TECHNICIAN}
 
 
-def test_role_assignment_has_scope_constraint() -> None:
+def test_role_and_clinic_assignments_are_separate() -> None:
     table = Base.metadata.tables["user_role_assignments"]
-    constraint_names = {constraint.name for constraint in table.constraints}
 
-    assert "ck_user_role_assignments_role_scope" in constraint_names
+    assert "clinic_id" not in table.columns
+    assert "user_clinic_assignments" in Base.metadata.tables
 
 
 def test_patient_identity_uses_only_encrypted_case_columns() -> None:

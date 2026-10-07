@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Clinic, RoleCode, User
 from app.schemas.clinic import ClinicCreateRequest, ClinicUpdateRequest
 from app.services.audit import record_audit_event
-from app.services.authorization import has_clinic_role, has_global_role
+from app.services.authorization import has_any_role, has_clinic_role, has_global_role
 
 
 class ClinicNotFoundError(Exception):
@@ -79,12 +79,12 @@ def list_visible_clinics(
 
     is_system_admin = has_global_role(actor, RoleCode.SYSTEM_ADMIN)
     if not is_system_admin:
+        if not has_any_role(actor, RoleCode.CLINIC_MANAGER):
+            raise ClinicAccessDeniedError
         clinic_ids = {
             assignment.clinic_id
-            for assignment in actor.role_assignments
+            for assignment in actor.clinic_assignments
             if assignment.is_active
-            and assignment.role == RoleCode.CLINIC_MANAGER
-            and assignment.clinic_id is not None
         }
         if not clinic_ids:
             raise ClinicAccessDeniedError

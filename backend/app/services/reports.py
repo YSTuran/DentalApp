@@ -26,7 +26,7 @@ from app.schemas.report import (
     ReportTotalsResponse,
 )
 from app.services.authorization import has_global_role
-from app.services.case_management.access import active_assignments, case_visibility_filter
+from app.services.case_management.access import case_visibility_filter
 from app.services.case_management.exceptions import CaseAccessDeniedError, CaseValidationError
 from app.services.case_management.queries import TERMINAL_CASE_STATUSES
 
@@ -59,8 +59,8 @@ def _available_clinics(db: Session, actor: User) -> list[Clinic]:
     if not _has_global_report_scope(actor):
         clinic_ids = {
             assignment.clinic_id
-            for assignment in active_assignments(actor)
-            if assignment.clinic_id is not None
+            for assignment in actor.clinic_assignments
+            if assignment.is_active
         }
         statement = statement.where(Clinic.id.in_(clinic_ids))
     return list(db.scalars(statement.order_by(Clinic.name, Clinic.id)).all())

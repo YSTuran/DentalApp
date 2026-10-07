@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
@@ -8,6 +8,7 @@ import { CaseCancelDialog } from "../components/cases/CaseCancelDialog";
 import { CaseCompletionBanner } from "../components/cases/CaseCompletionBanner";
 import { CaseEditDialog } from "../components/cases/CaseEditDialog";
 import { CaseFileList } from "../components/cases/CaseFileList";
+import { CaseLineage } from "../components/cases/CaseLineage";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
 import { CaseTransferPanel } from "../components/cases/CaseTransferPanel";
 import { DentistDesignDecisionPanel } from "../components/cases/DentistDesignDecisionPanel";
@@ -29,6 +30,7 @@ const StlViewerPanel = lazy(() => import("../components/cases/StlViewerPanel").t
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [dentalCase, setDentalCase] = useState<DentalCase | null>(null);
   const [history, setHistory] = useState<CaseHistoryItem[]>([]);
@@ -108,6 +110,9 @@ export function CaseDetailPage() {
   }
 
   function handleCaseUpdated(updated: DentalCase, message: string) {
+    if (updated.id !== caseId) {
+      navigate(`/vakalar/${updated.id}`, { replace: true });
+    }
     setDentalCase(updated);
     setSuccess(message);
     setError(null);
@@ -129,6 +134,7 @@ export function CaseDetailPage() {
             </div>
             {error && <div className="form-error dashboard-error" role="alert">{error}</div>}
             {success && <div className="success-message">{success}</div>}
+            <CaseLineage dentalCase={dentalCase} />
             {dentalCase.status === "delivered" && <CaseCompletionBanner />}
 
             <div className="case-detail-grid">

@@ -14,7 +14,7 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
   shipped: "Kargoya verildi",
   delivered: "Tamamlandı · Şubeye teslim edildi",
   return_review: "İade değerlendirmesinde",
-  reproduction_requested: "Yeniden üretim istendi",
+  reproduction_requested: "Yeniden üretim vakası açıldı",
   rescan_requested: "Yeni tarama istendi",
   cancelled: "İptal edildi",
 };
@@ -42,6 +42,7 @@ export const caseActionLabels: Record<string, string> = {
   confirm_delivery: "Şube teslimi doğrulandı",
   register_return_received: "İade laboratuvara ulaştı",
   decide_reproduction: "Yeniden üretim kararı verildi",
+  create_reproduction: "İadeden yeni vaka oluşturuldu",
   decide_rescan: "Yeni tarama kararı verildi",
 };
 

@@ -56,6 +56,7 @@ export interface ReturnDecision {
   id: string;
   return_receipt_id: string;
   source_scan_file_version_id: string;
+  reproduction_case_id: string | null;
   resolution: ReturnResolution;
   reason: string;
   decided_by_user_id: string;

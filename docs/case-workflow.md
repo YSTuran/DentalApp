@@ -22,8 +22,10 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
   `responsible_dentist_user_id` tutulur.
 - Tasarım onayını yalnızca sorumlu hekim verir. Kaydı klinik personelinin açmış olması
   bu yetkiyi personele vermez.
-- Birden fazla klinikte aktif klinik rolü alabilen tek rol klinik yöneticisidir.
-  Hekim, yönetici hekim ve klinik personeli aynı anda tek kliniğe bağlıdır.
+- Kullanıcının rolü ile çalışma klinikleri ayrı kayıtlardır. Aynı kullanıcıya farklı
+  türde iki aktif rol verilemez; buna karşılık hekim, yönetici hekim, klinik yöneticisi
+  veya klinik personeli birden fazla kliniğe atanabilir. Vaka kaydı her zaman işlemin
+  yapıldığı kliniği, vakayı açan kullanıcıyı ve sorumlu hekimi ayrı alanlarda saklar.
 - Klinik yöneticisi veya yönetici hekim aktif bir vaka için aynı klinikteki başka bir
   hekime gerekçeli devir talebi açabilir. Sorumlu hekim yalnızca hedef hekim kabul
   ettiğinde değişir; hedef hekim talebi reddedebilir. Bekleyen talep hedef hekime vaka
@@ -35,8 +37,10 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
 - Düzeltme, ret, iptal, iade ve iade sonrası karar işlemlerinde gerekçe zorunludur.
 - Ürünü teknisyen kargoya verir. Şubeye teslimi klinik yöneticisi veya klinik
   personeli doğrular.
-- İade sonrasında yeniden üretim aynı vaka içinde yeni üretim döngüsü olarak ilerler.
-  Yeni tarama kararında vaka tekrar yönetici onayına gönderilir.
+- İade sonrasında yeniden üretim kararı eski vakayı kapalı durumda tutar ve ona bağlı
+  yeni bir taslak vaka açar. Klinik, sorumlu hekim ve hasta alanları aktarılır; dosya
+  sürümleri ve onaylar aktarılmaz. Yeni vaka iki zorunlu onaydan yeniden geçer. Yeni
+  tarama kararında ise eski vaka `rescan_requested` durumuyla hekime yönlendirilir.
 - Sistem yöneticisi kullanıcı ve şube yönetir; klinik onay rollerini devralmaz.
 - Durum değişiklikleri ilgili yönetici hekim, sorumlu hekim, klinik personeli veya
   teknisyenlere uygulama içi bildirim üretir. Bildirimlerde hasta adı bulunmaz.

@@ -159,6 +159,9 @@ class ReturnDecision(UUIDPrimaryKeyMixin, Base):
     source_scan_file_version_id: Mapped[UUID] = mapped_column(
         ForeignKey("case_file_versions.id", ondelete="RESTRICT"), nullable=False
     )
+    reproduction_case_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("cases.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
     resolution: Mapped[ReturnResolution] = mapped_column(RETURN_RESOLUTION_ENUM, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     decided_by_user_id: Mapped[UUID] = mapped_column(
@@ -170,4 +173,9 @@ class ReturnDecision(UUIDPrimaryKeyMixin, Base):
 
     __table_args__ = (
         CheckConstraint("length(btrim(reason)) >= 3", name="return_decision_reason_required"),
+        CheckConstraint(
+            "(resolution = 'reproduction' AND reproduction_case_id IS NOT NULL) OR "
+            "(resolution = 'rescan' AND reproduction_case_id IS NULL)",
+            name="return_decision_reproduction_case",
+        ),
     )

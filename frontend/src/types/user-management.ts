@@ -3,7 +3,14 @@ import type { RoleCode } from "./auth";
 export interface RoleAssignment {
   id: string;
   role: RoleCode;
-  clinic_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClinicAssignment {
+  id: string;
+  clinic_id: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -17,6 +24,7 @@ export interface ManagedUser {
   created_at: string;
   updated_at: string;
   role_assignments: RoleAssignment[];
+  clinic_assignments: ClinicAssignment[];
 }
 
 export interface ManagedUserListResponse {
@@ -36,6 +44,10 @@ export interface UserCreateInput {
 
 export interface RoleAssignmentUpdateInput {
   role: RoleCode;
+  reason: string;
+}
+
+export interface ClinicAssignmentCreateInput {
   clinic_id: string;
   reason: string;
 }

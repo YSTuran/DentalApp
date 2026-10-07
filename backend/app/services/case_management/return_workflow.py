@@ -21,6 +21,7 @@ from app.services.case_management.operation_support import (
     shipment_for_case,
 )
 from app.services.case_management.repository import load_case
+from app.services.case_management.reproduction import create_reproduction_case
 from app.services.case_management.transitions import authorize_transition
 
 RETURN_ACTIONS = {
@@ -109,9 +110,21 @@ def decide_return(
     if not scans:
         raise CaseConflictError("case_scan_required")
     source_scan = max(scans, key=lambda file: file.version_number)
+    reproduction = (
+        create_reproduction_case(
+            db,
+            source_case=case,
+            actor=actor,
+            reason=payload.reason,
+            request=request,
+        )
+        if payload.resolution == ReturnResolution.REPRODUCTION
+        else None
+    )
     decision = ReturnDecision(
         return_receipt_id=receipt.id,
         source_scan_file_version_id=source_scan.id,
+        reproduction_case_id=reproduction.id if reproduction else None,
         resolution=payload.resolution,
         reason=payload.reason,
         decided_by_user_id=actor.id,
@@ -136,6 +149,7 @@ def decide_return(
                 "return_decision_id": decision.id,
                 "resolution": decision.resolution,
                 "source_scan_file_version_id": source_scan.id,
+                "reproduction_case_id": reproduction.id if reproduction else None,
             },
             request=request,
         )
@@ -143,4 +157,4 @@ def decide_return(
     except Exception:
         db.rollback()
         raise
-    return load_case(db, case.id)
+    return load_case(db, reproduction.id if reproduction else case.id)

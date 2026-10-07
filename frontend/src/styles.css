@@ -1489,6 +1489,22 @@ input:disabled {
   text-decoration: line-through;
 }
 
+.clinic-assignment-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.clinic-assignment-list span button {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .current-account-label {
   color: var(--muted);
   font-size: 0.75rem;

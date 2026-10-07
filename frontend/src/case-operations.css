@@ -230,3 +230,22 @@
     display: none !important;
   }
 }
+.case-lineage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: var(--surface-soft);
+}
+
+.case-lineage span {
+  color: var(--muted);
+}
+
+.case-lineage a {
+  color: var(--primary-dark);
+  font-weight: 700;
+}

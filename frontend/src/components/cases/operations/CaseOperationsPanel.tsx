@@ -22,7 +22,7 @@ interface Props {
   onUpdated: (updated: DentalCase, message: string) => void;
 }
 
-const startStatuses = new Set(["ready_for_production", "reproduction_requested"]);
+const startStatuses = new Set(["ready_for_production"]);
 
 export function CaseOperationsPanel({ dentalCase, onUpdated }: Props) {
   const { user } = useAuth();

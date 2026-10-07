@@ -50,6 +50,10 @@ def test_notification_is_private_and_dismissal_keeps_database_record(
         assert dentist_list.json()["total"] == 1
         assert dentist_list.json()["items"][0]["id"] == str(notification_id)
 
+        missing_csrf = client.post(f"/api/notifications/{notification_id}/dismiss")
+        assert missing_csrf.status_code == 403
+        assert missing_csrf.json()["detail"] == "csrf_validation_failed"
+
         dismissed = client.post(
             f"/api/notifications/{notification_id}/dismiss",
             headers=csrf_headers(client),

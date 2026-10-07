@@ -11,6 +11,7 @@ from app.models import (
     DentalCase,
     RoleCode,
     User,
+    UserClinicAssignment,
     UserRoleAssignment,
 )
 from app.services.case_management.access import (
@@ -23,7 +24,7 @@ from app.services.case_management.patient_data import patient_code_lookup
 from app.services.case_management.repository import CASE_LOAD_OPTIONS, load_case
 
 CaseLifecycle = Literal["active", "completed", "closed"]
-COMPLETED_CASE_STATUSES = (CaseStatus.DELIVERED,)
+COMPLETED_CASE_STATUSES = (CaseStatus.DELIVERED, CaseStatus.REPRODUCTION_REQUESTED)
 CLOSED_CASE_STATUSES = (CaseStatus.CANCELLED, CaseStatus.MANAGER_REJECTED)
 TERMINAL_CASE_STATUSES = COMPLETED_CASE_STATUSES + CLOSED_CASE_STATUSES
 
@@ -48,10 +49,13 @@ def list_case_create_options(
         return []
 
     assignments = db.execute(
-        select(UserRoleAssignment.clinic_id, User)
-        .join(User, User.id == UserRoleAssignment.user_id)
+        select(UserClinicAssignment.clinic_id, User)
+        .select_from(UserClinicAssignment)
+        .join(User, User.id == UserClinicAssignment.user_id)
+        .join(UserRoleAssignment, UserRoleAssignment.user_id == User.id)
         .where(
-            UserRoleAssignment.clinic_id.in_([clinic.id for clinic in clinics]),
+            UserClinicAssignment.clinic_id.in_([clinic.id for clinic in clinics]),
+            UserClinicAssignment.is_active.is_(True),
             UserRoleAssignment.role.in_({RoleCode.DENTIST, RoleCode.MANAGING_DENTIST}),
             UserRoleAssignment.is_active.is_(True),
             User.is_active.is_(True),

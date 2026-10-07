@@ -7,7 +7,13 @@ from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Clinic, RoleCode, User, UserPreference, UserRoleAssignment
+from app.models import (
+    RoleCode,
+    User,
+    UserClinicAssignment,
+    UserPreference,
+    UserRoleAssignment,
+)
 from app.schemas.user_management import (
     RoleAssignmentCreateRequest,
     RoleAssignmentUpdateRequest,
@@ -25,45 +31,35 @@ from app.services.firebase_identity import (
     set_identity_disabled,
     update_identity_name,
 )
+from app.services.user_errors import (
+    FirebaseSyncError,
+    RoleAssignmentNotFoundError,
+    UserAccessDeniedError,
+    UserConflictError,
+    UserNotFoundError,
+    UserValidationError,
+)
+from app.services.user_role_policy import (
+    reject_system_admin_assignment as _reject_system_admin_assignment,
+)
+from app.services.user_role_policy import validate_initial_clinics
+from app.services.user_role_policy import (
+    validate_role_compatibility as _validate_role_compatibility,
+)
 
 logger = logging.getLogger(__name__)
 CLINIC_MANAGER_VISIBLE_ROLES = {RoleCode.DENTIST, RoleCode.MANAGING_DENTIST}
 SYSTEM_ADMIN_MUTATION_LOCK_KEY = 4_428_861_106_564_001_101
 
 
-class UserNotFoundError(Exception):
-    pass
-
-
-class RoleAssignmentNotFoundError(Exception):
-    pass
-
-
-class UserAccessDeniedError(Exception):
-    pass
-
-
-class UserConflictError(Exception):
-    def __init__(self, detail: str) -> None:
-        self.detail = detail
-        super().__init__(detail)
-
-
-class UserValidationError(Exception):
-    def __init__(self, detail: str) -> None:
-        self.detail = detail
-        super().__init__(detail)
-
-
-class FirebaseSyncError(Exception):
-    def __init__(self, detail: str = "firebase_service_unavailable") -> None:
-        self.detail = detail
-        super().__init__(detail)
-
-
 def _load_user(db: Session, user_id: UUID) -> User:
     user = db.scalar(
-        select(User).options(selectinload(User.role_assignments)).where(User.id == user_id)
+        select(User)
+        .options(
+            selectinload(User.role_assignments),
+            selectinload(User.clinic_assignments),
+        )
+        .where(User.id == user_id)
     )
     if user is None:
         raise UserNotFoundError
@@ -71,12 +67,15 @@ def _load_user(db: Session, user_id: UUID) -> User:
 
 
 def _manager_clinic_ids(actor: User) -> set[UUID]:
+    if not any(
+        assignment.is_active and assignment.role == RoleCode.CLINIC_MANAGER
+        for assignment in actor.role_assignments
+    ):
+        return set()
     return {
         assignment.clinic_id
-        for assignment in actor.role_assignments
+        for assignment in actor.clinic_assignments
         if assignment.is_active
-        and assignment.role == RoleCode.CLINIC_MANAGER
-        and assignment.clinic_id is not None
     }
 
 
@@ -85,85 +84,26 @@ def _require_system_admin(actor: User) -> None:
         raise UserAccessDeniedError
 
 
-def _validate_role_scope(
-    db: Session,
-    *,
-    role: RoleCode,
-    clinic_id: UUID | None,
-) -> Clinic | None:
-    if role.is_global:
-        if clinic_id is not None:
-            raise UserValidationError("global_role_cannot_have_clinic")
-        return None
-    if clinic_id is None:
-        raise UserValidationError("clinic_role_requires_clinic")
-
-    clinic = db.get(Clinic, clinic_id)
-    if clinic is None:
-        raise UserValidationError("clinic_not_found")
-    if not clinic.is_active:
-        raise UserConflictError("clinic_inactive")
-    return clinic
-
-
-def _reject_system_admin_assignment(role: RoleCode) -> None:
-    if role == RoleCode.SYSTEM_ADMIN:
-        raise UserValidationError("system_admin_assignment_not_allowed")
-
-
-def _validate_multi_clinic_assignment(
-    db: Session,
-    *,
-    user_id: UUID,
-    role: RoleCode,
-    clinic_id: UUID | None,
-    exclude_assignment_id: UUID | None = None,
-) -> None:
-    if clinic_id is None:
-        return
-    statement = select(
-        UserRoleAssignment.id,
-        UserRoleAssignment.role,
-        UserRoleAssignment.clinic_id,
-    ).where(
-        UserRoleAssignment.user_id == user_id,
-        UserRoleAssignment.is_active.is_(True),
-        UserRoleAssignment.clinic_id.is_not(None),
-    )
-    if exclude_assignment_id is not None:
-        statement = statement.where(UserRoleAssignment.id != exclude_assignment_id)
-    assignments = list(db.execute(statement).all())
-    clinic_ids = {item.clinic_id for item in assignments} | {clinic_id}
-    roles = {item.role for item in assignments} | {role}
-    if len(clinic_ids) > 1 and roles != {RoleCode.CLINIC_MANAGER}:
-        raise UserValidationError("multi_clinic_role_not_allowed")
-
-
 def _raise_role_integrity_error(error: IntegrityError) -> None:
     constraint_name = getattr(
         getattr(getattr(error, "orig", None), "diag", None), "constraint_name", None
     )
-    if constraint_name == "ck_user_role_assignments_multi_clinic":
-        raise UserValidationError("multi_clinic_role_not_allowed") from error
+    if constraint_name in {
+        "ck_user_role_assignments_single_active_role",
+        "uq_user_role_assignment_active_user",
+    }:
+        raise UserValidationError("conflicting_active_role") from error
     raise UserConflictError("role_assignment_exists") from error
 
 
-def _clear_invalid_active_clinic(db: Session, user: User) -> bool:
+def _clear_active_clinic_for_global_role(db: Session, user: User, role: RoleCode) -> bool:
+    if not role.is_global:
+        return False
     preference = db.get(UserPreference, user.id)
     if preference is None or preference.active_clinic_id is None:
         return False
-    still_managed = db.scalar(
-        select(UserRoleAssignment.id).where(
-            UserRoleAssignment.user_id == user.id,
-            UserRoleAssignment.is_active.is_(True),
-            UserRoleAssignment.role == RoleCode.CLINIC_MANAGER,
-            UserRoleAssignment.clinic_id == preference.active_clinic_id,
-        )
-    )
-    if still_managed is None:
-        preference.active_clinic_id = None
-        return True
-    return False
+    preference.active_clinic_id = None
+    return True
 
 
 def _active_system_admin_count(db: Session) -> int:
@@ -175,7 +115,6 @@ def _active_system_admin_count(db: Session) -> int:
                 User.is_active.is_(True),
                 UserRoleAssignment.is_active.is_(True),
                 UserRoleAssignment.role == RoleCode.SYSTEM_ADMIN,
-                UserRoleAssignment.clinic_id.is_(None),
             )
         )
         or 0
@@ -194,7 +133,6 @@ def _has_active_system_admin_role(user: User) -> bool:
     return any(
         assignment.is_active
         and assignment.role == RoleCode.SYSTEM_ADMIN
-        and assignment.clinic_id is None
         for assignment in user.role_assignments
     )
 
@@ -229,16 +167,30 @@ def list_visible_users(
             raise UserAccessDeniedError
         visible_clinics = {clinic_id} if clinic_id is not None else manager_clinics
         filters.append(
-            User.role_assignments.any(
-                and_(
-                    UserRoleAssignment.is_active.is_(True),
-                    UserRoleAssignment.clinic_id.in_(visible_clinics),
-                    UserRoleAssignment.role.in_(CLINIC_MANAGER_VISIBLE_ROLES),
-                )
+            and_(
+                User.role_assignments.any(
+                    and_(
+                        UserRoleAssignment.is_active.is_(True),
+                        UserRoleAssignment.role.in_(CLINIC_MANAGER_VISIBLE_ROLES),
+                    )
+                ),
+                User.clinic_assignments.any(
+                    and_(
+                        UserClinicAssignment.is_active.is_(True),
+                        UserClinicAssignment.clinic_id.in_(visible_clinics),
+                    )
+                ),
             )
         )
     elif clinic_id is not None:
-        filters.append(User.role_assignments.any(UserRoleAssignment.clinic_id == clinic_id))
+        filters.append(
+            User.clinic_assignments.any(
+                and_(
+                    UserClinicAssignment.is_active.is_(True),
+                    UserClinicAssignment.clinic_id == clinic_id,
+                )
+            )
+        )
 
     if is_active is not None:
         filters.append(User.is_active.is_(is_active))
@@ -264,7 +216,10 @@ def list_visible_users(
     total = db.scalar(select(func.count()).select_from(User).where(*filters)) or 0
     users = db.scalars(
         select(User)
-        .options(selectinload(User.role_assignments))
+        .options(
+            selectinload(User.role_assignments),
+            selectinload(User.clinic_assignments),
+        )
         .where(*filters)
         .order_by(func.lower(User.full_name), func.lower(User.email))
         .limit(limit)
@@ -279,13 +234,16 @@ def get_visible_user(db: Session, *, actor: User, user_id: UUID) -> User:
         return user
 
     manager_clinics = _manager_clinic_ids(actor)
-    is_visible_doctor = any(
+    has_visible_role = any(
         assignment.is_active
-        and assignment.clinic_id in manager_clinics
         and assignment.role in CLINIC_MANAGER_VISIBLE_ROLES
         for assignment in user.role_assignments
     )
-    if not is_visible_doctor:
+    shares_clinic = any(
+        assignment.is_active and assignment.clinic_id in manager_clinics
+        for assignment in user.clinic_assignments
+    )
+    if not has_visible_role or not shares_clinic:
         raise UserAccessDeniedError
     return user
 
@@ -299,12 +257,31 @@ def list_visible_role_assignments(
         return list(user.role_assignments)
 
     manager_clinics = _manager_clinic_ids(actor)
+    shares_clinic = any(
+        assignment.is_active and assignment.clinic_id in manager_clinics
+        for assignment in user.clinic_assignments
+    )
+    if not shares_clinic:
+        return []
     return [
         assignment
         for assignment in user.role_assignments
-        if assignment.is_active
-        and assignment.clinic_id in manager_clinics
-        and assignment.role in CLINIC_MANAGER_VISIBLE_ROLES
+        if assignment.is_active and assignment.role in CLINIC_MANAGER_VISIBLE_ROLES
+    ]
+
+
+def list_visible_clinic_assignments(
+    *,
+    actor: User,
+    user: User,
+) -> list[UserClinicAssignment]:
+    if has_global_role(actor, RoleCode.SYSTEM_ADMIN):
+        return list(user.clinic_assignments)
+    manager_clinics = _manager_clinic_ids(actor)
+    return [
+        assignment
+        for assignment in user.clinic_assignments
+        if assignment.is_active and assignment.clinic_id in manager_clinics
     ]
 
 
@@ -317,7 +294,11 @@ def create_user(
 ) -> tuple[User, str]:
     _require_system_admin(actor)
     _reject_system_admin_assignment(payload.role)
-    _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
+    clinics = validate_initial_clinics(
+        db,
+        role=payload.role,
+        clinic_ids=payload.clinic_ids,
+    )
     if db.scalar(select(User.id).where(func.lower(User.email) == payload.email.lower())):
         raise UserConflictError("user_email_exists")
 
@@ -341,10 +322,13 @@ def create_user(
     )
     assignment = UserRoleAssignment(
         role=payload.role,
-        clinic_id=payload.clinic_id,
         is_active=True,
     )
     user.role_assignments = [assignment]
+    user.clinic_assignments = [
+        UserClinicAssignment(clinic_id=clinic.id, is_active=True)
+        for clinic in clinics
+    ]
 
     try:
         db.add(user)
@@ -355,7 +339,7 @@ def create_user(
             entity_type="user",
             entity_id=user.id,
             actor=actor,
-            clinic_id=payload.clinic_id,
+            clinic_id=clinics[0].id if len(clinics) == 1 else None,
             reason=payload.reason,
             after={
                 "email": user.email,
@@ -371,17 +355,33 @@ def create_user(
             entity_type="user_role_assignment",
             entity_id=assignment.id,
             actor=actor,
-            clinic_id=payload.clinic_id,
+            clinic_id=None,
             reason=payload.reason,
             after={
                 "user_id": user.id,
                 "role": assignment.role,
-                "clinic_id": assignment.clinic_id,
                 "is_active": True,
             },
             context={"source": "api"},
             request=request,
         )
+        for clinic_assignment in user.clinic_assignments:
+            record_audit_event(
+                db,
+                action="user.clinic_assigned",
+                entity_type="user_clinic_assignment",
+                entity_id=clinic_assignment.id,
+                actor=actor,
+                clinic_id=clinic_assignment.clinic_id,
+                reason=payload.reason,
+                after={
+                    "user_id": user.id,
+                    "clinic_id": clinic_assignment.clinic_id,
+                    "is_active": True,
+                },
+                context={"source": "api", "during_user_creation": True},
+                request=request,
+            )
         db.commit()
     except Exception as error:
         db.rollback()
@@ -506,22 +506,16 @@ def assign_role(
     if not user.is_active:
         raise UserConflictError("user_inactive")
     _reject_system_admin_assignment(payload.role)
-    _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
-    _validate_multi_clinic_assignment(
-        db,
-        user_id=user.id,
-        role=payload.role,
-        clinic_id=payload.clinic_id,
-    )
+    _validate_role_compatibility(db, user_id=user.id, role=payload.role)
 
     existing = db.scalar(
-        select(UserRoleAssignment).where(
+        select(UserRoleAssignment)
+        .where(
             UserRoleAssignment.user_id == user.id,
             UserRoleAssignment.role == payload.role,
-            UserRoleAssignment.clinic_id.is_(payload.clinic_id)
-            if payload.clinic_id is None
-            else UserRoleAssignment.clinic_id == payload.clinic_id,
         )
+        .order_by(UserRoleAssignment.updated_at.desc(), UserRoleAssignment.id)
+        .limit(1)
     )
     if existing is not None:
         raise UserConflictError("role_assignment_exists")
@@ -529,7 +523,6 @@ def assign_role(
     assignment = UserRoleAssignment(
         user_id=user.id,
         role=payload.role,
-        clinic_id=payload.clinic_id,
         is_active=True,
     )
     try:
@@ -541,12 +534,11 @@ def assign_role(
             entity_type="user_role_assignment",
             entity_id=assignment.id,
             actor=actor,
-            clinic_id=payload.clinic_id,
+            clinic_id=None,
             reason=payload.reason,
             after={
                 "user_id": user.id,
                 "role": assignment.role,
-                "clinic_id": assignment.clinic_id,
                 "is_active": True,
             },
             context={"source": "api"},
@@ -594,18 +586,13 @@ def replace_role_assignment(
         raise UserValidationError("system_admin_assignment_not_allowed")
 
     _reject_system_admin_assignment(payload.role)
-    _validate_role_scope(db, role=payload.role, clinic_id=payload.clinic_id)
-    _validate_multi_clinic_assignment(
+    _validate_role_compatibility(
         db,
         user_id=user.id,
         role=payload.role,
-        clinic_id=payload.clinic_id,
         exclude_assignment_id=current_assignment.id,
     )
-    if (
-        current_assignment.role == payload.role
-        and current_assignment.clinic_id == payload.clinic_id
-    ):
+    if current_assignment.role == payload.role:
         raise UserConflictError("role_assignment_no_changes")
 
     replacement = db.scalar(
@@ -613,17 +600,15 @@ def replace_role_assignment(
         .where(
             UserRoleAssignment.user_id == user.id,
             UserRoleAssignment.role == payload.role,
-            UserRoleAssignment.clinic_id.is_(payload.clinic_id)
-            if payload.clinic_id is None
-            else UserRoleAssignment.clinic_id == payload.clinic_id,
         )
+        .order_by(UserRoleAssignment.updated_at.desc(), UserRoleAssignment.id)
+        .limit(1)
         .with_for_update()
     )
     previous_replacement_status = replacement.is_active if replacement is not None else None
     before = {
         "assignment_id": current_assignment.id,
         "role": current_assignment.role,
-        "clinic_id": current_assignment.clinic_id,
         "is_active": True,
     }
 
@@ -633,7 +618,6 @@ def replace_role_assignment(
             replacement = UserRoleAssignment(
                 user_id=user.id,
                 role=payload.role,
-                clinic_id=payload.clinic_id,
                 is_active=True,
             )
             db.add(replacement)
@@ -641,20 +625,23 @@ def replace_role_assignment(
             replacement.is_active = True
 
         db.flush()
-        active_clinic_cleared = _clear_invalid_active_clinic(db, user)
+        active_clinic_cleared = _clear_active_clinic_for_global_role(
+            db,
+            user,
+            payload.role,
+        )
         record_audit_event(
             db,
             action="user.role_changed",
             entity_type="user_role_assignment",
             entity_id=current_assignment.id,
             actor=actor,
-            clinic_id=payload.clinic_id,
+            clinic_id=None,
             reason=payload.reason,
             before=before,
             after={
                 "assignment_id": replacement.id,
                 "role": replacement.role,
-                "clinic_id": replacement.clinic_id,
                 "is_active": True,
             },
             context={
@@ -704,12 +691,10 @@ def change_role_status(
     if is_active:
         if not user.is_active:
             raise UserConflictError("user_inactive")
-        _validate_role_scope(db, role=assignment.role, clinic_id=assignment.clinic_id)
-        _validate_multi_clinic_assignment(
+        _validate_role_compatibility(
             db,
             user_id=user.id,
             role=assignment.role,
-            clinic_id=assignment.clinic_id,
             exclude_assignment_id=assignment.id,
         )
     elif assignment.role == RoleCode.SYSTEM_ADMIN and user.is_active:
@@ -723,14 +708,18 @@ def change_role_status(
     try:
         assignment.is_active = is_active
         db.flush()
-        active_clinic_cleared = _clear_invalid_active_clinic(db, user)
+        active_clinic_cleared = (
+            _clear_active_clinic_for_global_role(db, user, assignment.role)
+            if is_active
+            else False
+        )
         record_audit_event(
             db,
             action="user.role_reactivated" if is_active else "user.role_deactivated",
             entity_type="user_role_assignment",
             entity_id=assignment.id,
             actor=actor,
-            clinic_id=assignment.clinic_id,
+            clinic_id=None,
             reason=reason,
             before={"is_active": previous_status},
             after={"is_active": is_active},

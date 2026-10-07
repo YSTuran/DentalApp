@@ -154,6 +154,7 @@ class ReturnDecisionResponse(BaseModel):
     id: UUID
     return_receipt_id: UUID
     source_scan_file_version_id: UUID
+    reproduction_case_id: UUID | None
     resolution: ReturnResolution
     reason: str
     decided_by_user_id: UUID

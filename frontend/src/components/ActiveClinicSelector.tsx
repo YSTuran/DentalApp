@@ -9,9 +9,7 @@ export function ActiveClinicSelector() {
   const clinics = useMemo(() => {
     const unique = new Map<string, string>();
     for (const assignment of user?.clinic_roles ?? []) {
-      if (assignment.role === "clinic_manager") {
-        unique.set(assignment.clinic_id, assignment.clinic_name ?? "Klinik");
-      }
+      unique.set(assignment.clinic_id, assignment.clinic_name ?? "Klinik");
     }
     return [...unique.entries()].sort((left, right) => left[1].localeCompare(right[1], "tr"));
   }, [user]);

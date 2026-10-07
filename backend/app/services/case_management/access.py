@@ -9,9 +9,8 @@ from app.models import (
     DentalCase,
     RoleCode,
     User,
-    UserRoleAssignment,
 )
-from app.services.authorization import has_global_role
+from app.services.authorization import has_any_role, has_clinic_role, has_global_role
 from app.services.case_management.exceptions import CaseAccessDeniedError
 
 CLINIC_CASE_VIEW_ROLES = frozenset(
@@ -34,22 +33,33 @@ LAB_VISIBLE_STATUSES = frozenset(
 )
 
 
-def active_assignments(actor: User) -> list[UserRoleAssignment]:
+def active_assignments(actor: User):
     return [assignment for assignment in actor.role_assignments if assignment.is_active]
 
 
 def actor_role_assignments(actor: User) -> frozenset[tuple[RoleCode, UUID | None]]:
-    return frozenset(
-        (assignment.role, assignment.clinic_id)
-        for assignment in active_assignments(actor)
+    roles = [assignment.role for assignment in active_assignments(actor)]
+    clinic_ids = {
+        assignment.clinic_id
+        for assignment in actor.clinic_assignments
+        if assignment.is_active
+    }
+    scoped = {(role, clinic_id) for role in roles for clinic_id in clinic_ids}
+    scoped.update(
+        (role, None)
+        for role in roles
+        if role in {RoleCode.SYSTEM_ADMIN, RoleCode.TECHNICIAN}
     )
+    return frozenset(scoped)
 
 
 def clinic_ids_for_roles(actor: User, roles: frozenset[RoleCode]) -> set[UUID]:
+    if not any(assignment.role in roles for assignment in active_assignments(actor)):
+        return set()
     return {
         assignment.clinic_id
-        for assignment in active_assignments(actor)
-        if assignment.clinic_id is not None and assignment.role in roles
+        for assignment in actor.clinic_assignments
+        if assignment.is_active
     }
 
 
@@ -110,14 +120,17 @@ def require_case_visibility(actor: User, case: DentalCase) -> None:
 
 
 def require_create_access(actor: User, clinic_id: UUID) -> None:
-    if not any(
-        assignment.clinic_id == clinic_id and assignment.role in CASE_CREATE_ROLES
-        for assignment in active_assignments(actor)
-    ):
+    if not has_clinic_role(actor, clinic_id, *CASE_CREATE_ROLES):
         raise CaseAccessDeniedError
 
 
 def can_view_patient_name(actor: User, case: DentalCase) -> bool:
+    if has_any_role(actor, RoleCode.DENTIST, RoleCode.MANAGING_DENTIST) and actor.id in {
+        case.created_by_user_id,
+        case.responsible_dentist_user_id,
+    }:
+        return True
     return any(
-        assignment.clinic_id == case.clinic_id for assignment in active_assignments(actor)
+        assignment.is_active and assignment.clinic_id == case.clinic_id
+        for assignment in actor.clinic_assignments
     )

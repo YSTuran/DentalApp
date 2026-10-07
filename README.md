@@ -23,7 +23,7 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Kullanıcıya özel uygulama içi bildirim merkezi
 - Filtrelenmiş ve kategori renkli audit PDF çıktısı
 - AES-256-GCM ile uygulama katmanında şifrelenen hasta adı ve hasta kodu
-- Yalnızca klinik yöneticisine açık çoklu şube seçimi
+- Rol ile klinik atamasını ayıran çoklu şube yetkilendirmesi
 - Hedef hekimin kabul/ret kararıyla tamamlanan, değiştirilemez vaka devri
 - Yetki kapsamlı operasyon raporları ve hasta bilgisi içermeyen PDF çıktısı
 
@@ -194,7 +194,7 @@ loglarına, audit kayıtlarına veya hata yanıtlarına yazdırılmamalıdır.
 ## Klinik API
 
 - `GET /api/clinics`: sistem yöneticisi tüm klinikleri, klinik yöneticisi yalnızca
-  aktif rol ataması bulunan klinikleri görür.
+  aktif klinik ataması bulunan klinikleri görür.
 - `GET /api/clinics/{clinic_id}`: sistem yöneticisi veya ilgili kliniğin yöneticisi.
 - `POST /api/clinics`: yalnızca sistem yöneticisi.
 - `PATCH /api/clinics/{clinic_id}`: yalnızca sistem yöneticisi.
@@ -210,12 +210,14 @@ Sistem yöneticisi giriş yaptıktan sonra klinik yönetimi ekranına
 aktif/pasif filtreleme, sayfalama, klinik ekleme, düzenleme ve gerekçeli durum
 değişikliği yapılabilir. Klinik yöneticisi aynı ekranda yalnızca aktif rolünün
 bulunduğu klinikleri ve kullanıcı ekranında bu kliniklerin hekimlerini salt okunur
-görür. Birden fazla klinikte aktif rol alabilen tek klinik rolü `clinic_manager`
-rolüdür. Hekim, yönetici hekim ve klinik personeli aynı anda yalnızca tek kliniğe
-bağlı olabilir; bu kural hem servis doğrulaması hem PostgreSQL tetikleyicisiyle
-korunur. Birden fazla kliniği yöneten kullanıcı üst menüden aktif kliniği veya tüm
-yetkili klinikleri seçebilir. Tercih kullanıcı hesabında saklanır ve vaka, klinik,
-kullanıcı ve rapor ekranlarına uygulanır.
+görür. Kullanıcının mesleki rolü klinik atamalarından ayrı tutulur; bir kullanıcının
+aynı anda yalnızca bir aktif rolü, fakat birden fazla aktif çalışma kliniği olabilir.
+Rol değiştirmek klinik geçmişini silmez ve klinik atamasını değiştirmek rolü etkilemez.
+Birden fazla kliniğe atanmış kullanıcı üst menüden aktif kliniği veya tüm yetkili
+klinikleri seçebilir. Tercih kullanıcı hesabında saklanır ve vaka, klinik, kullanıcı
+ve rapor ekranlarına uygulanır. Her vaka kendi `clinic_id` değeriyle birlikte vakayı
+açan kullanıcıyı ve sorumlu hekimi ayrıca sakladığı için hekimin klinik ataması daha
+sonra değişse bile işlem geçmişi bozulmaz.
 
 Frontend sistem yönetimi ekranları:
 
@@ -244,15 +246,19 @@ kurulum akışıyla yönetilir.
   yalnızca sorumlu olduğu kliniklerdeki hekim ve yönetici hekimleri görür; diğer
   kliniklere ait rol atamaları yanıtta gösterilmez.
 - `GET /api/users/{user_id}`: aynı görünürlük kurallarıyla kullanıcı detayı.
-- `POST /api/users`: Firebase hesabını, PostgreSQL kullanıcısını ve ilk rolü oluşturur.
+- `POST /api/users`: Firebase hesabını, PostgreSQL kullanıcısını, ilk rolü ve başlangıç
+  klinik atamalarını oluşturur.
 - `PATCH /api/users/{user_id}`: ad-soyad bilgisini Firebase ve PostgreSQL'de günceller.
 - `POST /api/users/{user_id}/deactivate` ve `reactivate`: hesabı iki sistemde birlikte
   pasifleştirir veya etkinleştirir; gerekçe zorunludur.
-- `POST /api/users/{user_id}/roles`: yeni rol atar.
-- `PATCH /api/users/{user_id}/roles/{assignment_id}`: aktif bir rolün rol veya klinik
-  kapsamını değiştirir; eski atama silinmeden pasif tutulur ve gerekçe audit kaydına yazılır.
+- `POST /api/users/{user_id}/roles`: aktif rolü bulunmayan kullanıcıya yeni rol atar.
+- `PATCH /api/users/{user_id}/roles/{assignment_id}`: aktif rolü değiştirir; eski atama
+  silinmeden pasif tutulur ve gerekçe audit kaydına yazılır.
 - `POST /api/users/{user_id}/roles/{assignment_id}/deactivate` ve `reactivate`:
   rol atamasının durumunu değiştirir; gerekçe zorunludur.
+- `POST /api/users/{user_id}/clinics`: rolü değiştirmeden çalışma kliniği ekler.
+- `POST /api/users/{user_id}/clinics/{assignment_id}/deactivate` ve `reactivate`:
+  klinik atamasının durumunu değiştirir; gerekçe zorunludur.
 
 Kullanıcı silme endpoint'i yoktur. Kullanıcı oluşturmada üretilen geçici parola
 yalnızca başarılı `POST /api/users` yanıtında bir kez döner ve audit kaydına yazılmaz.
@@ -333,7 +339,9 @@ npm run test:quick
 ```
 
 Kod kalitesi ve üretim derlemesi kontrolleri `npm run lint` ve `npm run build`
-komutlarıyla çalıştırılır.
+komutlarıyla çalıştırılır. CI, Authentication Emulator'ı geçici olarak başlatıp
+Firebase–PostgreSQL eşgüdüm testlerini de çalıştırır; bu nedenle emülatör testleri
+otomatik doğrulamada atlanmaz.
 
 ## Vaka iş akışı
 
@@ -355,6 +363,13 @@ Temel vaka endpoint'leri:
   yönetici ayrıca işaretlenir.
 - `POST /api/cases/{case_id}/cancel`: gerekçeli iptal; kayıt silinmez.
 - `GET /api/cases/{case_id}/history`: değiştirilemez durum geçmişi.
+
+İade kararı `reproduction` olduğunda teslim edilmiş eski vaka yeniden açılmaz.
+Sistem, eski vakaya bağlı yeni bir `draft` vaka üretir; klinik, sorumlu hekim ve
+şifreli hasta alanları güvenli biçimde aktarılır. STL/tasarım dosyaları ve onaylar
+kopyalanmaz. Böylece yeni vaka yeniden tarama yükleme, yönetici onayı ve sorumlu hekim
+tasarım onayından geçmeden üretime alınamaz. Eski ve yeni vaka numaraları detay ve
+operasyon geçmişi ekranlarında birbirine bağlı gösterilir.
 
 Vaka devri endpoint'leri:
 

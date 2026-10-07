@@ -96,7 +96,6 @@ def test_firebase_login_password_change_session_refresh_and_logout() -> None:
                         UserRoleAssignment(
                             user_id=local_user.id,
                             role=RoleCode.SYSTEM_ADMIN,
-                            clinic_id=None,
                         )
                     )
 

@@ -8,7 +8,7 @@ from app.api.dependencies.authorization import (
     require_clinic_roles,
     require_system_admin,
 )
-from app.models import RoleCode, User, UserRoleAssignment
+from app.models import RoleCode, User, UserClinicAssignment, UserRoleAssignment
 from app.services.authorization import (
     can_access_clinic,
     has_any_role,
@@ -29,10 +29,19 @@ def build_user(*assignments: tuple[RoleCode, UUID | None, bool]) -> User:
             id=uuid4(),
             user_id=user.id,
             role=role,
-            clinic_id=clinic_id,
             is_active=is_active,
         )
         for role, clinic_id, is_active in assignments
+    ]
+    user.clinic_assignments = [
+        UserClinicAssignment(
+            id=uuid4(),
+            user_id=user.id,
+            clinic_id=clinic_id,
+            is_active=is_active,
+        )
+        for _role, clinic_id, is_active in assignments
+        if clinic_id is not None
     ]
     return user
 

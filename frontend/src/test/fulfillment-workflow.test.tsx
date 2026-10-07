@@ -111,10 +111,14 @@ function authValue(role: RoleCode): AuthContextValue {
   };
 }
 
-function renderPanel(role: RoleCode, currentCase: DentalCase) {
+function renderPanel(
+  role: RoleCode,
+  currentCase: DentalCase,
+  onUpdated = vi.fn(),
+) {
   return render(
     <AuthContext.Provider value={authValue(role)}>
-      <CaseOperationsPanel dentalCase={currentCase} onUpdated={vi.fn()} />
+      <CaseOperationsPanel dentalCase={currentCase} onUpdated={onUpdated} />
     </AuthContext.Provider>,
   );
 }
@@ -130,7 +134,16 @@ beforeEach(() => {
   apiMocks.getCaseOperations.mockResolvedValue(operations);
   apiMocks.startProduction.mockResolvedValue({ ...dentalCase, status: "in_production" });
   apiMocks.confirmDelivery.mockResolvedValue({ ...dentalCase, status: "delivered" });
-  apiMocks.decideReturn.mockResolvedValue({ ...dentalCase, status: "reproduction_requested" });
+  apiMocks.decideReturn.mockResolvedValue({
+    ...dentalCase,
+    id: "case-two",
+    case_number: "VKA-2026-000002",
+    status: "draft",
+    reproduction_source_case_id: dentalCase.id,
+    reproduction_source_case_number: dentalCase.case_number,
+    file_versions: [],
+    approvals: [],
+  });
 });
 
 describe("üretim, teslim ve iade paneli", () => {
@@ -180,7 +193,8 @@ describe("üretim, teslim ve iade paneli", () => {
 
   it("yönetici hekim iade kararında gerekçe girmeden ilerleyemez", async () => {
     const interaction = userEvent.setup();
-    renderPanel("managing_dentist", { ...dentalCase, status: "return_review" });
+    const onUpdated = vi.fn();
+    renderPanel("managing_dentist", { ...dentalCase, status: "return_review" }, onUpdated);
     const button = await screen.findByRole("button", { name: "Kararı kaydet" });
     expect(button).toBeDisabled();
     await interaction.type(screen.getByLabelText("Karar gerekçesi *"), "Yeniden üretilmeli.");
@@ -190,6 +204,10 @@ describe("üretim, teslim ve iade paneli", () => {
       "return-one",
       "reproduction",
       "Yeniden üretilmeli.",
+    );
+    expect(onUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "case-two", status: "draft" }),
+      "Bağlantılı yeniden üretim vakası taslak olarak oluşturuldu.",
     );
   });
 

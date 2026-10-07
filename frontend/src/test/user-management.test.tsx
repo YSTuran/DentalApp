@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
 import { listClinics } from "../lib/clinics-api";
-import { addRoleAssignment, changeRoleAssignment, listUsers } from "../lib/users-api";
+import { addClinicAssignment, changeRoleAssignment, listUsers } from "../lib/users-api";
 import { UsersPage } from "../pages/UsersPage";
 import type { CurrentUser } from "../types/auth";
 
@@ -16,8 +16,9 @@ vi.mock("../lib/clinics-api", () => ({
 vi.mock("../lib/users-api", () => ({
   listUsers: vi.fn(),
   createUser: vi.fn(),
-  addRoleAssignment: vi.fn(),
+  addClinicAssignment: vi.fn(),
   changeRoleAssignment: vi.fn(),
+  changeClinicAssignmentStatus: vi.fn(),
   changeUserStatus: vi.fn(),
   userErrorMessage: vi.fn(() => "İşlem tamamlanamadı."),
 }));
@@ -63,12 +64,12 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
             {
               id: "4135d459-986e-41e3-9766-f0520ed09fc8",
               role: "system_admin",
-              clinic_id: null,
               is_active: true,
               created_at: "2026-09-28T10:00:00Z",
               updated_at: "2026-09-28T10:00:00Z",
             },
           ],
+          clinic_assignments: [],
         },
       ],
       total: 1,
@@ -100,7 +101,6 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
           {
             id: "bd128125-8628-4234-a53e-0898e69d6a91",
             role: "dentist",
-            clinic_id: null,
             is_active: false,
             created_at: "2026-09-27T10:00:00Z",
             updated_at: "2026-09-28T10:00:00Z",
@@ -144,7 +144,7 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("aktif rolü değiştirebilir ve ek klinik yöneticiliği atayabilir", async () => {
+  it("rolü ve klinik atamasını birbirinden bağımsız yönetir", async () => {
     const clinicA = {
       id: "9acfa1ce-cb10-4e29-9bb3-aebdd62f823f",
       code: "K001",
@@ -163,6 +163,7 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     };
     const assignmentId = "654925b2-ab70-40e5-9e7c-d7fda9a5789a";
     const managedUserId = "26ae89c7-8f4a-40f9-8502-8def51e134fd";
+    const clinicManagerId = "18ca33df-5032-47cf-bf0e-687249d4035f";
     vi.mocked(listClinics).mockResolvedValue({
       items: [clinicA, clinicB],
       total: 2,
@@ -182,6 +183,40 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
             {
               id: assignmentId,
               role: "managing_dentist",
+              is_active: true,
+              created_at: "2026-09-28T10:00:00Z",
+              updated_at: "2026-09-28T10:00:00Z",
+            },
+          ],
+          clinic_assignments: [
+            {
+              id: "f7b1f765-009b-4f3f-b5b9-1fd02424bd72",
+              clinic_id: clinicA.id,
+              is_active: true,
+              created_at: "2026-09-28T10:00:00Z",
+              updated_at: "2026-09-28T10:00:00Z",
+            },
+          ],
+        },
+        {
+          id: clinicManagerId,
+          email: "clinic-manager@example.test",
+          full_name: "Demo Klinik Yöneticisi",
+          is_active: true,
+          created_at: "2026-09-28T10:00:00Z",
+          updated_at: "2026-09-28T10:00:00Z",
+          role_assignments: [
+            {
+              id: "335ac12b-15f3-4679-a270-48be854854f6",
+              role: "clinic_manager",
+              is_active: true,
+              created_at: "2026-09-28T10:00:00Z",
+              updated_at: "2026-09-28T10:00:00Z",
+            },
+          ],
+          clinic_assignments: [
+            {
+              id: "28213c6e-8d58-4cb3-ab7b-88952895c507",
               clinic_id: clinicA.id,
               is_active: true,
               created_at: "2026-09-28T10:00:00Z",
@@ -190,21 +225,19 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
           ],
         },
       ],
-      total: 1,
+      total: 2,
       limit: 10,
       offset: 0,
     });
     vi.mocked(changeRoleAssignment).mockResolvedValue({
       id: "0cd987e0-44f8-4906-a6ac-99e7a70d1417",
       role: "dentist",
-      clinic_id: clinicB.id,
       is_active: true,
       created_at: "2026-09-28T10:05:00Z",
       updated_at: "2026-09-28T10:05:00Z",
     });
-    vi.mocked(addRoleAssignment).mockResolvedValue({
+    vi.mocked(addClinicAssignment).mockResolvedValue({
       id: "7953100d-92f5-40e3-89af-1a65e4518787",
-      role: "clinic_manager",
       clinic_id: clinicB.id,
       is_active: true,
       created_at: "2026-09-28T10:06:00Z",
@@ -221,10 +254,11 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     );
 
     expect(await screen.findByText("Demo Yönetici Hekim")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Rol/Klinik düzenle" }));
-    const dialog = screen.getByRole("dialog", { name: "Rol ve klinik düzenle" });
+    const doctorRow = screen.getByText("Demo Yönetici Hekim").closest("tr");
+    expect(doctorRow).not.toBeNull();
+    await user.click(within(doctorRow!).getByRole("button", { name: "Rolü düzenle" }));
+    const dialog = screen.getByRole("dialog", { name: "Rolü düzenle" });
     await user.selectOptions(within(dialog).getByLabelText("Yeni rol"), "dentist");
-    await user.selectOptions(within(dialog).getByLabelText("Yeni klinik"), clinicB.id);
     await user.type(
       within(dialog).getByLabelText("Değişiklik gerekçesi"),
       "Görev yeri değişti",
@@ -234,20 +268,20 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     await waitFor(() => {
       expect(changeRoleAssignment).toHaveBeenCalledWith(managedUserId, assignmentId, {
         role: "dentist",
-        clinic_id: clinicB.id,
         reason: "Görev yeri değişti",
       });
     });
 
-    await user.click(screen.getByRole("button", { name: "Rol ekle" }));
-    const addDialog = screen.getByRole("dialog", { name: "Rol ekle" });
-    await user.selectOptions(within(addDialog).getByLabelText("Klinik"), clinicB.id);
+    const managerRow = screen.getByText("Demo Klinik Yöneticisi").closest("tr");
+    expect(managerRow).not.toBeNull();
+    await user.click(within(managerRow!).getByRole("button", { name: "Klinik ekle" }));
+    const addDialog = screen.getByRole("dialog", { name: "Klinik ekle" });
+    await user.selectOptions(within(addDialog).getByLabelText("Yeni klinik"), clinicB.id);
     await user.type(within(addDialog).getByLabelText(/Atama gerekçesi/), "İkinci şube");
-    await user.click(within(addDialog).getByRole("button", { name: "Rolü ekle" }));
+    await user.click(within(addDialog).getByRole("button", { name: "Kliniği ekle" }));
 
     await waitFor(() => {
-      expect(addRoleAssignment).toHaveBeenCalledWith(managedUserId, {
-        role: "clinic_manager",
+      expect(addClinicAssignment).toHaveBeenCalledWith(clinicManagerId, {
         clinic_id: clinicB.id,
         reason: "İkinci şube",
       });
@@ -287,6 +321,12 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
         role_assignments: [{
           id: "654925b2-ab70-40e5-9e7c-d7fda9a5789a",
           role: "dentist",
+          is_active: true,
+          created_at: "2026-09-28T10:00:00Z",
+          updated_at: "2026-09-28T10:00:00Z",
+        }],
+        clinic_assignments: [{
+          id: "b6682e26-7f92-4d10-a05a-eb2c5ea4ff6c",
           clinic_id: clinicId,
           is_active: true,
           created_at: "2026-09-28T10:00:00Z",
@@ -308,7 +348,7 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
 
     expect(await screen.findByText("Demo Hekim")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "+ Yeni kullanıcı" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Rol/Klinik düzenle" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rolü düzenle" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pasife al" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Sistem yöneticisi" })).not.toBeInTheDocument();
   });

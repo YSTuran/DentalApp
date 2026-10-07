@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import DentalCase, RoleCode, User, UserRoleAssignment
+from app.models import DentalCase, RoleCode, User, UserClinicAssignment, UserRoleAssignment
 from app.services.notification_delivery import add_user_notification
 
 MANAGER_ACTIONS = {"case.submitted", "case.return_received"}
@@ -13,12 +13,12 @@ TECHNICIAN_ACTIONS = {
     "case.design_approved",
     "case.design_revision_requested",
     "case.delivery_confirmed",
-    "case.reproduction_requested",
 }
 STAKEHOLDER_ACTIONS = {
     "case.manager_revision_requested",
     "case.manager_rejected",
     "case.rescan_requested",
+    "case.reproduction_requested",
     "case.cancelled",
 }
 
@@ -40,8 +40,8 @@ NOTIFICATION_CONTENT = {
     "case.delivery_confirmed": ("Teslimat doğrulandı", "{case} klinik tarafından teslim alındı."),
     "case.return_received": ("İade kararı bekleniyor", "{case} iadesi laboratuvara ulaştı."),
     "case.reproduction_requested": (
-        "Yeniden üretim istendi",
-        "{case} yeniden üretim kuyruğuna alındı.",
+        "Yeniden üretim vakası açıldı",
+        "{case} için bağlantılı yeni bir yeniden üretim vakası açıldı.",
     ),
     "case.rescan_requested": ("Yeni tarama istendi", "{case} için yeni ağız içi tarama gerekiyor."),
     "case.cancelled": ("Vaka iptal edildi", "{case} iptal edildi."),
@@ -60,12 +60,24 @@ def user_ids_with_roles(
         UserRoleAssignment.role.in_(set(roles)),
     ]
     if clinic_id is not None:
-        conditions.append(UserRoleAssignment.clinic_id == clinic_id)
+        conditions.extend(
+            [
+                UserClinicAssignment.clinic_id == clinic_id,
+                UserClinicAssignment.is_active.is_(True),
+            ]
+        )
+    statement = select(User.id).join(
+        UserRoleAssignment,
+        UserRoleAssignment.user_id == User.id,
+    )
+    if clinic_id is not None:
+        statement = statement.join(
+            UserClinicAssignment,
+            UserClinicAssignment.user_id == User.id,
+        )
     return set(
         db.scalars(
-            select(User.id)
-            .join(UserRoleAssignment, UserRoleAssignment.user_id == User.id)
-            .where(*conditions)
+            statement.where(*conditions).distinct()
         )
     )
 

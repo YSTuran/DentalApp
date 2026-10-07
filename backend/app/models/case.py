@@ -81,6 +81,9 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     responsible_dentist_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    reproduction_source_case_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("cases.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
     patient_code_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     patient_code_lookup: Mapped[bytes | None] = mapped_column(LargeBinary(32), nullable=True)
     patient_name_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
@@ -97,6 +100,18 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     clinic = relationship("Clinic")
     created_by = relationship("User", foreign_keys=[created_by_user_id])
     responsible_dentist = relationship("User", foreign_keys=[responsible_dentist_user_id])
+    reproduction_source: Mapped["DentalCase | None"] = relationship(
+        "DentalCase",
+        remote_side="DentalCase.id",
+        foreign_keys=[reproduction_source_case_id],
+        back_populates="reproduction_case",
+    )
+    reproduction_case: Mapped["DentalCase | None"] = relationship(
+        "DentalCase",
+        foreign_keys="DentalCase.reproduction_source_case_id",
+        back_populates="reproduction_source",
+        uselist=False,
+    )
     details: Mapped["CaseDetail"] = relationship(
         back_populates="case",
         uselist=False,

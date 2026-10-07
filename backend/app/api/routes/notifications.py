@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.auth import get_current_user, require_csrf
 from app.db.session import get_db
 from app.models import Notification, User
 from app.schemas.notification import (
@@ -44,6 +44,7 @@ def dismiss_notification(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
+    _csrf: Annotated[None, Depends(require_csrf)],
 ) -> NotificationDismissResponse:
     notification = db.scalar(
         select(Notification)

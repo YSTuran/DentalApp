@@ -14,7 +14,7 @@ from app.api.dependencies.auth import (
 )
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import User
+from app.models import RoleCode, User
 from app.schemas.auth import (
     ClinicRoleResponse,
     CsrfResponse,
@@ -36,24 +36,30 @@ CSRF_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
 
 
 def serialize_user(user: User) -> CurrentUserResponse:
-    active_assignments = [
+    active_roles = [
         assignment for assignment in user.role_assignments if assignment.is_active
     ]
+    active_clinics = [
+        assignment for assignment in user.clinic_assignments if assignment.is_active
+    ]
     global_roles = [
-        assignment.role for assignment in active_assignments if assignment.clinic_id is None
+        assignment.role
+        for assignment in active_roles
+        if assignment.role in {RoleCode.SYSTEM_ADMIN, RoleCode.TECHNICIAN}
     ]
     clinic_roles = [
         ClinicRoleResponse(
-            clinic_id=assignment.clinic_id,
+            clinic_id=clinic_assignment.clinic_id,
             clinic_name=(
-                assignment.__dict__["clinic"].name
-                if assignment.__dict__.get("clinic") is not None
+                clinic_assignment.__dict__["clinic"].name
+                if clinic_assignment.__dict__.get("clinic") is not None
                 else "Klinik"
             ),
-            role=assignment.role,
+            role=role_assignment.role,
         )
-        for assignment in active_assignments
-        if assignment.clinic_id is not None
+        for role_assignment in active_roles
+        if role_assignment.role not in {RoleCode.SYSTEM_ADMIN, RoleCode.TECHNICIAN}
+        for clinic_assignment in active_clinics
     ]
 
     return CurrentUserResponse(

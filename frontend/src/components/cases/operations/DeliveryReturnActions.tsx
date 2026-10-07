@@ -125,7 +125,7 @@ export function ReturnDecisionAction({ dentalCase, receipt, onUpdated }: Decisio
       onUpdated(
         updated,
         resolution === "reproduction"
-          ? "Vaka yeniden üretim kuyruğuna gönderildi."
+          ? "Bağlantılı yeniden üretim vakası taslak olarak oluşturuldu."
           : "Hekimden yeni tarama istendi.",
       );
     } catch {

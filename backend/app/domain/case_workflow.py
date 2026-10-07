@@ -50,10 +50,6 @@ TRANSITIONS: dict[tuple[CaseStatus, CaseAction], CaseStatus] = {
         CaseAction.START_PRODUCTION,
     ): CaseStatus.IN_PRODUCTION,
     (
-        CaseStatus.REPRODUCTION_REQUESTED,
-        CaseAction.START_PRODUCTION,
-    ): CaseStatus.IN_PRODUCTION,
-    (
         CaseStatus.IN_PRODUCTION,
         CaseAction.COMPLETE_PRODUCTION,
     ): CaseStatus.PRODUCTION_COMPLETED,

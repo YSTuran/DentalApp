@@ -300,6 +300,10 @@ class CaseResponse(BaseModel):
     created_by_user_id: UUID | None = None
     responsible_dentist_user_id: UUID | None = None
     responsible_dentist_name: str | None = None
+    reproduction_source_case_id: UUID | None = None
+    reproduction_source_case_number: str | None = None
+    reproduction_case_id: UUID | None = None
+    reproduction_case_number: str | None = None
     patient_code: str | None
     patient_name: str | None = None
     status: CaseStatus

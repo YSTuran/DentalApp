@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models import ColorPalette, RoleCode, ThemeMode, User, UserPreference
 from app.schemas.preference import UserPreferenceResponse, UserPreferenceUpdateRequest
 from app.services.audit import record_audit_event
+from app.services.authorization import has_clinic_role
 
 
 class PreferenceValidationError(Exception):
@@ -15,13 +16,15 @@ class PreferenceValidationError(Exception):
 def _validate_active_clinic(actor: User, clinic_id: object | None) -> None:
     if clinic_id is None:
         return
-    if not any(
-        assignment.is_active
-        and assignment.role == RoleCode.CLINIC_MANAGER
-        and assignment.clinic_id == clinic_id
-        for assignment in actor.role_assignments
+    if not has_clinic_role(
+        actor,
+        clinic_id,
+        RoleCode.CLINIC_MANAGER,
+        RoleCode.MANAGING_DENTIST,
+        RoleCode.DENTIST,
+        RoleCode.CLINIC_STAFF,
     ):
-        raise PreferenceValidationError("active_clinic_not_managed")
+        raise PreferenceValidationError("active_clinic_not_assigned")
 
 
 def serialize_preferences(preference: UserPreference | None) -> UserPreferenceResponse:

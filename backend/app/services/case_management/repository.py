@@ -14,6 +14,8 @@ CASE_LOAD_OPTIONS = (
     selectinload(DentalCase.approvals),
     selectinload(DentalCase.clinic),
     selectinload(DentalCase.responsible_dentist),
+    selectinload(DentalCase.reproduction_source),
+    selectinload(DentalCase.reproduction_case),
 )
 
 
