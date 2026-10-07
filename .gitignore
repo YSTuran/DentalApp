@@ -10,6 +10,7 @@ htmlcov/
 # Virtual environments and local configuration
 .venv/
 backend/.venv/
+backend/.test-artifacts/
 .env
 backend/.env
 frontend/.env
