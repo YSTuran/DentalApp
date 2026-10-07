@@ -97,6 +97,11 @@
   border-bottom: 0;
 }
 
+.notification-item.notification-warning {
+  background: var(--warning-bg);
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
 .notification-main {
   display: grid;
   min-width: 0;

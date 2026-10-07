@@ -5,6 +5,9 @@ from pydantic import ValidationError
 
 from app.core.config import BACKEND_DIR, Settings
 
+TEST_PATIENT_KEYS = {"v1": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="}
+TEST_LOOKUP_KEY = "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA="
+
 
 def test_relative_storage_path_is_resolved_from_backend_directory(
     tmp_path: Path,
@@ -37,6 +40,13 @@ def test_production_accepts_explicit_safe_flags() -> None:
         firebase_use_emulator=False,
         cookie_secure=True,
         secret_key="production-secret-is-injected-at-runtime",
+        patient_data_keys=TEST_PATIENT_KEYS,
+        patient_lookup_key=TEST_LOOKUP_KEY,
     )
 
     assert settings.app_env == "production"
+
+
+def test_wait_warning_configuration_rejects_unknown_status() -> None:
+    with pytest.raises(ValidationError, match="Bilinmeyen vaka durumları"):
+        Settings(case_wait_warning_hours={"unknown_status": 1})

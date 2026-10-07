@@ -111,7 +111,10 @@ export function NotificationBell() {
           ) : (
             <div className="notification-list">
               {items.map((item) => (
-                <article className="notification-item" key={item.id}>
+                <article
+                  className={`notification-item${item.kind === "case.waiting_warning" ? " notification-warning" : ""}`}
+                  key={item.id}
+                >
                   <button
                     className="notification-main"
                     type="button"

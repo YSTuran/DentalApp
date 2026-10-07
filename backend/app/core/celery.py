@@ -8,7 +8,13 @@ celery_app = Celery(
     "dentalapp",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.mesh_validation", "app.tasks.system", "app.tasks.uploads"],
+    include=[
+        "app.tasks.case_waiting",
+        "app.tasks.email_delivery",
+        "app.tasks.mesh_validation",
+        "app.tasks.system",
+        "app.tasks.uploads",
+    ],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -29,6 +35,14 @@ celery_app.conf.update(
         "expire-stale-file-uploads": {
             "task": "uploads.expire_stale",
             "schedule": 3600.0,
+        },
+        "dispatch-pending-email-messages": {
+            "task": "email.dispatch_pending",
+            "schedule": 15.0,
+        },
+        "warn-overdue-cases": {
+            "task": "cases.warn_overdue",
+            "schedule": 900.0,
         },
         "background-services-heartbeat": {
             "task": "system.heartbeat",

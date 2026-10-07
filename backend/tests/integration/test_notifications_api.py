@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.dependencies.auth import get_current_user
 from app.main import app
-from app.models import AuditEvent, DentalCase, Notification, RoleCode
+from app.models import AuditEvent, DentalCase, EmailOutbox, Notification, RoleCode
 from app.services.case_notifications import create_case_notifications
 from tests.integration.case_test_support import create_clinic, create_user, csrf_headers
 
@@ -106,3 +106,14 @@ def test_case_notifications_are_routed_to_relevant_roles(
             ("case.submitted", manager.id),
             ("case.manager_approved", technician.id),
         }.issubset({(item.kind, item.recipient_user_id) for item in notifications})
+        outbox = session.scalars(
+            select(EmailOutbox).where(EmailOutbox.notification_id.in_(
+                [item.id for item in notifications]
+            ))
+        ).all()
+        assert {
+            manager.email,
+            technician.email,
+        }.issubset({item.recipient_email for item in outbox})
+        assert all(item.status == "pending" for item in outbox)
+        assert all("patient" not in item.body_text.lower() for item in outbox)

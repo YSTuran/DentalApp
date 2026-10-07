@@ -18,6 +18,7 @@ from app.models import (
     User,
     UserRoleAssignment,
 )
+from app.services.case_management.patient_data import set_patient_identity
 
 
 def create_clinic(factory: sessionmaker[Session], prefix: str) -> Clinic:
@@ -79,14 +80,17 @@ def create_ready_for_production_case(
             clinic_id=clinic_id,
             created_by_user_id=dentist_id,
             responsible_dentist_user_id=dentist_id,
-            patient_code="DEMO-FUL",
-            patient_name="Gizli Demo Hasta",
             status=CaseStatus.READY_FOR_PRODUCTION,
             details=CaseDetail(
                 appliance_type="Şeffaf plak",
                 material="PET-G",
                 tooth_numbers=["11"],
             ),
+        )
+        set_patient_identity(
+            case,
+            patient_code="DEMO-FUL",
+            patient_name="Gizli Demo Hasta",
         )
         session.add(case)
         session.flush()

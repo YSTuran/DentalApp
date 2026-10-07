@@ -98,6 +98,6 @@ def require_create_access(actor: User, clinic_id: UUID) -> None:
 
 
 def can_view_patient_name(actor: User, case: DentalCase) -> bool:
-    return has_global_role(actor, RoleCode.SYSTEM_ADMIN) or any(
+    return any(
         assignment.clinic_id == case.clinic_id for assignment in active_assignments(actor)
     )

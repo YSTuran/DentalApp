@@ -50,6 +50,8 @@ export function CasesPage() {
   const technicianOnly = user?.global_roles.includes("technician") === true
     && user.global_roles.includes("system_admin") === false
     && user.clinic_roles.length === 0;
+  const patientNameHidden = technicianOnly
+    || user?.global_roles.includes("system_admin") === true;
 
   return (
     <div className="dashboard-shell">
@@ -87,7 +89,7 @@ export function CasesPage() {
               className="search-form"
               onSubmit={(event) => { event.preventDefault(); setOffset(0); setSearch(searchInput.trim()); }}
             >
-              <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Vaka numarası veya hasta kodu" />
+              <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Vaka numarası veya tam hasta kodu" />
               <button className="secondary-button compact-button" type="submit">Ara</button>
             </form>
           </div>
@@ -101,7 +103,7 @@ export function CasesPage() {
                 <tbody>
                   {data?.items.map((item) => (
                     <tr key={item.id}>
-                      <td><strong>{item.case_number}</strong><small>{item.patient_name ?? (technicianOnly ? "Hasta adı gizli" : "Hasta adı girilmedi")}</small></td>
+                      <td><strong>{item.case_number}</strong><small>{item.patient_name ?? (patientNameHidden ? "Hasta adı gizli" : "Hasta adı girilmedi")}</small></td>
                       <td><span className="code-chip">{item.patient_code ?? "—"}</span></td>
                       <td>{item.clinic_name}</td>
                       <td>{item.responsible_dentist_name}</td>

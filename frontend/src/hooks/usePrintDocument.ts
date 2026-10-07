@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export function usePrintDocument() {
+export function usePrintDocument(bodyClass = "printing-report") {
   const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
@@ -11,11 +11,11 @@ export function usePrintDocument() {
     const finish = () => {
       if (finished) return;
       finished = true;
-      document.body.classList.remove("printing-report");
+      document.body.classList.remove(bodyClass);
       setIsPrinting(false);
     };
 
-    document.body.classList.add("printing-report");
+    document.body.classList.add(bodyClass);
     window.addEventListener("afterprint", finish, { once: true });
     const printTimer = window.setTimeout(() => {
       window.print();
@@ -26,9 +26,9 @@ export function usePrintDocument() {
       window.clearTimeout(printTimer);
       if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
       window.removeEventListener("afterprint", finish);
-      document.body.classList.remove("printing-report");
+      document.body.classList.remove(bodyClass);
     };
-  }, [isPrinting]);
+  }, [bodyClass, isPrinting]);
 
   const print = useCallback(() => setIsPrinting(true), []);
   return { isPrinting, print };

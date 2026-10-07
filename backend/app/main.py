@@ -3,10 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.patient_data import get_patient_data_cipher
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    get_patient_data_cipher()
     application = FastAPI(
         title=settings.app_name,
         debug=settings.app_debug,
@@ -31,6 +33,11 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if (
+            request.url.path.startswith(settings.api_prefix)
+            and "cache-control" not in response.headers
+        ):
+            response.headers["Cache-Control"] = "no-store"
         if settings.cookie_secure:
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
         return response

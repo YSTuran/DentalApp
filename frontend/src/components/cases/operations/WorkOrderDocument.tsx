@@ -6,9 +6,15 @@ interface Props {
   dentalCase: DentalCase;
   productionRun: ProductionRun;
   onPrint?: () => void;
+  onPrintLabel?: () => void;
 }
 
-export function WorkOrderDocument({ dentalCase, productionRun, onPrint }: Props) {
+export function WorkOrderDocument({
+  dentalCase,
+  productionRun,
+  onPrint,
+  onPrintLabel,
+}: Props) {
   const design = dentalCase.file_versions.find(
     (file) => file.id === productionRun.design_file_version_id,
   );
@@ -17,7 +23,10 @@ export function WorkOrderDocument({ dentalCase, productionRun, onPrint }: Props)
     <section className="work-order-print" aria-label="Üretim iş emri">
       <div className="work-order-heading">
         <div><span>İŞ EMRİ</span><strong>{productionRun.work_order_number}</strong></div>
-        {onPrint && <button className="secondary-button compact-button no-print" type="button" onClick={onPrint}>Yazdır</button>}
+        <div className="work-order-actions no-print">
+          {onPrintLabel && <button className="secondary-button compact-button" type="button" onClick={onPrintLabel}>Etiket yazdır</button>}
+          {onPrint && <button className="secondary-button compact-button" type="button" onClick={onPrint}>İş emrini yazdır</button>}
+        </div>
       </div>
       <dl>
         <div><dt>Vaka</dt><dd>{dentalCase.case_number}</dd></div>

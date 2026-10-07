@@ -18,6 +18,7 @@ from app.models import (
     MeshValidationStatus,
     RoleCode,
 )
+from app.services.case_management.patient_data import set_patient_code, set_patient_identity
 from tests.integration.case_test_support import create_clinic, create_user, csrf_headers
 
 pytestmark = [
@@ -46,8 +47,6 @@ def test_role_visibility_and_technician_patient_name_masking(
             clinic_id=own_clinic.id,
             created_by_user_id=own_dentist.id,
             responsible_dentist_user_id=own_dentist.id,
-            patient_code="P-DRAFT",
-            patient_name="Gizli Taslak Hasta",
             status=CaseStatus.DRAFT,
             details=CaseDetail(),
         )
@@ -56,8 +55,6 @@ def test_role_visibility_and_technician_patient_name_masking(
             clinic_id=own_clinic.id,
             created_by_user_id=own_dentist.id,
             responsible_dentist_user_id=own_dentist.id,
-            patient_code="P-LAB",
-            patient_name="Gizli Laboratuvar Hastası",
             status=CaseStatus.LAB_DESIGN,
             details=CaseDetail(
                 appliance_type="Şeffaf plak",
@@ -72,10 +69,23 @@ def test_role_visibility_and_technician_patient_name_masking(
             clinic_id=other_clinic.id,
             created_by_user_id=other_dentist.id,
             responsible_dentist_user_id=other_dentist.id,
-            patient_code="P-OTHER",
-            patient_name="Diğer Hasta",
             status=CaseStatus.DRAFT,
             details=CaseDetail(),
+        )
+        set_patient_identity(
+            draft,
+            patient_code="P-DRAFT",
+            patient_name="Gizli Taslak Hasta",
+        )
+        set_patient_identity(
+            lab_case,
+            patient_code="P-LAB",
+            patient_name="Gizli Laboratuvar Hastası",
+        )
+        set_patient_identity(
+            other_case,
+            patient_code="P-OTHER",
+            patient_name="Diğer Hasta",
         )
         session.add_all([draft, lab_case, other_case])
         session.flush()
@@ -135,6 +145,10 @@ def test_role_visibility_and_technician_patient_name_masking(
 
         app.dependency_overrides[get_current_user] = lambda: admin
         admin_list = client.get("/api/cases")
+        admin_lab_case = next(
+            item for item in admin_list.json()["items"] if item["id"] == str(lab_case.id)
+        )
+        assert "patient_name" not in admin_lab_case
         assert {
             str(draft.id),
             str(lab_case.id),
@@ -183,23 +197,23 @@ def test_case_list_filters_lifecycle_without_breaking_pagination(
     manager = create_user(case_session_factory, RoleCode.CLINIC_MANAGER, clinic.id)
 
     with case_session_factory.begin() as session:
-        cases = {
-            status: DentalCase(
+        cases = {}
+        for status in (
+            CaseStatus.DRAFT,
+            CaseStatus.DELIVERED,
+            CaseStatus.CANCELLED,
+            CaseStatus.MANAGER_REJECTED,
+        ):
+            case = DentalCase(
                 case_number=f"FILTER-{status.value}-{uuid4().hex[:6]}",
                 clinic_id=clinic.id,
                 created_by_user_id=dentist.id,
                 responsible_dentist_user_id=dentist.id,
-                patient_code=f"P-{status.value}",
                 status=status,
                 details=CaseDetail(),
             )
-            for status in (
-                CaseStatus.DRAFT,
-                CaseStatus.DELIVERED,
-                CaseStatus.CANCELLED,
-                CaseStatus.MANAGER_REJECTED,
-            )
-        }
+            set_patient_code(case, f"P-{status.value}")
+            cases[status] = case
         session.add_all(cases.values())
         session.flush()
 

@@ -1,10 +1,24 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_CASE_WAIT_WARNING_HOURS = {
+    "manager_review": 24,
+    "manager_revision_requested": 48,
+    "lab_design": 48,
+    "dentist_review": 24,
+    "design_revision_requested": 48,
+    "ready_for_production": 24,
+    "in_production": 48,
+    "production_completed": 24,
+    "shipped": 72,
+    "return_review": 24,
+    "reproduction_requested": 24,
+    "rescan_requested": 72,
+}
 
 
 class Settings(BaseSettings):
@@ -33,6 +47,25 @@ class Settings(BaseSettings):
     mesh_validation_max_faces: int = 5_500_000
     mesh_validation_timeout_seconds: int = 600
 
+    email_enabled: bool = True
+    smtp_host: str = "127.0.0.1"
+    smtp_port: int = Field(default=1025, ge=1, le=65_535)
+    smtp_starttls: bool = False
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    email_from_address: str = "dentalapp@example.test"
+    email_from_name: str = "DentalApp"
+    email_max_attempts: int = Field(default=5, ge=1, le=20)
+    email_retry_base_seconds: int = Field(default=60, ge=1, le=3600)
+    frontend_base_url: str = "http://localhost:5173"
+    case_wait_warning_hours: dict[str, int] = Field(
+        default_factory=lambda: dict(DEFAULT_CASE_WAIT_WARNING_HOURS)
+    )
+
+    patient_data_keys: dict[str, str] = Field(default_factory=dict)
+    patient_data_active_key_id: str = "v1"
+    patient_lookup_key: str | None = None
+
     firebase_project_id: str = "demo-dentalapp"
     firebase_credentials_path: Path | None = None
     firebase_use_emulator: bool = True
@@ -49,6 +82,16 @@ class Settings(BaseSettings):
             return value.resolve()
         return (BACKEND_DIR / value).resolve()
 
+    @field_validator("case_wait_warning_hours")
+    @classmethod
+    def validate_wait_warning_hours(cls, value: dict[str, int]) -> dict[str, int]:
+        unknown = set(value) - set(DEFAULT_CASE_WAIT_WARNING_HOURS)
+        if unknown:
+            raise ValueError("Bilinmeyen vaka durumları: " + ", ".join(sorted(unknown)))
+        if any(hours <= 0 for hours in value.values()):
+            raise ValueError("Bekleme uyarısı süreleri pozitif saat olmalıdır.")
+        return value
+
     @model_validator(mode="after")
     def reject_unsafe_production_configuration(self) -> "Settings":
         if self.app_env.lower() not in {"production", "prod"}:
@@ -64,6 +107,10 @@ class Settings(BaseSettings):
             unsafe.append("COOKIE_SECURE=true")
         if self.secret_key == "change-this-before-real-use":
             unsafe.append("SECRET_KEY")
+        if self.patient_data_active_key_id not in self.patient_data_keys:
+            unsafe.append("PATIENT_DATA_KEYS")
+        if not self.patient_lookup_key:
+            unsafe.append("PATIENT_LOOKUP_KEY")
         if unsafe:
             raise ValueError(
                 "Üretim ortamı güvenli değil; şu ayarları düzeltin: " + ", ".join(unsafe)

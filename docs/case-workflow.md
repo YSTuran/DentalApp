@@ -34,6 +34,13 @@ alındığında vaka `return_review` durumuna geçer. Yönetici hekim buradan
 - Sistem yöneticisi kullanıcı ve şube yönetir; klinik onay rollerini devralmaz.
 - Durum değişiklikleri ilgili yönetici hekim, sorumlu hekim, klinik personeli veya
   teknisyenlere uygulama içi bildirim üretir. Bildirimlerde hasta adı bulunmaz.
+- Bildirimler ayrıca tekrar denemeli e-posta kuyruğuna yazılır; SMTP gönderimi API
+  isteğini bekletmez ve e-posta içeriğinde hasta bilgisi bulunmaz.
+- Hasta adı ve hasta kodu veritabanında AES-256-GCM ile şifreli tutulur. Hasta kodu
+  araması HMAC kör indeksiyle yalnızca tam eşleşme üzerinden yapılır. Audit olayları
+  bu değerlerin kendisini değil, ilgili alanların değiştiği bilgisini saklar.
+- Aktif bir aşamanın bekleme eşiği aşıldığında son durum geçmişi esas alınarak ilgili
+  role tekil bir uyarı oluşturulur.
 - Bildirimi okundu olarak işaretlemek veya bağlı vaka sayfasını açmak bildirimi aktif
   listeden kaldırır; kayıt veritabanından silinmez.
 

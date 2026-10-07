@@ -1,6 +1,7 @@
 from app.models import DentalCase, User
 from app.schemas.case import CaseResponse
 from app.services.case_management.access import can_view_patient_name
+from app.services.case_management.patient_data import get_patient_code, get_patient_name
 
 
 def case_to_response(case: DentalCase, *, actor: User) -> CaseResponse:
@@ -9,10 +10,11 @@ def case_to_response(case: DentalCase, *, actor: User) -> CaseResponse:
             **case.__dict__,
             "clinic_name": case.clinic.name,
             "responsible_dentist_name": case.responsible_dentist.full_name,
+            "patient_code": get_patient_code(case),
+            "patient_name": get_patient_name(case) if can_view_patient_name(actor, case) else None,
         }
     )
     if not can_view_patient_name(actor, case):
-        response.patient_name = None
         response.created_by_user_id = None
         response.responsible_dentist_user_id = None
         response.details.special_notes = None

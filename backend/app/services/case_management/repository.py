@@ -40,14 +40,14 @@ def case_snapshot(case: DentalCase) -> dict[str, object]:
         "clinic_id": case.clinic_id,
         "created_by_user_id": case.created_by_user_id,
         "responsible_dentist_user_id": case.responsible_dentist_user_id,
-        "patient_code": case.patient_code,
-        "patient_name": case.patient_name,
+        "patient_code": {"is_set": case.patient_code_encrypted is not None},
+        "patient_name": {"is_set": case.patient_name_encrypted is not None},
         "status": case.status,
         "appliance_type": case.details.appliance_type,
         "material": case.details.material,
-        "tooth_numbers": case.details.tooth_numbers,
-        "special_notes": case.details.special_notes,
-        "extra_fields": case.details.extra_fields,
+        "tooth_numbers": {"count": len(case.details.tooth_numbers)},
+        "special_notes": {"is_set": case.details.special_notes is not None},
+        "extra_fields": {"count": len(case.details.extra_fields)},
     }
 
 

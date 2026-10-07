@@ -10,7 +10,9 @@ from app.models.case import (
     CaseUploadSession,
     DentalCase,
 )
+from app.models.case_wait_alert import CaseWaitAlert
 from app.models.clinic import Clinic
+from app.models.email_outbox import EmailOutbox
 from app.models.enums import (
     CaseAction,
     CaseApprovalType,
@@ -51,10 +53,12 @@ __all__ = [
     "CaseStatus",
     "CaseStatusHistory",
     "CaseUploadSession",
+    "CaseWaitAlert",
     "Clinic",
     "ColorPalette",
     "DentalCase",
     "DeliveryConfirmation",
+    "EmailOutbox",
     "MeshValidationStatus",
     "Notification",
     "ProductionCompletion",

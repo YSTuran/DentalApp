@@ -76,7 +76,7 @@ export function CaseOperationsPanel({ dentalCase, onUpdated }: Props) {
       <div className="panel-heading"><div><p className="card-label">ÜRETİM VE TESLİM</p><h2>Operasyon takibi</h2></div></div>
       <p className="panel-description">Üretim, kargo, şube teslimi ve iade kayıtları eski kayıtların üzerine yazılmadan saklanır.</p>
       {error && <div className="form-error" role="alert">{error}</div>}
-      {operations && latestRun && <WorkOrderCard dentalCase={dentalCase} productionRun={latestRun} />}
+      {operations && latestRun && <WorkOrderCard dentalCase={dentalCase} productionRun={latestRun} canPrintLabel={isTechnician} />}
 
       {dentalCase.status === "delivered" && (
         <div className="operation-complete-state">

@@ -13,6 +13,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -80,8 +81,9 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     responsible_dentist_user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    patient_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    patient_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    patient_code_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    patient_code_lookup: Mapped[bytes | None] = mapped_column(LargeBinary(32), nullable=True)
+    patient_name_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     status: Mapped[CaseStatus] = mapped_column(
         CASE_STATUS_ENUM,
         nullable=False,
@@ -120,6 +122,7 @@ class DentalCase(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("uq_cases_case_number", "case_number", unique=True),
         Index("ix_cases_clinic_status", "clinic_id", "status"),
         Index("ix_cases_created_at", "created_at"),
+        Index("ix_cases_patient_code_lookup", "patient_code_lookup"),
     )
 
 

@@ -8,6 +8,13 @@ from app.schemas.case import CaseCreateRequest, CaseUpdateRequest
 from app.services.audit import record_audit_event
 from app.services.case_management.access import require_case_visibility, require_create_access
 from app.services.case_management.exceptions import CaseAccessDeniedError, CaseConflictError
+from app.services.case_management.patient_data import (
+    get_patient_code,
+    get_patient_name,
+    protected_value_state,
+    set_patient_code,
+    set_patient_name,
+)
 from app.services.case_management.repository import (
     add_history,
     case_snapshot,
@@ -34,9 +41,19 @@ CASE_UPDATE_FIELDS = {
 }
 CASE_MAIN_FIELDS = {
     "responsible_dentist_user_id",
-    "patient_code",
-    "patient_name",
 }
+PATIENT_FIELDS = {"patient_code", "patient_name"}
+PROTECTED_DETAIL_FIELDS = {"tooth_numbers", "special_notes", "extra_fields"}
+
+
+def _patient_value(case: DentalCase, field_name: str) -> str | None:
+    return get_patient_code(case) if field_name == "patient_code" else get_patient_name(case)
+
+
+def _protected_detail_state(field_name: str, value: object) -> dict[str, object]:
+    if field_name in {"tooth_numbers", "extra_fields"}:
+        return {"count": len(value) if value is not None else 0}
+    return protected_value_state(value)
 
 
 def create_case(
@@ -59,8 +76,6 @@ def create_case(
         clinic_id=payload.clinic_id,
         created_by_user_id=actor.id,
         responsible_dentist_user_id=payload.responsible_dentist_user_id,
-        patient_code=payload.patient_code,
-        patient_name=payload.patient_name,
         status=CaseStatus.DRAFT,
         details=CaseDetail(
             appliance_type=payload.appliance_type,
@@ -70,6 +85,8 @@ def create_case(
             extra_fields=payload.extra_fields,
         ),
     )
+    set_patient_code(case, payload.patient_code)
+    set_patient_name(case, payload.patient_name)
 
     try:
         db.add(case)
@@ -129,21 +146,38 @@ def update_case(
 
     before: dict[str, object] = {}
     after: dict[str, object] = {}
+    changed_values: dict[str, object] = {}
     for field_name in provided_fields:
-        target = case if field_name in CASE_MAIN_FIELDS else case.details
-        old_value = getattr(target, field_name)
+        if field_name in PATIENT_FIELDS:
+            old_value = _patient_value(case, field_name)
+        else:
+            target = case if field_name in CASE_MAIN_FIELDS else case.details
+            old_value = getattr(target, field_name)
         new_value = getattr(payload, field_name)
         if old_value != new_value:
-            before[field_name] = old_value
-            after[field_name] = new_value
+            changed_values[field_name] = new_value
+            if field_name in PATIENT_FIELDS:
+                before[field_name] = protected_value_state(old_value)
+                after[field_name] = protected_value_state(new_value)
+            elif field_name in PROTECTED_DETAIL_FIELDS:
+                before[field_name] = _protected_detail_state(field_name, old_value)
+                after[field_name] = _protected_detail_state(field_name, new_value)
+            else:
+                before[field_name] = old_value
+                after[field_name] = new_value
 
-    if not after:
+    if not changed_values:
         raise CaseConflictError("case_no_changes")
 
     try:
-        for field_name, value in after.items():
-            target = case if field_name in CASE_MAIN_FIELDS else case.details
-            setattr(target, field_name, value)
+        for field_name, value in changed_values.items():
+            if field_name == "patient_code":
+                set_patient_code(case, value)
+            elif field_name == "patient_name":
+                set_patient_name(case, value)
+            else:
+                target = case if field_name in CASE_MAIN_FIELDS else case.details
+                setattr(target, field_name, value)
         db.flush()
         record_audit_event(
             db,

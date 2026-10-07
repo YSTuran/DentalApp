@@ -4,7 +4,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import DentalCase, Notification, RoleCode, User, UserRoleAssignment
+from app.models import DentalCase, RoleCode, User, UserRoleAssignment
+from app.services.notification_delivery import add_user_notification
 
 MANAGER_ACTIONS = {"case.submitted", "case.return_received"}
 TECHNICIAN_ACTIONS = {
@@ -47,7 +48,7 @@ NOTIFICATION_CONTENT = {
 }
 
 
-def _users_with_roles(
+def user_ids_with_roles(
     db: Session,
     roles: Iterable[RoleCode],
     *,
@@ -71,17 +72,17 @@ def _users_with_roles(
 
 def _recipients_for_action(db: Session, case: DentalCase, action: str) -> set[UUID]:
     if action in MANAGER_ACTIONS:
-        return _users_with_roles(
+        return user_ids_with_roles(
             db,
             [RoleCode.MANAGING_DENTIST],
             clinic_id=case.clinic_id,
         )
     if action in TECHNICIAN_ACTIONS:
-        return _users_with_roles(db, [RoleCode.TECHNICIAN])
+        return user_ids_with_roles(db, [RoleCode.TECHNICIAN])
     if action == "case.design_submitted":
         return {case.responsible_dentist_user_id}
     if action == "case.shipped":
-        return _users_with_roles(
+        return user_ids_with_roles(
             db,
             [RoleCode.CLINIC_MANAGER, RoleCode.CLINIC_STAFF],
             clinic_id=case.clinic_id,
@@ -105,14 +106,13 @@ def create_case_notifications(
     recipients.discard(actor.id)
     title, message = content
     for recipient_id in recipients:
-        db.add(
-            Notification(
-                recipient_user_id=recipient_id,
-                actor_user_id=actor.id,
-                case_id=case.id,
-                kind=action,
-                title=title,
-                message=message.format(case=case.case_number),
-                target_path=f"/vakalar/{case.id}",
-            )
+        add_user_notification(
+            db,
+            recipient_user_id=recipient_id,
+            actor_user_id=actor.id,
+            case_id=case.id,
+            kind=action,
+            title=title,
+            message=message.format(case=case.case_number),
+            target_path=f"/vakalar/{case.id}",
         )

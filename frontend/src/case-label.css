@@ -1,0 +1,100 @@
+.case-label-document {
+  display: grid;
+  gap: 6px;
+  width: 92mm;
+  min-height: 42mm;
+  box-sizing: border-box;
+  padding: 3mm;
+  color: #000;
+  background: #fff;
+  border: 1px solid #000;
+  font-family: Arial, sans-serif;
+}
+
+.case-label-document header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10pt;
+}
+
+.case-label-barcode {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.case-label-barcode svg {
+  width: min(74mm, 100%);
+  height: 14mm;
+}
+
+.case-label-barcode strong {
+  font-size: 11pt;
+  letter-spacing: 0.05em;
+}
+
+.case-label-document dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.case-label-document dl div {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  font-size: 7.5pt;
+}
+
+.case-label-document dt {
+  font-weight: 400;
+}
+
+.case-label-document dd {
+  margin: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.case-label-document > small {
+  text-align: right;
+  font-size: 6.5pt;
+}
+
+@media print {
+  @page case-label {
+    size: 100mm 50mm;
+    margin: 3mm;
+  }
+
+  body.printing-label {
+    background: #fff;
+  }
+
+  body.printing-label > #root {
+    display: none !important;
+  }
+
+  body.printing-label > .print-root {
+    display: block !important;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .print-root .case-label-document {
+    page: case-label;
+    width: 92mm;
+    height: 42mm;
+    min-height: 0;
+    margin: 0 auto;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

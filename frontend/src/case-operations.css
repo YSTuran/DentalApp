@@ -98,6 +98,13 @@
   gap: 12px;
 }
 
+.work-order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .work-order-heading > div {
   display: grid;
   gap: 3px;
@@ -186,7 +193,7 @@
 }
 
 @media print {
-  @page {
+  @page work-order {
     size: A4;
     margin: 12mm;
   }
@@ -204,6 +211,7 @@
   }
 
   .print-root .work-order-print {
+    page: work-order;
     position: static;
     width: auto;
     padding: 0;

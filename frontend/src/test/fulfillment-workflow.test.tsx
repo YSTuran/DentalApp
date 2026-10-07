@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +20,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../lib/fulfillment-api", () => apiMocks);
+vi.mock("jsbarcode", () => ({ default: vi.fn() }));
 
 const dentalCase: DentalCase = {
   id: "case-one",
@@ -121,6 +122,7 @@ function renderPanel(role: RoleCode, currentCase: DentalCase) {
 afterEach(() => {
   cleanup();
   document.body.classList.remove("printing-report");
+  document.body.classList.remove("printing-label");
 });
 
 beforeEach(() => {
@@ -138,7 +140,26 @@ describe("üretim, teslim ve iade paneli", () => {
     render(<WorkOrderCard dentalCase={dentalCase} productionRun={operations.production_runs[0]} />);
 
     expect(screen.getByText("Demo Hekim")).toBeInTheDocument();
-    await interaction.click(screen.getByRole("button", { name: "Yazdır" }));
+    await interaction.click(screen.getByRole("button", { name: "İş emrini yazdır" }));
+    await waitFor(() => expect(printMock).toHaveBeenCalledOnce());
+    printMock.mockRestore();
+  });
+
+  it("teknisyen için hasta adı içermeyen barkod etiketini yazdırır", async () => {
+    const interaction = userEvent.setup();
+    const printMock = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    render(
+      <WorkOrderCard
+        dentalCase={dentalCase}
+        productionRun={operations.production_runs[0]}
+        canPrintLabel
+      />,
+    );
+
+    await interaction.click(screen.getByRole("button", { name: "Etiket yazdır" }));
+    const label = await screen.findByLabelText("Vaka üretim etiketi");
+    expect(label).toBeInTheDocument();
+    expect(within(label).queryByText("DEMO-001")).not.toBeInTheDocument();
     await waitFor(() => expect(printMock).toHaveBeenCalledOnce());
     printMock.mockRestore();
   });

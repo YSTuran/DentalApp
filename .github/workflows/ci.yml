@@ -38,6 +38,9 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       FIREBASE_USE_EMULATOR: "true"
       RUN_DATABASE_INTEGRATION_TESTS: "1"
+      PATIENT_DATA_KEYS: '{"v1":"MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="}'
+      PATIENT_DATA_ACTIVE_KEY_ID: v1
+      PATIENT_LOOKUP_KEY: "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA="
 
     steps:
       - uses: actions/checkout@v4

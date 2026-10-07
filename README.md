@@ -22,6 +22,7 @@ Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve tes
 - Pytest başlangıç testleri
 - Kullanıcıya özel uygulama içi bildirim merkezi
 - Filtrelenmiş ve kategori renkli audit PDF çıktısı
+- AES-256-GCM ile uygulama katmanında şifrelenen hasta adı ve hasta kodu
 
 ## Yerel kurulum (PowerShell)
 
@@ -139,9 +140,53 @@ gerektiğinde, ürün kargoya verildiğinde ve iade kararı oluştuğunda ilgili
 götürür ve bildirimi kapatır. **Okundu** düğmesi de bildirimi listeden kaldırır; kayıt
 fiziksel olarak silinmez, `dismissed_at` zamanı ile saklanır.
 
+Her uygulama içi bildirim aynı transaction içinde `email_outbox` kuyruğuna da eklenir.
+Celery worker e-postaları SMTP üzerinden gönderir; geçici hatalarda artan aralıklarla
+yeniden dener ve gönderim sonucunu saklar. Yerel geliştirmede `npm run dev`, Mailpit'i
+Docker ile başlatır ve terminalde test gelen kutusunu gösterir:
+
+- Mailpit gelen kutusu: `http://localhost:8025`
+- Yerel SMTP: `127.0.0.1:1025`
+
+Uydurma `.test` ve `.invalid` adreslerine gönderilen e-postalar internete çıkmadan bu
+kutuda görüntülenir. E-posta metinlerinde hasta adı veya klinik serbest notları yoktur.
+Gerçek ortamda `SMTP_HOST`, `SMTP_PORT`, `SMTP_STARTTLS`, `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `EMAIL_FROM_ADDRESS` ve `FRONTEND_BASE_URL` ayarları gerçek servisle
+değiştirilir.
+
+Celery Beat ayrıca aktif vakaların son durum geçmişini kontrol eder. Yapılandırılmış
+süreyi aşan aşamalar için ilgili role bir kez çan bildirimi ve e-posta oluşturulur.
+Tekrarlar `case_wait_alerts` tablosundaki vaka, aşama başlangıcı ve alıcı birleşimiyle
+engellenir. Varsayılan süreler `CASE_WAIT_WARNING_HOURS` ortam değişkenine JSON nesnesi
+verilerek değiştirilebilir.
+
 Backend yetki katmanı global rol, herhangi bir rol, klinik erişimi ve klinik rolü
 kontrollerini ayrı ayrı uygular. Sistem yöneticisi klinik rolü gerektiren işlemleri
 yalnızca ilgili kontrol açıkça izin veriyorsa devralabilir.
+
+## Hasta kimlik bilgilerinin korunması
+
+Hasta adı ve hasta kodu PostgreSQL'de açık metin olarak tutulmaz. FastAPI bu alanları
+AES-256-GCM ile vaka ve alan bağlamına bağlı biçimde şifreler; yetki kontrolü sonrasında
+yalnızca gerekli alanı çözer. Teknisyen hasta kodunu görebilir ancak hasta adını göremez.
+Sistem yöneticisi de yalnızca global yönetici olduğu için hasta adına erişemez.
+
+Hasta kodu araması, ayrı bir 256 bit anahtarla oluşturulan HMAC kör indeksi üzerinden
+tam eşleşmeyle yapılır. Vaka numarası kısmi aranabilir; hasta kodunun tamamı girilmelidir.
+Audit kayıtlarında hasta adı, hasta kodu, özel not veya dinamik alan değerleri tekrar
+saklanmaz; yalnızca alanın değiştiği ve değer bulunup bulunmadığı kaydedilir. API
+yanıtları varsayılan olarak `Cache-Control: no-store` başlığı taşır.
+
+Yerel anahtarlar Git'e eklenmeyen `backend/.env` içindeki
+`PATIENT_DATA_KEYS`, `PATIENT_DATA_ACTIVE_KEY_ID` ve `PATIENT_LOOKUP_KEY`
+ayarlarından okunur. Şifreleme anahtarı ile arama anahtarı birbirinden farklıdır.
+Anahtar sürümü şifreli kayıtla birlikte tutulduğu için yeni yazmalar farklı bir anahtar
+sürümüne geçirilebilir.
+
+Veritabanı yedeği şifreli sütunları içerir ancak anahtarları içermez. Bu üç ayar,
+veritabanı yedeğinden ayrı ve erişimi kısıtlı bir parola kasasında ayrıca yedeklenmelidir.
+Anahtarlar kaybolursa hasta adı ve kodu geri getirilemez. Anahtar değerleri uygulama
+loglarına, audit kayıtlarına veya hata yanıtlarına yazdırılmamalıdır.
 
 ## Klinik API
 
@@ -239,6 +284,12 @@ gösterilir. `Ctrl+C` servisleri kapatır; Firebase kullanıcıları temiz kapan
 `WORKER` mesh doğrulama görevlerini yürütür. `BEAT`, Redis geçici olarak ulaşılamazken
 kuyruğa alınamayan doğrulamaları yeniden bulur ve süresi geçen yarım yüklemeleri,
 veritabanı kayıtlarını silmeden `expired` durumuna geçirerek temizler.
+Worker ayrıca bekleyen e-postaları gönderir; Beat e-posta kuyruğunu ve vaka bekleme
+sürelerini düzenli aralıklarla tarar.
+
+Teknisyen, üretim iş emrindeki **Etiket yazdır** düğmesiyle 100 × 50 mm Code 128 vaka
+etiketi oluşturabilir. Etiket vaka ve iş emri numarası, klinik, aparey, malzeme ve
+üretim denemesini içerir; hasta adı ve hasta kodu etikete yazılmaz.
 
 Yalnızca React, TypeScript ve Vite tabanlı frontend'i çalıştırmak için:
 
@@ -348,6 +399,9 @@ SHA-256 özeti manifestte tutulur. Bir yedeği veri değiştirmeden doğrulamak 
 ```powershell
 .\scripts\restore.ps1 -BackupPath .\backups\dentalapp-YYYYMMDD-HHMMSS
 ```
+
+`backend/.env` ve hasta verisi anahtarları bu yedeğe bilerek eklenmez. Anahtarların
+ayrı güvenli yedeği bulunmadan veritabanı yedeği tek başına geri yüklenemez.
 
 Gerçek geri yükleme için `-Apply` eklenir ve ekranda `RESTORE` onayı verilir. Betik
 geri yükleme öncesinde otomatik yeni yedek alır; mevcut dosyaları silmek yerine

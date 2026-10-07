@@ -19,6 +19,7 @@ from app.services.case_management.access import (
     clinic_ids_for_roles,
     require_case_visibility,
 )
+from app.services.case_management.patient_data import patient_code_lookup
 from app.services.case_management.repository import CASE_LOAD_OPTIONS, load_case
 
 CaseLifecycle = Literal["active", "completed", "closed"]
@@ -102,7 +103,7 @@ def list_visible_cases(
         filters.append(
             or_(
                 DentalCase.case_number.icontains(normalized_search, autoescape=True),
-                DentalCase.patient_code.icontains(normalized_search, autoescape=True),
+                DentalCase.patient_code_lookup == patient_code_lookup(normalized_search),
             )
         )
 

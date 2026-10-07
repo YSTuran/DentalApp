@@ -22,6 +22,7 @@ from app.models import (
 )
 from app.services.authorization import has_clinic_role
 from app.services.case_management.exceptions import CaseValidationError
+from app.services.case_management.patient_data import get_patient_code
 
 
 def validate_clinic(db: Session, clinic_id: UUID) -> Clinic:
@@ -49,7 +50,7 @@ def validate_responsible_dentist(db: Session, user_id: UUID, clinic_id: UUID) ->
 
 def validate_submit_requirements(db: Session, case: DentalCase) -> None:
     missing_fields = []
-    if not case.patient_code:
+    if not get_patient_code(case):
         missing_fields.append("patient_code")
     if not case.details.appliance_type:
         missing_fields.append("appliance_type")

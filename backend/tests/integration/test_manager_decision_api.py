@@ -20,6 +20,7 @@ from app.models import (
     MeshValidationStatus,
     RoleCode,
 )
+from app.services.case_management.patient_data import set_patient_code
 from tests.integration.case_test_support import create_clinic, create_user, csrf_headers
 
 pytestmark = [
@@ -43,7 +44,6 @@ def _create_review_case(
             clinic_id=clinic_id,
             created_by_user_id=owner_id,
             responsible_dentist_user_id=owner_id,
-            patient_code="DEMO-MANAGER",
             status=CaseStatus.MANAGER_REVIEW,
             details=CaseDetail(
                 appliance_type="Şeffaf plak",
@@ -51,6 +51,7 @@ def _create_review_case(
                 tooth_numbers=["11"],
             ),
         )
+        set_patient_code(case, "DEMO-MANAGER")
         session.add(case)
         session.flush()
         scan = CaseFileVersion(

@@ -2,9 +2,14 @@ from app.models import Base, RoleCode
 
 
 def test_identity_tables_are_registered() -> None:
-    assert {"audit_events", "clinics", "users", "user_role_assignments"}.issubset(
-        Base.metadata.tables
-    )
+    assert {
+        "audit_events",
+        "case_wait_alerts",
+        "clinics",
+        "email_outbox",
+        "users",
+        "user_role_assignments",
+    }.issubset(Base.metadata.tables)
 
 
 def test_only_system_admin_and_technician_are_global_roles() -> None:
@@ -18,3 +23,13 @@ def test_role_assignment_has_scope_constraint() -> None:
     constraint_names = {constraint.name for constraint in table.constraints}
 
     assert "ck_user_role_assignments_role_scope" in constraint_names
+
+
+def test_patient_identity_uses_only_encrypted_case_columns() -> None:
+    columns = Base.metadata.tables["cases"].columns
+
+    assert {"patient_code_encrypted", "patient_code_lookup", "patient_name_encrypted"} <= {
+        column.name for column in columns
+    }
+    assert "patient_code" not in columns
+    assert "patient_name" not in columns
