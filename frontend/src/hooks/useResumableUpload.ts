@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { completeUpload, getUpload, sendUploadChunk, startUpload } from "../lib/cases-api";
+import { ApiError } from "../lib/api";
 import type { CaseFileKind, UploadCompleteResponse, UploadSession } from "../types/case";
 
 type UploadPhase = "idle" | "preparing" | "uploading" | "paused" | "finalizing" | "completed" | "error";
@@ -39,35 +40,80 @@ function clearSaved(key: string): void {
   }
 }
 
-function hashFile(file: File): Promise<string> {
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function uploadErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.detail === "case_upload_session_limit_reached") {
+      return "Çok fazla etkin yükleme var. Bir yüklemeyi tamamlayın veya süresinin dolmasını bekleyin.";
+    }
+    if (error.detail === "case_upload_quota_exceeded") {
+      return "Etkin yüklemeler için ayrılan geçici depolama kotası doldu.";
+    }
+    if (error.detail === "case_file_too_large") {
+      return "Seçilen STL dosyası sunucunun dosya boyutu sınırını aşıyor.";
+    }
+  }
+  return "Dosya hazırlanamadı veya yükleme kesildi. Aynı dosyayı seçerek tekrar deneyin.";
+}
+
+function hashFile(file: File, signal: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("../workers/file-hash.worker.ts", import.meta.url), {
       type: "module",
     });
-    worker.addEventListener("message", (event: MessageEvent<{ digest?: string; error?: string }>) => {
+
+    const cleanup = () => {
+      signal.removeEventListener("abort", handleAbort);
       worker.terminate();
+    };
+    const handleAbort = () => {
+      cleanup();
+      reject(new DOMException("Dosya hazırlama iptal edildi.", "AbortError"));
+    };
+    const handleMessage = (event: MessageEvent<{ digest?: string; error?: string }>) => {
+      cleanup();
       if (event.data.digest) {
         resolve(event.data.digest);
       } else {
         reject(new Error(event.data.error ?? "Dosya özeti hesaplanamadı."));
       }
-    });
-    worker.addEventListener("error", () => {
-      worker.terminate();
+    };
+    const handleError = () => {
+      cleanup();
       reject(new Error("Dosya özeti hesaplanamadı."));
-    });
+    };
+
+    if (signal.aborted) {
+      handleAbort();
+      return;
+    }
+    signal.addEventListener("abort", handleAbort, { once: true });
+    worker.addEventListener("message", handleMessage);
+    worker.addEventListener("error", handleError);
     worker.postMessage(file);
   });
 }
 
 export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") {
   const controller = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const pause = useCallback(() => {
     controller.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      controller.current?.abort();
+    };
   }, []);
 
   const upload = useCallback(async (
@@ -83,14 +129,17 @@ export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") 
     setError(null);
     setPhase("preparing");
     const key = storageKey(userId, caseId, kind);
+    controller.current?.abort();
+    const activeController = new AbortController();
+    controller.current = activeController;
     try {
-      const fingerprint = await hashFile(file);
+      const fingerprint = await hashFile(file, activeController.signal);
       let session: UploadSession | null = null;
       const saved = readSaved(key);
 
       if (saved?.fingerprint === fingerprint) {
         try {
-          const existing = await getUpload(caseId, saved.uploadId);
+          const existing = await getUpload(caseId, saved.uploadId, activeController.signal);
           if (
             ["pending", "uploading"].includes(existing.status)
             && existing.expected_size === file.size
@@ -99,19 +148,29 @@ export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") 
           ) {
             session = existing;
           }
-        } catch {
-          clearSaved(key);
+        } catch (caught) {
+          if (isAbortError(caught)) throw caught;
+          if (caught instanceof ApiError && caught.status === 404) {
+            clearSaved(key);
+          } else {
+            throw caught;
+          }
         }
       } else if (saved) {
         clearSaved(key);
       }
 
       if (session === null) {
-        session = await startUpload(caseId, file, kind, fingerprint);
+        session = await startUpload(
+          caseId,
+          file,
+          kind,
+          fingerprint,
+          activeController.signal,
+        );
         saveUpload(key, { uploadId: session.id, fingerprint });
       }
 
-      controller.current = new AbortController();
       setPhase("uploading");
       let offset = session.received_size;
       setProgress(Math.round((offset / file.size) * 100));
@@ -123,28 +182,29 @@ export function useResumableUpload(userId: string, kind: CaseFileKind = "scan") 
           session.id,
           offset,
           file.slice(offset, end),
-          controller.current.signal,
+          activeController.signal,
         );
         offset = session.received_size;
         setProgress(Math.round((offset / file.size) * 100));
       }
 
       setPhase("finalizing");
-      const completed = await completeUpload(caseId, session.id);
+      const completed = await completeUpload(caseId, session.id, activeController.signal);
       clearSaved(key);
       setProgress(100);
       setPhase("completed");
       return completed;
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") {
-        setPhase("paused");
+      if (!mounted.current) return null;
+      if (isAbortError(caught)) {
+        if (controller.current === activeController) setPhase("paused");
         return null;
       }
       setPhase("error");
-      setError("Dosya hazırlanamadı veya yükleme kesildi. Aynı dosyayı seçerek tekrar deneyin.");
+      setError(uploadErrorMessage(caught));
       return null;
     } finally {
-      controller.current = null;
+      if (controller.current === activeController) controller.current = null;
     }
   }, [kind, userId]);
 

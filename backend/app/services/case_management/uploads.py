@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 DESIGN_UPLOAD_STATUSES = frozenset(
     {CaseStatus.LAB_DESIGN, CaseStatus.DESIGN_REVISION_REQUESTED}
 )
+ACTIVE_UPLOAD_STATUSES = (UploadStatus.PENDING, UploadStatus.UPLOADING)
+UPLOAD_LOCK_NAMESPACE = 4_474_449
 
 
 def _storage() -> LocalFileStorage:
@@ -79,6 +81,42 @@ def _is_expired(upload: CaseUploadSession) -> bool:
     return upload.expires_at <= datetime.now(UTC)
 
 
+def _reserve_user_upload_capacity(
+    db: Session,
+    *,
+    actor: User,
+    expected_size: int,
+) -> None:
+    settings = get_settings()
+    user_lock_key = actor.id.int & 0x7FFF_FFFF
+    db.scalar(select(func.pg_advisory_xact_lock(UPLOAD_LOCK_NAMESPACE, user_lock_key)))
+    active_count, reserved_bytes = db.execute(
+        select(
+            func.count(CaseUploadSession.id),
+            func.coalesce(func.sum(CaseUploadSession.expected_size), 0),
+        ).where(
+            CaseUploadSession.created_by_user_id == actor.id,
+            CaseUploadSession.status.in_(ACTIVE_UPLOAD_STATUSES),
+            CaseUploadSession.expires_at > datetime.now(UTC),
+        )
+    ).one()
+    reserved_bytes = int(reserved_bytes)
+
+    if active_count >= settings.upload_max_active_sessions_per_user:
+        raise CaseValidationError(
+            "case_upload_session_limit_reached",
+            context={"max_sessions": settings.upload_max_active_sessions_per_user},
+        )
+    if reserved_bytes + expected_size > settings.upload_max_reserved_bytes_per_user:
+        raise CaseValidationError(
+            "case_upload_quota_exceeded",
+            context={
+                "quota_bytes": settings.upload_max_reserved_bytes_per_user,
+                "reserved_bytes": reserved_bytes,
+            },
+        )
+
+
 def _expire_upload(db: Session, upload: CaseUploadSession, *, actor: User) -> None:
     if upload.status in {UploadStatus.COMPLETED, UploadStatus.EXPIRED}:
         return
@@ -113,6 +151,7 @@ def start_upload(
             context={"max_bytes": settings.upload_max_bytes},
         )
 
+    _reserve_user_upload_capacity(db, actor=actor, expected_size=payload.expected_size)
     case = load_case(db, case_id, for_update=True)
     validate_clinic(db, case.clinic_id)
     _require_upload_access(case, actor, payload.kind)

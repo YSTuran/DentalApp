@@ -160,8 +160,9 @@ değiştirilir.
 Celery Beat ayrıca aktif vakaların son durum geçmişini kontrol eder. Yapılandırılmış
 süreyi aşan aşamalar için ilgili role bir kez çan bildirimi ve e-posta oluşturulur.
 Tekrarlar `case_wait_alerts` tablosundaki vaka, aşama başlangıcı ve alıcı birleşimiyle
-engellenir. Varsayılan süreler `CASE_WAIT_WARNING_HOURS` ortam değişkenine JSON nesnesi
-verilerek değiştirilebilir.
+engellenir. Birden fazla Beat aynı anda çalışsa bile görev, PostgreSQL işlem kilidiyle
+tek bir örneğin üretim yapmasını sağlar. Varsayılan süreler
+`CASE_WAIT_WARNING_HOURS` ortam değişkenine JSON nesnesi verilerek değiştirilebilir.
 
 Backend yetki katmanı global rol, herhangi bir rol, klinik erişimi ve klinik rolü
 kontrollerini ayrı ayrı uygular. Sistem yöneticisi klinik rolü gerektiren işlemleri
@@ -415,13 +416,17 @@ STL yükleme endpoint'leri:
 - `GET /api/cases/{case_id}/files/{file_version_id}`: yetki kontrolünden sonra dosyayı
   hasta bilgisi içermeyen güvenli bir adla indirir.
 
-Varsayılan toplam dosya sınırı 512 MB, parça sınırı 8 MB ve yarım yükleme ömrü 24
-saattir. Bu değerler `UPLOAD_MAX_BYTES`, `UPLOAD_CHUNK_MAX_BYTES` ve
-`UPLOAD_SESSION_HOURS` ortam değişkenleriyle değiştirilebilir. Yükleme tamamlanmadan
-`case_file_versions` kaydı oluşmaz. Tarayıcı dosyanın tamamının SHA-256 özetini ayrı
-bir Web Worker içinde hesaplar; devam eden oturum yalnızca boyut ve tam özet aynıysa
-kullanılır. Tamamlanan dosya SHA-256 ile sunucuda yeniden doğrulanır, atomik
-olarak kalıcı klasöre taşınır ve `pending` mesh durumuyla kaydedilir.
+Varsayılan dosya sınırı 300 MB, parça sınırı 8 MB ve yarım yükleme ömrü 24 saattir.
+Bir kullanıcı aynı anda en fazla 3 etkin yükleme açabilir ve bu oturumlar toplamda
+en fazla 900 MB geçici alan rezerve edebilir. Bu değerler `UPLOAD_MAX_BYTES`,
+`UPLOAD_CHUNK_MAX_BYTES`, `UPLOAD_SESSION_HOURS`,
+`UPLOAD_MAX_ACTIVE_SESSIONS_PER_USER` ve `UPLOAD_MAX_RESERVED_BYTES_PER_USER` ortam
+değişkenleriyle değiştirilebilir. Yükleme tamamlanmadan `case_file_versions` kaydı
+oluşmaz. Tarayıcı dosyanın tamamının SHA-256 özetini ayrı bir Web Worker içinde
+hesaplar; sayfadan ayrılınca worker ve devam eden ağ isteği iptal edilir. Devam eden
+oturum yalnızca boyut ve tam özet aynıysa kullanılır. Tamamlanan dosya SHA-256 ile
+sunucuda yeniden doğrulanır, atomik olarak kalıcı klasöre taşınır ve `pending` mesh
+durumuyla kaydedilir.
 
 Mesh worker; STL'nin okunabilirliğini, boş veya sonlu olmayan geometriyi, açık
 kenarları, kapalı hacmi, winding tutarlılığını, dejenere ve tekrarlanan yüzleri,
@@ -462,8 +467,12 @@ SHA-256 özeti manifestte tutulur. Bir yedeği veri değiştirmeden doğrulamak 
 .\scripts\restore.ps1 -BackupPath .\backups\dentalapp-YYYYMMDD-HHMMSS
 ```
 
-`backend/.env` ve hasta verisi anahtarları bu yedeğe bilerek eklenmez. Anahtarların
-ayrı güvenli yedeği bulunmadan veritabanı yedeği tek başına geri yüklenemez.
+`backend/.env` ve hasta verisi anahtarları bu yedeğe bilerek eklenmez. Manifestte
+yalnızca anahtarların geri döndürülemez SHA-256 parmak izleri bulunur. Doğrulama ve
+geri yükleme öncesinde mevcut `PATIENT_DATA_KEYS` ile `PATIENT_LOOKUP_KEY` bu parmak
+izleriyle karşılaştırılır; eksik veya farklı anahtarda işlem durdurulur. Anahtarların
+ayrı güvenli yedeği bulunmadan veritabanı yedeği tek başına geri yüklenemez. Parmak
+izi içermeyen eski manifestler geriye dönük uyumluluk için uyarı verilerek doğrulanır.
 
 Gerçek geri yükleme için `-Apply` eklenir ve ekranda `RESTORE` onayı verilir. Betik
 geri yükleme öncesinde otomatik yeni yedek alır; mevcut dosyaları silmek yerine

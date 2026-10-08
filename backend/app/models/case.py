@@ -291,6 +291,12 @@ class CaseUploadSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
         Index("ix_case_upload_sessions_case_status", "case_id", "status"),
         Index("ix_case_upload_sessions_expires_at", "expires_at"),
+        Index(
+            "ix_case_upload_sessions_creator_status_expiry",
+            "created_by_user_id",
+            "status",
+            "expires_at",
+        ),
     )
 
 

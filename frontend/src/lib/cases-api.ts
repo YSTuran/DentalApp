@@ -175,6 +175,7 @@ export function startUpload(
   file: File,
   kind: "scan" | "design",
   expectedSha256: string,
+  signal?: AbortSignal,
 ): Promise<UploadSession> {
   return csrfRequest(`/api/cases/${caseId}/uploads`, {
     method: "POST",
@@ -185,11 +186,16 @@ export function startUpload(
       expected_size: file.size,
       expected_sha256: expectedSha256,
     }),
+    signal,
   });
 }
 
-export function getUpload(caseId: string, uploadId: string): Promise<UploadSession> {
-  return apiRequest(`/api/cases/${caseId}/uploads/${uploadId}`);
+export function getUpload(
+  caseId: string,
+  uploadId: string,
+  signal?: AbortSignal,
+): Promise<UploadSession> {
+  return apiRequest(`/api/cases/${caseId}/uploads/${uploadId}`, { signal });
 }
 
 export function sendUploadChunk(
@@ -210,8 +216,15 @@ export function sendUploadChunk(
   });
 }
 
-export function completeUpload(caseId: string, uploadId: string): Promise<UploadCompleteResponse> {
-  return csrfRequest(`/api/cases/${caseId}/uploads/${uploadId}/complete`, { method: "POST" });
+export function completeUpload(
+  caseId: string,
+  uploadId: string,
+  signal?: AbortSignal,
+): Promise<UploadCompleteResponse> {
+  return csrfRequest(`/api/cases/${caseId}/uploads/${uploadId}/complete`, {
+    method: "POST",
+    signal,
+  });
 }
 
 export async function downloadCaseFile(

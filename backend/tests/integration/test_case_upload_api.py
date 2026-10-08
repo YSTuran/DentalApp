@@ -183,3 +183,76 @@ def test_resumable_upload_validation_download_and_submit(
             assert access_event is not None
     finally:
         settings.storage_path = previous_storage_path
+
+
+@pytest.mark.parametrize(
+    ("active_limit", "reserved_limit", "expected_error"),
+    [
+        (1, 1_000, "case_upload_session_limit_reached"),
+        (5, 150, "case_upload_quota_exceeded"),
+    ],
+)
+def test_upload_session_reservations_are_limited_per_user(
+    case_session_factory: sessionmaker[Session],
+    tmp_path: Path,
+    active_limit: int,
+    reserved_limit: int,
+    expected_error: str,
+) -> None:
+    settings = get_settings()
+    previous = (
+        settings.storage_path,
+        settings.upload_max_active_sessions_per_user,
+        settings.upload_max_reserved_bytes_per_user,
+    )
+    settings.storage_path = tmp_path
+    settings.upload_max_active_sessions_per_user = active_limit
+    settings.upload_max_reserved_bytes_per_user = reserved_limit
+
+    clinic = create_clinic(case_session_factory, "UPLOAD-LIMIT")
+    dentist = create_user(case_session_factory, RoleCode.DENTIST, clinic.id)
+    app.dependency_overrides[get_current_user] = lambda: dentist
+
+    try:
+        with TestClient(app) as client:
+            headers = csrf_headers(client)
+            case_ids = []
+            for _ in range(2):
+                response = client.post(
+                    "/api/cases",
+                    headers=headers,
+                    json=create_case_payload(clinic, dentist),
+                )
+                assert response.status_code == 201
+                case_ids.append(response.json()["id"])
+
+            first = client.post(
+                f"/api/cases/{case_ids[0]}/uploads",
+                headers=headers,
+                json={
+                    "kind": "scan",
+                    "original_filename": "first.stl",
+                    "expected_size": 100,
+                    "expected_sha256": "a" * 64,
+                },
+            )
+            assert first.status_code == 201
+
+            blocked = client.post(
+                f"/api/cases/{case_ids[1]}/uploads",
+                headers=headers,
+                json={
+                    "kind": "scan",
+                    "original_filename": "second.stl",
+                    "expected_size": 100,
+                    "expected_sha256": "b" * 64,
+                },
+            )
+            assert blocked.status_code == 422
+            assert blocked.json()["detail"]["code"] == expected_error
+    finally:
+        (
+            settings.storage_path,
+            settings.upload_max_active_sessions_per_user,
+            settings.upload_max_reserved_bytes_per_user,
+        ) = previous

@@ -5,18 +5,12 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $envPath = Join-Path $projectRoot "backend\.env"
-
-function Get-EnvValue([string]$Path, [string]$Name) {
-    $line = Get-Content -LiteralPath $Path | Where-Object {
-        $_ -match "^\s*$([regex]::Escape($Name))\s*="
-    } | Select-Object -Last 1
-    if (-not $line) { throw "$Name backend/.env içinde bulunamadı." }
-    return ($line -split "=", 2)[1].Trim().Trim('"').Trim("'")
-}
+. (Join-Path $PSScriptRoot "backup-common.ps1")
 
 if (-not (Test-Path -LiteralPath $envPath)) {
     throw "backend/.env bulunamadı."
 }
+$encryptionMetadata = Get-EncryptionKeyMetadata $envPath
 
 $backupRoot = if ($Destination) {
     [IO.Path]::GetFullPath($Destination)
@@ -89,9 +83,10 @@ try {
         }
     }
     $manifest = [ordered]@{
-        format = 1
+        format = 2
         created_at = (Get-Date).ToUniversalTime().ToString("o")
         database = $databaseName
+        encryption = $encryptionMetadata
         files = @($files)
     }
     $manifest | ConvertTo-Json -Depth 5 | Set-Content `

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -37,6 +37,8 @@ STAKEHOLDER_STATUSES = {
     CaseStatus.MANAGER_REVISION_REQUESTED,
     CaseStatus.RESCAN_REQUESTED,
 }
+CASE_WAIT_ALERT_LOCK_NAMESPACE = 4_474_450
+CASE_WAIT_ALERT_LOCK_KEY = 1
 
 
 def _recipient_ids(db: Session, case: DentalCase) -> set[UUID]:
@@ -60,6 +62,17 @@ def _recipient_ids(db: Session, case: DentalCase) -> set[UUID]:
 
 
 def create_overdue_case_alerts(db: Session, *, limit: int = 200) -> int:
+    lock_acquired = db.scalar(
+        select(
+            func.pg_try_advisory_xact_lock(
+                CASE_WAIT_ALERT_LOCK_NAMESPACE,
+                CASE_WAIT_ALERT_LOCK_KEY,
+            )
+        )
+    )
+    if not lock_acquired:
+        return 0
+
     configured = get_settings().case_wait_warning_hours
     policies = {
         CaseStatus(status): hours

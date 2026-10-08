@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     upload_max_bytes: int = 314_572_800
     upload_chunk_max_bytes: int = 8_388_608
     upload_session_hours: int = 24
+    upload_max_active_sessions_per_user: int = Field(default=3, ge=1, le=100)
+    upload_max_reserved_bytes_per_user: int = Field(default=943_718_400, ge=1)
     mesh_validation_stale_minutes: int = 30
     mesh_validation_max_attempts: int = 3
     mesh_validation_max_faces: int = 5_500_000
@@ -95,6 +97,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def reject_unsafe_production_configuration(self) -> "Settings":
+        if self.upload_max_reserved_bytes_per_user < self.upload_max_bytes:
+            raise ValueError(
+                "UPLOAD_MAX_RESERVED_BYTES_PER_USER, UPLOAD_MAX_BYTES değerinden "
+                "küçük olamaz."
+            )
         if self.app_env.lower() not in {"production", "prod"}:
             return self
         unsafe: list[str] = []

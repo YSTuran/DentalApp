@@ -11,14 +11,7 @@ $resolvedBackup = (Resolve-Path -LiteralPath $BackupPath).Path
 $manifestPath = Join-Path $resolvedBackup "manifest.json"
 $dumpPath = Join-Path $resolvedBackup "database.dump"
 $envPath = Join-Path $projectRoot "backend\.env"
-
-function Get-EnvValue([string]$Path, [string]$Name) {
-    $line = Get-Content -LiteralPath $Path | Where-Object {
-        $_ -match "^\s*$([regex]::Escape($Name))\s*="
-    } | Select-Object -Last 1
-    if (-not $line) { throw "$Name backend/.env içinde bulunamadı." }
-    return ($line -split "=", 2)[1].Trim().Trim('"').Trim("'")
-}
+. (Join-Path $PSScriptRoot "backup-common.ps1")
 
 if (-not (Test-Path -LiteralPath $manifestPath) -or -not (Test-Path -LiteralPath $dumpPath)) {
     throw "Geçerli manifest.json ve database.dump bulunamadı."
@@ -34,6 +27,7 @@ foreach ($entry in $manifest.files) {
     $actualHash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLower()
     if ($actualHash -ne $entry.sha256) { throw "Yedek bütünlüğü bozuk: $($entry.path)" }
 }
+Assert-EncryptionKeyCompatibility $manifest $envPath
 
 Write-Output "Yedek doğrulandı: $resolvedBackup"
 if (-not $Apply) {

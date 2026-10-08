@@ -134,11 +134,11 @@ export async function apiArrayBufferRequest(
 let csrfToken: string | null = null;
 let csrfTokenRequest: Promise<string> | null = null;
 
-async function getCsrfToken(): Promise<string> {
+async function getCsrfToken(signal?: AbortSignal | null): Promise<string> {
   if (csrfToken !== null) return csrfToken;
   if (csrfTokenRequest !== null) return csrfTokenRequest;
 
-  csrfTokenRequest = apiRequest<{ csrf_token: string }>("/api/auth/csrf")
+  csrfTokenRequest = apiRequest<{ csrf_token: string }>("/api/auth/csrf", { signal })
     .then((response) => {
       csrfToken = response.csrf_token;
       return response.csrf_token;
@@ -160,7 +160,7 @@ export async function csrfRequest<T>(path: string, init: RequestInit): Promise<T
     });
   }
 
-  const token = await getCsrfToken();
+  const token = await getCsrfToken(init.signal);
   try {
     return await send(token);
   } catch (error) {
@@ -168,7 +168,7 @@ export async function csrfRequest<T>(path: string, init: RequestInit): Promise<T
       throw error;
     }
     csrfToken = null;
-    return send(await getCsrfToken());
+    return send(await getCsrfToken(init.signal));
   }
 }
 

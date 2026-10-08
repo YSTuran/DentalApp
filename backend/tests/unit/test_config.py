@@ -50,3 +50,8 @@ def test_production_accepts_explicit_safe_flags() -> None:
 def test_wait_warning_configuration_rejects_unknown_status() -> None:
     with pytest.raises(ValidationError, match="Bilinmeyen vaka durumları"):
         Settings(case_wait_warning_hours={"unknown_status": 1})
+
+
+def test_upload_reservation_cannot_be_smaller_than_single_file_limit() -> None:
+    with pytest.raises(ValidationError, match="UPLOAD_MAX_RESERVED_BYTES_PER_USER"):
+        Settings(upload_max_bytes=200, upload_max_reserved_bytes_per_user=199)
