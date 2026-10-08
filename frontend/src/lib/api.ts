@@ -20,6 +20,35 @@ export class ApiError extends Error {
   }
 }
 
+type SessionInvalidationListener = (error: ApiError) => void;
+
+const sessionInvalidationListeners = new Set<SessionInvalidationListener>();
+
+export function subscribeToSessionInvalidation(
+  listener: SessionInvalidationListener,
+): () => void {
+  sessionInvalidationListeners.add(listener);
+  return () => {
+    sessionInvalidationListeners.delete(listener);
+  };
+}
+
+function invalidatesSession(error: ApiError): boolean {
+  return error.status === 401
+    || (
+      error.status === 403
+      && ["account_not_provisioned", "account_inactive"].includes(error.detail)
+    );
+}
+
+function reportApiError(error: ApiError): ApiError {
+  if (invalidatesSession(error)) {
+    csrfToken = null;
+    for (const listener of sessionInvalidationListeners) listener(error);
+  }
+  return error;
+}
+
 async function parseError(response: Response): Promise<ApiError> {
   let detail = `http_${response.status}`;
   let data: unknown = null;
@@ -59,7 +88,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
 
   if (!response.ok) {
-    throw await parseError(response);
+    throw reportApiError(await parseError(response));
   }
 
   return (await response.json()) as T;
@@ -76,7 +105,7 @@ export async function apiBlobRequest(path: string, init?: RequestInit): Promise<
   });
 
   if (!response.ok) {
-    throw await parseError(response);
+    throw reportApiError(await parseError(response));
   }
 
   return response.blob();
@@ -96,7 +125,7 @@ export async function apiArrayBufferRequest(
   });
 
   if (!response.ok) {
-    throw await parseError(response);
+    throw reportApiError(await parseError(response));
   }
 
   return response.arrayBuffer();

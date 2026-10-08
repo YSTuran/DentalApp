@@ -350,7 +350,7 @@ def test_system_admin_manages_clinics_independently_from_role_with_audit(
     }
 
 
-def test_clinic_manager_only_sees_own_clinic_doctors(
+def test_clinic_manager_only_sees_own_clinic_personnel(
     session_factory: sessionmaker[Session],
 ) -> None:
     own_clinic = create_clinic(session_factory, "OWN")
@@ -387,21 +387,24 @@ def test_clinic_manager_only_sees_own_clinic_doctors(
         own_detail = client.get(f"/api/users/{own_dentist.id}")
         staff_detail = client.get(f"/api/users/{own_staff.id}")
         other_detail = client.get(f"/api/users/{other_dentist.id}")
-        forbidden_filter = client.get("/api/users?role=clinic_staff")
+        staff_filter = client.get("/api/users?role=clinic_staff")
 
     assert list_response.status_code == 200
     assert {item["id"] for item in list_response.json()["items"]} == {
         str(own_dentist.id),
         str(own_managing_dentist.id),
+        str(own_staff.id),
     }
     assert own_detail.status_code == 200
     visible_assignments = own_detail.json()["role_assignments"]
     assert len(visible_assignments) == 1
     assert visible_assignments[0]["role"] == "dentist"
     assert own_detail.json()["clinic_assignments"][0]["clinic_id"] == str(own_clinic.id)
-    assert staff_detail.status_code == 403
+    assert staff_detail.status_code == 200
+    assert staff_detail.json()["role_assignments"][0]["role"] == "clinic_staff"
     assert other_detail.status_code == 403
-    assert forbidden_filter.status_code == 403
+    assert staff_filter.status_code == 200
+    assert [item["id"] for item in staff_filter.json()["items"]] == [str(own_staff.id)]
 
 
 def test_create_user_rolls_back_database_and_firebase_when_audit_fails(

@@ -26,7 +26,7 @@ from app.services.case_management.patient_data import get_patient_code
 
 
 def validate_clinic(db: Session, clinic_id: UUID) -> Clinic:
-    clinic = db.get(Clinic, clinic_id)
+    clinic = db.scalar(select(Clinic).where(Clinic.id == clinic_id).with_for_update())
     if clinic is None:
         raise CaseValidationError("case_clinic_not_found")
     if not clinic.is_active:

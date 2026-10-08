@@ -20,7 +20,6 @@ export function ManagementHeader() {
       >
         <NavLink to="/yonetim/klinikler">Klinikler</NavLink>
         <NavLink to="/yonetim/kullanicilar">Kullanıcılar</NavLink>
-        <NavLink to="/raporlar">Raporlar</NavLink>
         {isSystemAdmin && <NavLink to="/yonetim/audit-kayitlari">Audit kayıtları</NavLink>}
       </nav>
       <div className="topbar-actions">

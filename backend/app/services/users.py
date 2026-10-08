@@ -48,7 +48,11 @@ from app.services.user_role_policy import (
 )
 
 logger = logging.getLogger(__name__)
-CLINIC_MANAGER_VISIBLE_ROLES = {RoleCode.DENTIST, RoleCode.MANAGING_DENTIST}
+CLINIC_MANAGER_VISIBLE_ROLES = {
+    RoleCode.DENTIST,
+    RoleCode.MANAGING_DENTIST,
+    RoleCode.CLINIC_STAFF,
+}
 SYSTEM_ADMIN_MUTATION_LOCK_KEY = 4_428_861_106_564_001_101
 
 

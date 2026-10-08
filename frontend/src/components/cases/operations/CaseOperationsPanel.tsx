@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../../../auth/AuthContext";
+import { useLatestRequest } from "../../../hooks/useLatestRequest";
 import { getCaseOperations } from "../../../lib/fulfillment-api";
 import type { DentalCase } from "../../../types/case";
 import type { CaseOperations } from "../../../types/fulfillment";
@@ -29,17 +30,20 @@ export function CaseOperationsPanel({ dentalCase, onUpdated }: Props) {
   const [operations, setOperations] = useState<CaseOperations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const startRequest = useLatestRequest();
 
   const load = useCallback(async () => {
+    const controller = startRequest();
     try {
-      setOperations(await getCaseOperations(dentalCase.id));
+      setOperations(await getCaseOperations(dentalCase.id, controller.signal));
       setError(null);
     } catch {
+      if (controller.signal.aborted) return;
       setError("Üretim ve teslim kayıtları yüklenemedi.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [dentalCase.id]);
+  }, [dentalCase.id, startRequest]);
 
   useEffect(() => {
     // The request synchronizes the operation panel with the selected case.
@@ -67,7 +71,6 @@ export function CaseOperationsPanel({ dentalCase, onUpdated }: Props) {
 
   function handleUpdated(updated: DentalCase, message: string) {
     onUpdated(updated, message);
-    void load();
   }
 
   if (loading) return <section className="case-panel operation-panel">Operasyon kayıtları yükleniyor…</section>;
@@ -76,7 +79,13 @@ export function CaseOperationsPanel({ dentalCase, onUpdated }: Props) {
       <div className="panel-heading"><div><p className="card-label">ÜRETİM VE TESLİM</p><h2>Operasyon takibi</h2></div></div>
       <p className="panel-description">Üretim, kargo, şube teslimi ve iade kayıtları eski kayıtların üzerine yazılmadan saklanır.</p>
       {error && <div className="form-error" role="alert">{error}</div>}
-      {operations && latestRun && <WorkOrderCard dentalCase={dentalCase} productionRun={latestRun} canPrintLabel={isTechnician} />}
+      {operations && latestRun && (
+        <WorkOrderCard
+          dentalCase={dentalCase}
+          productionRun={latestRun}
+          includeBarcode={isTechnician}
+        />
+      )}
 
       {dentalCase.status === "delivered" && (
         <div className="operation-complete-state">

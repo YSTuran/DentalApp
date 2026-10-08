@@ -11,6 +11,7 @@ import { CaseFileList } from "../components/cases/CaseFileList";
 import { CaseLineage } from "../components/cases/CaseLineage";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
 import { CaseTransferPanel } from "../components/cases/CaseTransferPanel";
+import { useLatestRequest } from "../hooks/useLatestRequest";
 import { DentistDesignDecisionPanel } from "../components/cases/DentistDesignDecisionPanel";
 import { LabDesignPanel } from "../components/cases/LabDesignPanel";
 import { ManagerDecisionPanel } from "../components/cases/ManagerDecisionPanel";
@@ -38,20 +39,26 @@ export function CaseDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const startRequest = useLatestRequest();
 
   const load = useCallback(async (quiet = false) => {
+    const controller = startRequest();
     if (!quiet) setLoading(true);
     try {
-      const [caseResult, historyResult] = await Promise.all([getCase(caseId), getCaseHistory(caseId)]);
+      const [caseResult, historyResult] = await Promise.all([
+        getCase(caseId, controller.signal),
+        getCaseHistory(caseId, controller.signal),
+      ]);
       setDentalCase(caseResult);
       setHistory(historyResult.items);
       setError(null);
     } catch {
+      if (controller.signal.aborted) return;
       setError("Vaka bilgileri yüklenemedi veya bu vakaya erişim yetkiniz yok.");
     } finally {
-      if (!quiet) setLoading(false);
+      if (!quiet && !controller.signal.aborted) setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, startRequest]);
 
   useEffect(() => {
     // The request synchronizes this route with the selected case.
@@ -116,7 +123,7 @@ export function CaseDetailPage() {
     setDentalCase(updated);
     setSuccess(message);
     setError(null);
-    void getCaseHistory(updated.id).then((result) => setHistory(result.items));
+    if (updated.id === caseId) void load(true);
   }
 
   return (

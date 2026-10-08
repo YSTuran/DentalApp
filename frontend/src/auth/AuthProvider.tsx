@@ -23,6 +23,7 @@ import {
   destroySession,
   getCurrentUser,
   recordPasswordChanged,
+  subscribeToSessionInvalidation,
 } from "../lib/api";
 import { firebaseAuth } from "../lib/firebase";
 import { updateActiveClinic } from "../lib/preferences-api";
@@ -91,6 +92,15 @@ function isAccountUnavailable(error: unknown): boolean {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => subscribeToSessionInvalidation(() => {
+    storeRememberSession(false);
+    setUser(null);
+    setStatus("unauthenticated");
+    void signOut(firebaseAuth).catch((error) => {
+      console.warn("Geçersiz oturum sonrasında Firebase oturumu temizlenemedi.", error);
+    });
+  }), []);
 
   const retrySession = useCallback(async () => {
     setStatus("loading");

@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { OperationsHeader } from "../components/OperationsHeader";
 import { CaseStatusBadge } from "../components/cases/CaseStatusBadge";
+import { useLatestRequest } from "../hooks/useLatestRequest";
 import { formatDate } from "../lib/case-format";
 import { listCases } from "../lib/cases-api";
 import type { CaseLifecycle, CaseListResponse } from "../types/case";
@@ -27,9 +28,11 @@ export function CasesPage() {
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const startRequest = useLatestRequest();
   const activeClinicId = user?.preferences.active_clinic_id ?? undefined;
 
   const load = useCallback(async () => {
+    const controller = startRequest();
     setLoading(true);
     setError(null);
     try {
@@ -39,13 +42,14 @@ export function CasesPage() {
         clinicId: activeClinicId,
         limit: pageSize,
         offset,
-      }));
+      }, controller.signal));
     } catch {
+      if (controller.signal.aborted) return;
       setError("Vakalar yüklenemedi. API bağlantısını kontrol edip tekrar deneyin.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [activeClinicId, lifecycle, offset, search]);
+  }, [activeClinicId, lifecycle, offset, search, startRequest]);
 
   useEffect(() => {
     // The request synchronizes this route with the current filters.

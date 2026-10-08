@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,6 +30,7 @@ const apiMocks = vi.hoisted(() => ({
   destroySession: vi.fn(),
   getCurrentUser: vi.fn(),
   recordPasswordChanged: vi.fn(),
+  subscribeToSessionInvalidation: vi.fn(),
 }));
 
 vi.mock("firebase/auth", () => ({
@@ -124,10 +125,12 @@ describe("AuthProvider parola değişikliği", () => {
     firebaseMocks.auth.authStateReady.mockResolvedValue(undefined);
     firebaseMocks.credential.mockReturnValue({ providerId: "password" });
     firebaseMocks.reauthenticateWithCredential.mockResolvedValue(undefined);
+    firebaseMocks.signOut.mockResolvedValue(undefined);
     firebaseMocks.updatePassword.mockResolvedValue(undefined);
     firebaseMocks.firebaseUser.getIdToken.mockResolvedValue("fresh-id-token");
     apiMocks.getCurrentUser.mockResolvedValue(currentUser);
     apiMocks.recordPasswordChanged.mockResolvedValue(currentUser);
+    apiMocks.subscribeToSessionInvalidation.mockImplementation(() => () => undefined);
   });
 
   it("yeni ID token ile backend oturumunu yenileyip audit isteği gönderir", async () => {
@@ -171,6 +174,25 @@ describe("AuthProvider parola değişikliği", () => {
     expect(await screen.findByText("unauthenticated")).toBeInTheDocument();
     expect(screen.getByText("no-user")).toBeInTheDocument();
     expect(firebaseMocks.signOut).toHaveBeenCalled();
+  });
+
+  it("çalışma sırasında geçersizleşen oturumu merkezi bildirimle kapatır", async () => {
+    render(
+      <AuthProvider>
+        <SessionHarness />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText(currentUser.email)).toBeInTheDocument();
+    const listener = apiMocks.subscribeToSessionInvalidation.mock.calls[0]?.[0];
+    expect(listener).toBeTypeOf("function");
+
+    act(() => listener(new ApiError(401, "not_authenticated")));
+
+    expect(await screen.findByText("unauthenticated")).toBeInTheDocument();
+    expect(screen.getByText("no-user")).toBeInTheDocument();
+    expect(firebaseMocks.signOut).toHaveBeenCalled();
+    expect(window.localStorage.getItem("dentalapp.remember_session")).toBeNull();
   });
 
   it.each(["account_not_provisioned", "account_inactive"])(

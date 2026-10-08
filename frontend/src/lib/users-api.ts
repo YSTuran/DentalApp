@@ -27,7 +27,10 @@ function jsonBody(value: unknown): Pick<RequestInit, "headers" | "body"> {
   };
 }
 
-export function listUsers(filters: UserListFilters): Promise<ManagedUserListResponse> {
+export function listUsers(
+  filters: UserListFilters,
+  signal?: AbortSignal,
+): Promise<ManagedUserListResponse> {
   const query = new URLSearchParams();
   if (filters.search) query.set("search", filters.search);
   if (filters.isActive !== undefined) query.set("is_active", String(filters.isActive));
@@ -35,7 +38,7 @@ export function listUsers(filters: UserListFilters): Promise<ManagedUserListResp
   if (filters.clinicId) query.set("clinic_id", filters.clinicId);
   query.set("limit", String(filters.limit ?? 20));
   query.set("offset", String(filters.offset ?? 0));
-  return apiRequest<ManagedUserListResponse>(`/api/users?${query.toString()}`);
+  return apiRequest<ManagedUserListResponse>(`/api/users?${query.toString()}`, { signal });
 }
 
 export function createUser(input: UserCreateInput): Promise<UserCreatedResponse> {

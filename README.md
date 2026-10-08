@@ -306,9 +306,9 @@ yeniden bulur ve süresi geçen yarım yüklemeleri, veritabanı kayıtlarını 
 `expired` durumuna geçirerek temizler. Beat ayrıca e-posta kuyruğunu ve vaka bekleme
 sürelerini düzenli aralıklarla tarar.
 
-Teknisyen, üretim iş emrindeki **Etiket yazdır** düğmesiyle 100 × 50 mm Code 128 vaka
-etiketi oluşturabilir. Etiket vaka ve iş emri numarası, klinik, aparey, malzeme ve
-üretim denemesini içerir; hasta adı ve hasta kodu etikete yazılmaz.
+Tüm kullanıcılar üretim iş emrindeki **Yazdır** düğmesiyle A4 iş emri oluşturabilir.
+Teknisyen çıktısında vaka numarası ayrıca Code 128 barkod olarak yer alır; diğer
+rollerin iş emri barkod içermez. Ayrı bir etiket baskısı yoktur ve hasta adı yazılmaz.
 
 Yalnızca React, TypeScript ve Vite tabanlı frontend'i çalıştırmak için:
 

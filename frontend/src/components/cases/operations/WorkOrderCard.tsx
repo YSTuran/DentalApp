@@ -3,22 +3,24 @@ import { loadBarcodeRenderer } from "../../../lib/barcode-loader";
 import type { DentalCase } from "../../../types/case";
 import type { ProductionRun } from "../../../types/fulfillment";
 import { PrintPortal } from "../../printing/PrintPortal";
-import { CaseLabelDocument } from "./CaseLabelDocument";
 import { WorkOrderDocument } from "./WorkOrderDocument";
 
 interface Props {
   dentalCase: DentalCase;
   productionRun: ProductionRun;
-  canPrintLabel?: boolean;
+  includeBarcode?: boolean;
 }
 
-export function WorkOrderCard({ dentalCase, productionRun, canPrintLabel = false }: Props) {
+export function WorkOrderCard({
+  dentalCase,
+  productionRun,
+  includeBarcode = false,
+}: Props) {
   const workOrder = usePrintDocument();
-  const label = usePrintDocument("printing-label");
 
-  async function printLabel() {
-    await loadBarcodeRenderer();
-    label.print();
+  async function printWorkOrder() {
+    if (includeBarcode) await loadBarcodeRenderer();
+    workOrder.print();
   }
 
   return (
@@ -26,17 +28,16 @@ export function WorkOrderCard({ dentalCase, productionRun, canPrintLabel = false
       <WorkOrderDocument
         dentalCase={dentalCase}
         productionRun={productionRun}
-        onPrint={workOrder.print}
-        onPrintLabel={canPrintLabel ? () => void printLabel() : undefined}
+        includeBarcode={includeBarcode}
+        onPrint={() => void printWorkOrder()}
       />
       {workOrder.isPrinting && (
         <PrintPortal>
-          <WorkOrderDocument dentalCase={dentalCase} productionRun={productionRun} />
-        </PrintPortal>
-      )}
-      {label.isPrinting && (
-        <PrintPortal>
-          <CaseLabelDocument dentalCase={dentalCase} productionRun={productionRun} />
+          <WorkOrderDocument
+            dentalCase={dentalCase}
+            productionRun={productionRun}
+            includeBarcode={includeBarcode}
+          />
         </PrintPortal>
       )}
     </>

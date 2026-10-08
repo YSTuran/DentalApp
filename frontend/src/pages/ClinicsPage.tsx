@@ -3,6 +3,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
+import { useLatestRequest } from "../hooks/useLatestRequest";
 import {
   changeClinicStatus,
   clinicErrorMessage,
@@ -48,9 +49,11 @@ export function ClinicsPage() {
   const [statusTarget, setStatusTarget] = useState<Clinic | null>(null);
   const [statusReason, setStatusReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const startClinicRequest = useLatestRequest();
   const activeClinicId = user?.preferences.active_clinic_id ?? undefined;
 
   const loadClinics = useCallback(async () => {
+    const controller = startClinicRequest();
     setLoading(true);
     setError(null);
     try {
@@ -61,15 +64,16 @@ export function ClinicsPage() {
         clinicId: activeClinicId,
         limit: PAGE_SIZE,
         offset,
-      });
+      }, controller.signal);
       setClinics(result.items);
       setTotal(result.total);
     } catch (loadError) {
+      if (controller.signal.aborted) return;
       setError(clinicErrorMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [activeClinicId, offset, search, statusFilter]);
+  }, [activeClinicId, offset, search, startClinicRequest, statusFilter]);
 
   useEffect(() => {
     // Fetching remote data is the synchronization performed by this effect.
@@ -217,7 +221,7 @@ export function ClinicsPage() {
                       {isSystemAdmin && <td>
                         <div className="row-actions">
                           <button onClick={() => openEditForm(clinic)}>Düzenle</button>
-                          <button className={clinic.is_active ? "danger-action" : "success-action"} onClick={() => { setStatusTarget(clinic); setStatusReason(""); }}>
+                          <button className={clinic.is_active ? "danger-action" : "success-action"} onClick={() => { setStatusTarget(clinic); setStatusReason(""); setError(null); }}>
                             {clinic.is_active ? "Pasife al" : "Etkinleştir"}
                           </button>
                         </div>
@@ -263,6 +267,8 @@ export function ClinicsPage() {
           <section className="modal-card modal-card-small" role="dialog" aria-modal="true" aria-labelledby="status-title">
             <div className="modal-heading"><div><p className="eyebrow">DURUM DEĞİŞİKLİĞİ</p><h2 id="status-title">{statusTarget.is_active ? "Kliniği pasife al" : "Kliniği etkinleştir"}</h2></div><button className="icon-button" onClick={() => setStatusTarget(null)} aria-label="Pencereyi kapat">×</button></div>
             <p><strong>{statusTarget.name}</strong> için bu işlem audit kaydına yazılacaktır.</p>
+            {statusTarget.is_active && <p className="panel-description">Aktif vakası bulunan klinikler, devam eden işlerin kilitlenmemesi için pasifleştirilemez.</p>}
+            {error !== null && <div className="form-error" role="alert">{error}</div>}
             <form className="management-form" onSubmit={submitStatusChange}>
               <label>Gerekçe<textarea value={statusReason} onChange={(event) => setStatusReason(event.target.value)} minLength={3} maxLength={2000} rows={3} required autoFocus /></label>
               <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setStatusTarget(null)}>Vazgeç</button><button className="primary-button compact-button" disabled={submitting}>{submitting ? "İşleniyor…" : "Onayla"}</button></div>

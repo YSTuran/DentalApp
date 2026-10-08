@@ -116,6 +116,28 @@
   font-size: 0.82rem;
 }
 
+.work-order-barcode {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 12px;
+  color: #000;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.work-order-barcode svg {
+  width: min(420px, 100%);
+  height: 58px;
+}
+
+.work-order-barcode strong {
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+}
+
 .work-order-print dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -222,8 +244,13 @@
   }
 
   .print-root .work-order-print dl div,
+  .print-root .work-order-barcode,
   .print-root .work-order-print > p {
     break-inside: avoid;
+  }
+
+  .print-root .work-order-barcode {
+    border-color: #bbb;
   }
 
   .no-print {

@@ -45,15 +45,21 @@ it("vaka listesini varsayılan olarak aktif işlere açar ve yaşam döngüsün�
     </MemoryRouter>,
   );
 
-  await waitFor(() => expect(listCasesMock).toHaveBeenCalledWith(expect.objectContaining({
-    lifecycle: "active",
-    limit: 20,
-    offset: 0,
-  })));
+  await waitFor(() => expect(listCasesMock).toHaveBeenCalledWith(
+    expect.objectContaining({
+      lifecycle: "active",
+      limit: 20,
+      offset: 0,
+    }),
+    expect.any(AbortSignal),
+  ));
+  const firstSignal = listCasesMock.mock.calls[0]?.[1];
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
 
   await interaction.click(screen.getByRole("button", { name: "Tamamlanan" }));
-  await waitFor(() => expect(listCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({
-    lifecycle: "completed",
-  })));
+  await waitFor(() => expect(listCasesMock).toHaveBeenLastCalledWith(
+    expect.objectContaining({ lifecycle: "completed" }),
+    expect.any(AbortSignal),
+  ));
+  expect(firstSignal?.aborted).toBe(true);
 });

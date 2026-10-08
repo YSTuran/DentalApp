@@ -5,6 +5,7 @@ import { DemoBanner } from "../components/DemoBanner";
 import { ManagementHeader } from "../components/ManagementHeader";
 import { UserClinicAddDialog } from "../components/UserClinicAddDialog";
 import { UserTable } from "../components/users/UserTable";
+import { useLatestRequest } from "../hooks/useLatestRequest";
 import {
   ASSIGNABLE_ROLE_OPTIONS,
   EMPTY_USER_FORM,
@@ -85,6 +86,7 @@ export function UsersPage() {
   } | null>(null);
   const [clinicStatusReason, setClinicStatusReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const startUserRequest = useLatestRequest();
   const clinicFilter = clinicOverride
     ?? currentUser?.preferences.active_clinic_id
     ?? "";
@@ -107,6 +109,7 @@ export function UsersPage() {
   }, [activeClinics, clinicAddTarget]);
 
   const loadUsers = useCallback(async () => {
+    const controller = startUserRequest();
     setLoading(true);
     setError(null);
     try {
@@ -117,15 +120,16 @@ export function UsersPage() {
         clinicId: clinicFilter || undefined,
         limit: PAGE_SIZE,
         offset,
-      });
+      }, controller.signal);
       setUsers(result.items);
       setTotal(result.total);
     } catch (loadError) {
+      if (controller.signal.aborted) return;
       setError(userErrorMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [clinicFilter, offset, roleFilter, search, statusFilter]);
+  }, [clinicFilter, offset, roleFilter, search, startUserRequest, statusFilter]);
 
   useEffect(() => {
     // Remote list synchronization is intentionally performed in this effect.
@@ -336,7 +340,7 @@ export function UsersPage() {
           <div>
             <p className="eyebrow">{isSystemAdmin ? "SİSTEM YÖNETİMİ" : "KLİNİK GÖRÜNÜMÜ"}</p>
             <h1>Kullanıcılar</h1>
-            <p>{isSystemAdmin ? "Personel hesaplarını oluşturun, rollerini görün ve erişimlerini yönetin." : "Kliniğinizdeki hekimleri ve yönetici hekimleri görüntüleyin."}</p>
+            <p>{isSystemAdmin ? "Personel hesaplarını oluşturun, rollerini görün ve erişimlerini yönetin." : "Kliniğinizdeki hekimleri, yönetici hekimleri ve klinik personelini görüntüleyin."}</p>
           </div>
           {isSystemAdmin && (
             <button className="primary-button compact-button" onClick={openCreateForm}>
@@ -366,7 +370,11 @@ export function UsersPage() {
                 <option value="">Tümü</option>
                 {(isSystemAdmin
                   ? FILTER_ROLE_OPTIONS
-                  : FILTER_ROLE_OPTIONS.filter((option) => option.value === "dentist" || option.value === "managing_dentist")
+                  : FILTER_ROLE_OPTIONS.filter((option) => (
+                    option.value === "dentist"
+                    || option.value === "managing_dentist"
+                    || option.value === "clinic_staff"
+                  ))
                 ).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>

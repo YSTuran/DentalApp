@@ -16,14 +16,17 @@ function jsonBody(value: unknown): Pick<RequestInit, "headers" | "body"> {
   };
 }
 
-export function listClinics(filters: ClinicListFilters): Promise<ClinicListResponse> {
+export function listClinics(
+  filters: ClinicListFilters,
+  signal?: AbortSignal,
+): Promise<ClinicListResponse> {
   const query = new URLSearchParams();
   if (filters.search) query.set("search", filters.search);
   if (filters.isActive !== undefined) query.set("is_active", String(filters.isActive));
   if (filters.clinicId) query.set("clinic_id", filters.clinicId);
   query.set("limit", String(filters.limit ?? 20));
   query.set("offset", String(filters.offset ?? 0));
-  return apiRequest<ClinicListResponse>(`/api/clinics?${query.toString()}`);
+  return apiRequest<ClinicListResponse>(`/api/clinics?${query.toString()}`, { signal });
 }
 
 export function createClinic(input: ClinicFormInput): Promise<Clinic> {
@@ -71,6 +74,7 @@ export function clinicErrorMessage(error: unknown): string {
       clinic_no_changes: "Klinik bilgilerinde kaydedilecek bir değişiklik yok.",
       clinic_already_active: "Klinik zaten aktif durumda.",
       clinic_already_inactive: "Klinik zaten pasif durumda.",
+      clinic_has_active_cases: "Aktif vakaları bulunan bir klinik pasifleştirilemez.",
       clinic_not_found: "Klinik bulunamadı.",
       insufficient_permissions: "Bu işlem için yetkiniz bulunmuyor.",
       csrf_validation_failed: "Güvenlik doğrulaması başarısız oldu. Tekrar deneyin.",

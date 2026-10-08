@@ -12,7 +12,10 @@ from app.db.session import engine, get_db
 from app.main import app
 from app.models import (
     AuditEvent,
+    CaseDetail,
+    CaseStatus,
     Clinic,
+    DentalCase,
     RoleCode,
     User,
     UserClinicAssignment,
@@ -175,6 +178,54 @@ def test_system_admin_can_manage_clinic_lifecycle_and_writes_audit(
     assert update_event.before_data == {"name": "DentalApp İstanbul"}
     assert update_event.after_data == {"name": "DentalApp Kadıköy"}
     assert update_event.reason == "Şube adı düzeltildi"
+
+
+def test_clinic_with_active_case_cannot_be_deactivated(
+    session_factory: sessionmaker[Session],
+) -> None:
+    clinic = create_clinic_record(session_factory, f"ACTIVE-{uuid4().hex[:8]}")
+    dentist = create_user(session_factory, RoleCode.DENTIST, clinic.id)
+    admin = create_user(session_factory, RoleCode.SYSTEM_ADMIN)
+    case_number = f"VKA-{uuid4().hex[:12]}"
+
+    with session_factory.begin() as session:
+        dental_case = DentalCase(
+            case_number=case_number,
+            clinic_id=clinic.id,
+            created_by_user_id=dentist.id,
+            responsible_dentist_user_id=dentist.id,
+            status=CaseStatus.DRAFT,
+            details=CaseDetail(),
+        )
+        session.add(dental_case)
+
+    app.dependency_overrides[get_current_user] = lambda: admin
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        blocked_response = client.post(
+            f"/api/clinics/{clinic.id}/deactivate",
+            headers=headers,
+            json={"reason": "Şube kapatılıyor"},
+        )
+
+        assert blocked_response.status_code == 409
+        assert blocked_response.json()["detail"] == "clinic_has_active_cases"
+
+        with session_factory.begin() as session:
+            stored_case = session.scalar(
+                select(DentalCase).where(DentalCase.case_number == case_number)
+            )
+            assert stored_case is not None
+            stored_case.status = CaseStatus.CANCELLED
+
+        allowed_response = client.post(
+            f"/api/clinics/{clinic.id}/deactivate",
+            headers=headers,
+            json={"reason": "Aktif vaka kalmadı"},
+        )
+
+    assert allowed_response.status_code == 200
+    assert allowed_response.json()["is_active"] is False
 
 
 def test_clinic_manager_only_sees_assigned_clinic(

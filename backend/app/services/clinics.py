@@ -5,10 +5,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Clinic, RoleCode, User
+from app.models import Clinic, DentalCase, RoleCode, User
 from app.schemas.clinic import ClinicCreateRequest, ClinicUpdateRequest
 from app.services.audit import record_audit_event
 from app.services.authorization import has_any_role, has_clinic_role, has_global_role
+from app.services.case_management.queries import TERMINAL_CASE_STATUSES
 
 
 class ClinicNotFoundError(Exception):
@@ -238,12 +239,23 @@ def change_clinic_status(
     request: Request,
 ) -> Clinic:
     _require_system_admin(actor)
-    clinic = db.get(Clinic, clinic_id)
+    clinic = db.scalar(select(Clinic).where(Clinic.id == clinic_id).with_for_update())
     if clinic is None:
         raise ClinicNotFoundError
     if clinic.is_active == is_active:
         detail = "clinic_already_active" if is_active else "clinic_already_inactive"
         raise ClinicStateConflictError(detail)
+    if not is_active:
+        active_case_exists = db.scalar(
+            select(DentalCase.id)
+            .where(
+                DentalCase.clinic_id == clinic.id,
+                DentalCase.status.not_in(TERMINAL_CASE_STATUSES),
+            )
+            .limit(1)
+        )
+        if active_case_exists is not None:
+            raise ClinicStateConflictError("clinic_has_active_cases")
 
     previous_status = clinic.is_active
     try:

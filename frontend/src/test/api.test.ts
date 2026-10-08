@@ -62,4 +62,42 @@ describe("API istemcisi", () => {
     );
     expect(csrfCalls).toHaveLength(1);
   });
+
+  it("geçersiz oturum yanıtını merkezi dinleyicilere bildirir", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "not_authenticated" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ));
+    const { apiRequest, subscribeToSessionInvalidation } = await import("../lib/api");
+    const listener = vi.fn();
+    const unsubscribe = subscribeToSessionInvalidation(listener);
+
+    await expect(apiRequest("/api/cases")).rejects.toMatchObject({
+      status: 401,
+      detail: "not_authenticated",
+    });
+    expect(listener).toHaveBeenCalledOnce();
+
+    unsubscribe();
+  });
+
+  it("sıradan yetki reddini oturum kaybı olarak değerlendirmez", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "insufficient_permissions" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ));
+    const { apiRequest, subscribeToSessionInvalidation } = await import("../lib/api");
+    const listener = vi.fn();
+    subscribeToSessionInvalidation(listener);
+
+    await expect(apiRequest("/api/admin-only")).rejects.toMatchObject({
+      status: 403,
+      detail: "insufficient_permissions",
+    });
+    expect(listener).not.toHaveBeenCalled();
+  });
 });

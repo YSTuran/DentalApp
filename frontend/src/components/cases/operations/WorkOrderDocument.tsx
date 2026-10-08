@@ -1,19 +1,20 @@
 import { formatDate } from "../../../lib/case-format";
 import type { DentalCase } from "../../../types/case";
 import type { ProductionRun } from "../../../types/fulfillment";
+import { BarcodeGraphic } from "../../printing/BarcodeGraphic";
 
 interface Props {
   dentalCase: DentalCase;
   productionRun: ProductionRun;
+  includeBarcode?: boolean;
   onPrint?: () => void;
-  onPrintLabel?: () => void;
 }
 
 export function WorkOrderDocument({
   dentalCase,
   productionRun,
+  includeBarcode = false,
   onPrint,
-  onPrintLabel,
 }: Props) {
   const design = dentalCase.file_versions.find(
     (file) => file.id === productionRun.design_file_version_id,
@@ -24,10 +25,15 @@ export function WorkOrderDocument({
       <div className="work-order-heading">
         <div><span>İŞ EMRİ</span><strong>{productionRun.work_order_number}</strong></div>
         <div className="work-order-actions no-print">
-          {onPrintLabel && <button className="secondary-button compact-button" type="button" onClick={onPrintLabel}>Etiket yazdır</button>}
-          {onPrint && <button className="secondary-button compact-button" type="button" onClick={onPrint}>İş emrini yazdır</button>}
+          {onPrint && <button className="secondary-button compact-button" type="button" onClick={onPrint}>Yazdır</button>}
         </div>
       </div>
+      {includeBarcode && (
+        <div className="work-order-barcode">
+          <BarcodeGraphic value={dentalCase.case_number} />
+          <strong>{dentalCase.case_number}</strong>
+        </div>
+      )}
       <dl>
         <div><dt>Vaka</dt><dd>{dentalCase.case_number}</dd></div>
         <div><dt>Hasta kodu</dt><dd>{dentalCase.patient_code ?? "—"}</dd></div>

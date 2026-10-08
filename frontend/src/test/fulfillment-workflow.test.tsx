@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,7 +126,6 @@ function renderPanel(
 afterEach(() => {
   cleanup();
   document.body.classList.remove("printing-report");
-  document.body.classList.remove("printing-label");
 });
 
 beforeEach(() => {
@@ -147,32 +146,35 @@ beforeEach(() => {
 });
 
 describe("üretim, teslim ve iade paneli", () => {
-  it("iş emrinde sorumlu hekimi gösterir ve izole baskıyı başlatır", async () => {
-    const interaction = userEvent.setup();
-    const printMock = vi.spyOn(window, "print").mockImplementation(() => undefined);
-    render(<WorkOrderCard dentalCase={dentalCase} productionRun={operations.production_runs[0]} />);
-
-    expect(screen.getByText("Demo Hekim")).toBeInTheDocument();
-    await interaction.click(screen.getByRole("button", { name: "İş emrini yazdır" }));
-    await waitFor(() => expect(printMock).toHaveBeenCalledOnce());
-    printMock.mockRestore();
-  });
-
-  it("teknisyen için hasta adı içermeyen barkod etiketini yazdırır", async () => {
+  it("barkodlu iş emrini tek düğmeyle yazdırır", async () => {
     const interaction = userEvent.setup();
     const printMock = vi.spyOn(window, "print").mockImplementation(() => undefined);
     render(
       <WorkOrderCard
         dentalCase={dentalCase}
         productionRun={operations.production_runs[0]}
-        canPrintLabel
+        includeBarcode
       />,
     );
 
-    await interaction.click(screen.getByRole("button", { name: "Etiket yazdır" }));
-    const label = await screen.findByLabelText("Vaka üretim etiketi");
-    expect(label).toBeInTheDocument();
-    expect(within(label).queryByText("DEMO-001")).not.toBeInTheDocument();
+    expect(screen.getByText("Demo Hekim")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "VKA-2026-000001 barkodu" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Etiket yazdır" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "İş emrini yazdır" })).not.toBeInTheDocument();
+    await interaction.click(screen.getByRole("button", { name: "Yazdır" }));
+    await waitFor(() => expect(printMock).toHaveBeenCalledOnce());
+    printMock.mockRestore();
+  });
+
+  it("teknisyen olmayan kullanıcıya barkodsuz iş emri yazdırır", async () => {
+    const interaction = userEvent.setup();
+    const printMock = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    renderPanel("clinic_staff", dentalCase);
+
+    await screen.findByRole("heading", { name: "Üretim ve teslim geçmişi" });
+    expect(screen.getByLabelText("Üretim iş emri")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "VKA-2026-000001 barkodu" })).not.toBeInTheDocument();
+    await interaction.click(screen.getByRole("button", { name: "Yazdır" }));
     await waitFor(() => expect(printMock).toHaveBeenCalledOnce());
     printMock.mockRestore();
   });

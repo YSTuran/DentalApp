@@ -4,7 +4,6 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 import "./case-operations.css";
-import "./case-label.css";
 import "./branch-context.css";
 import "./case-transfer.css";
 import "./reports.css";

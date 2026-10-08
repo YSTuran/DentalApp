@@ -2,8 +2,11 @@ import { apiRequest, csrfRequest } from "./api";
 import type { DentalCase } from "../types/case";
 import type { CaseOperations, ReturnReasonCode, ReturnResolution } from "../types/fulfillment";
 
-export function getCaseOperations(caseId: string): Promise<CaseOperations> {
-  return apiRequest(`/api/cases/${caseId}/operations`);
+export function getCaseOperations(
+  caseId: string,
+  signal?: AbortSignal,
+): Promise<CaseOperations> {
+  return apiRequest(`/api/cases/${caseId}/operations`, { signal });
 }
 
 export function startProduction(

@@ -89,6 +89,7 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
 
     expect(await screen.findByText("Mevcut hesap")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pasife al" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Raporlar" })).not.toBeInTheDocument();
   });
 
   it("kullanıcı listesinde yalnızca aktif rol atamalarını gösterir", async () => {
@@ -288,7 +289,7 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     });
   });
 
-  it("klinik yöneticisine yalnızca kendi kapsamındaki hekimleri salt okunur gösterir", async () => {
+  it("klinik yöneticisine kendi kapsamındaki hekim ve asistanları salt okunur gösterir", async () => {
     const clinicId = "9acfa1ce-cb10-4e29-9bb3-aebdd62f823f";
     const managerUser: CurrentUser = {
       ...currentUser,
@@ -311,29 +312,53 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
       offset: 0,
     });
     vi.mocked(listUsers).mockResolvedValue({
-      items: [{
-        id: "26ae89c7-8f4a-40f9-8502-8def51e134fd",
-        email: "doctor@example.test",
-        full_name: "Demo Hekim",
-        is_active: true,
-        created_at: "2026-09-28T10:00:00Z",
-        updated_at: "2026-09-28T10:00:00Z",
-        role_assignments: [{
-          id: "654925b2-ab70-40e5-9e7c-d7fda9a5789a",
-          role: "dentist",
+      items: [
+        {
+          id: "26ae89c7-8f4a-40f9-8502-8def51e134fd",
+          email: "doctor@example.test",
+          full_name: "Demo Hekim",
           is_active: true,
           created_at: "2026-09-28T10:00:00Z",
           updated_at: "2026-09-28T10:00:00Z",
-        }],
-        clinic_assignments: [{
-          id: "b6682e26-7f92-4d10-a05a-eb2c5ea4ff6c",
-          clinic_id: clinicId,
+          role_assignments: [{
+            id: "654925b2-ab70-40e5-9e7c-d7fda9a5789a",
+            role: "dentist",
+            is_active: true,
+            created_at: "2026-09-28T10:00:00Z",
+            updated_at: "2026-09-28T10:00:00Z",
+          }],
+          clinic_assignments: [{
+            id: "b6682e26-7f92-4d10-a05a-eb2c5ea4ff6c",
+            clinic_id: clinicId,
+            is_active: true,
+            created_at: "2026-09-28T10:00:00Z",
+            updated_at: "2026-09-28T10:00:00Z",
+          }],
+        },
+        {
+          id: "45e6673d-5e84-43df-87ce-fd20ef9f7a84",
+          email: "assistant@example.test",
+          full_name: "Demo Asistan",
           is_active: true,
           created_at: "2026-09-28T10:00:00Z",
           updated_at: "2026-09-28T10:00:00Z",
-        }],
-      }],
-      total: 1,
+          role_assignments: [{
+            id: "ae032f35-f105-42e9-b933-a94a4d550026",
+            role: "clinic_staff",
+            is_active: true,
+            created_at: "2026-09-28T10:00:00Z",
+            updated_at: "2026-09-28T10:00:00Z",
+          }],
+          clinic_assignments: [{
+            id: "465c585b-7e98-4dc2-a073-54081614b118",
+            clinic_id: clinicId,
+            is_active: true,
+            created_at: "2026-09-28T10:00:00Z",
+            updated_at: "2026-09-28T10:00:00Z",
+          }],
+        },
+      ],
+      total: 2,
       limit: 10,
       offset: 0,
     });
@@ -347,10 +372,13 @@ describe("kullanıcı yönetimi güvenlik davranışları", () => {
     );
 
     expect(await screen.findByText("Demo Hekim")).toBeInTheDocument();
+    expect(screen.getByText("Demo Asistan")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Klinik personeli / asistan" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "+ Yeni kullanıcı" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rolü düzenle" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pasife al" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Sistem yöneticisi" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Raporlar" })).not.toBeInTheDocument();
   });
 });
 

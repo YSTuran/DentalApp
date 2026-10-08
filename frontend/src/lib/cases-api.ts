@@ -33,7 +33,10 @@ function queryString(values: Record<string, string | number | undefined>): strin
   return query ? `?${query}` : "";
 }
 
-export function listCases(filters: CaseListFilters = {}): Promise<CaseListResponse> {
+export function listCases(
+  filters: CaseListFilters = {},
+  signal?: AbortSignal,
+): Promise<CaseListResponse> {
   return apiRequest(`/api/cases${queryString({
     status: filters.status,
     lifecycle: filters.lifecycle,
@@ -41,15 +44,18 @@ export function listCases(filters: CaseListFilters = {}): Promise<CaseListRespon
     clinic_id: filters.clinicId,
     limit: filters.limit,
     offset: filters.offset,
-  })}`);
+  })}`, { signal });
 }
 
-export function getCase(caseId: string): Promise<DentalCase> {
-  return apiRequest(`/api/cases/${caseId}`);
+export function getCase(caseId: string, signal?: AbortSignal): Promise<DentalCase> {
+  return apiRequest(`/api/cases/${caseId}`, { signal });
 }
 
-export function getCaseHistory(caseId: string): Promise<{ items: CaseHistoryItem[] }> {
-  return apiRequest(`/api/cases/${caseId}/history`);
+export function getCaseHistory(
+  caseId: string,
+  signal?: AbortSignal,
+): Promise<{ items: CaseHistoryItem[] }> {
+  return apiRequest(`/api/cases/${caseId}/history`, { signal });
 }
 
 export function getCaseCreateOptions(): Promise<CaseCreateOptions> {
