@@ -50,3 +50,14 @@ export function ManagementReadRoute() {
 
   return canReadManagement ? <Outlet /> : <Navigate to="/yetkisiz" replace />;
 }
+
+export function ReportsRoute() {
+  const { user } = useAuth();
+  const canReadReports =
+    user?.global_roles.includes("system_admin") === true ||
+    user?.clinic_roles.some((assignment) => (
+      assignment.role === "clinic_manager" || assignment.role === "managing_dentist"
+    )) === true;
+
+  return canReadReports ? <Outlet /> : <Navigate to="/yetkisiz" replace />;
+}

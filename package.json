@@ -25,6 +25,7 @@
     "verify:full": "npm run verify && npm run test:backend:firebase",
     "security:audit": "backend\\.venv\\Scripts\\python.exe -m pip_audit -r backend\\requirements.lock && npm --prefix frontend audit --omit=dev",
     "storage:check": "backend\\.venv\\Scripts\\python.exe -m app.cli.check_storage",
+    "firebase:user:repair": "backend\\.venv\\Scripts\\python.exe -m app.cli.repair_emulator_user",
     "backup": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\backup.ps1"
   },
   "repository": {

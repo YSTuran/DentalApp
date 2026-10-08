@@ -78,3 +78,21 @@ it("rol bilgisini kullanıcı kartında gösterir ve ayrı yetkiler kartını ka
   expect(screen.queryByText("YETKİLER")).not.toBeInTheDocument();
   expect(screen.queryByText(/klinik rolü atanmış/i)).not.toBeInTheDocument();
 });
+
+it.each<RoleCode>(["system_admin", "clinic_manager", "managing_dentist"])(
+  "%s rolüne rapor bağlantısını gösterir",
+  (role) => {
+    renderDashboard(role);
+
+    expect(screen.getByRole("link", { name: "Raporları aç" })).toBeInTheDocument();
+  },
+);
+
+it.each<RoleCode>(["dentist", "clinic_staff", "technician"])(
+  "%s rolünden rapor bağlantısını gizler",
+  (role) => {
+    renderDashboard(role);
+
+    expect(screen.queryByRole("link", { name: "Raporları aç" })).not.toBeInTheDocument();
+  },
+);

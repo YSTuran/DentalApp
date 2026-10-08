@@ -36,6 +36,7 @@ export function DashboardPage() {
   const isManagingDentist = user.clinic_roles.some(
     (assignment) => assignment.role === "managing_dentist",
   );
+  const canReadReports = isSystemAdmin || isClinicManager || isManagingDentist;
 
   return (
     <div className="dashboard-shell">
@@ -85,7 +86,9 @@ export function DashboardPage() {
             <p>Rolünüze açık vaka kuyruğunu, STL sürümlerini ve işlem geçmişini tek yerden takip edin.</p>
             <div className="dashboard-management-links">
               <Link className="primary-link" to="/vakalar">Vakalara git</Link>
-              <Link className="primary-link" to="/raporlar">Raporları aç</Link>
+              {canReadReports && (
+                <Link className="primary-link" to="/raporlar">Raporları aç</Link>
+              )}
               {user.clinic_roles.some((assignment) => ["managing_dentist", "dentist", "clinic_staff"].includes(assignment.role)) && (
                 <Link className="primary-link" to="/vakalar/yeni">Yeni vaka oluştur</Link>
               )}

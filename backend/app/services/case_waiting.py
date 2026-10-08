@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import CaseStatus, CaseStatusHistory, CaseWaitAlert, DentalCase, RoleCode
-from app.services.case_notifications import user_ids_with_roles
+from app.services.case_notifications import case_stakeholder_user_ids, user_ids_with_roles
 from app.services.notification_delivery import add_user_notification
 
 STATUS_LABELS = {
@@ -57,7 +57,7 @@ def _recipient_ids(db: Session, case: DentalCase) -> set[UUID]:
             clinic_id=case.clinic_id,
         ) | {case.responsible_dentist_user_id}
     if case.status in STAKEHOLDER_STATUSES:
-        return {case.created_by_user_id, case.responsible_dentist_user_id}
+        return case_stakeholder_user_ids(db, case)
     return set()
 
 

@@ -25,7 +25,7 @@ from app.schemas.report import (
     ReportStageDurationResponse,
     ReportTotalsResponse,
 )
-from app.services.authorization import has_global_role
+from app.services.authorization import has_any_role, has_global_role
 from app.services.case_management.access import case_visibility_filter
 from app.services.case_management.exceptions import CaseAccessDeniedError, CaseValidationError
 from app.services.case_management.queries import TERMINAL_CASE_STATUSES
@@ -51,7 +51,15 @@ STATUS_LABELS = {
 
 
 def _has_global_report_scope(actor: User) -> bool:
-    return has_global_role(actor, RoleCode.SYSTEM_ADMIN, RoleCode.TECHNICIAN)
+    return has_global_role(actor, RoleCode.SYSTEM_ADMIN)
+
+
+def _require_report_access(actor: User) -> None:
+    if _has_global_report_scope(actor):
+        return
+    if has_any_role(actor, RoleCode.CLINIC_MANAGER, RoleCode.MANAGING_DENTIST):
+        return
+    raise CaseAccessDeniedError
 
 
 def _available_clinics(db: Session, actor: User) -> list[Clinic]:
@@ -137,6 +145,7 @@ def generate_case_report(
     date_to: date | None,
     clinic_id: UUID | None,
 ) -> CaseReportResponse:
+    _require_report_access(actor)
     start, end = _date_bounds(date_from, date_to)
     available_clinics = _available_clinics(db, actor)
     available_ids = {clinic.id for clinic in available_clinics}

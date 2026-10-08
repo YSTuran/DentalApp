@@ -1,5 +1,6 @@
 param(
-    [string]$Destination = ""
+    [string]$Destination = "",
+    [switch]$SkipStorageCheck
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,18 +40,23 @@ $databaseName = $databaseUri.AbsolutePath.TrimStart("/")
 $databasePort = if ($databaseUri.Port -gt 0) { $databaseUri.Port } else { 5432 }
 
 try {
-    Push-Location (Join-Path $projectRoot "backend")
-    try {
-        & ".\.venv\Scripts\python.exe" -m app.cli.check_storage
-        $storageExitCode = $LASTEXITCODE
-    } finally {
-        Pop-Location
-    }
-    if ($storageExitCode -eq 2) {
-        throw "Yedekleme durduruldu: veritabanında kayıtlı bir veya daha fazla dosya eksik."
-    }
-    if ($storageExitCode -eq 1) {
-        Write-Warning "Storage içinde sahipsiz dosyalar var; yedeğe yalnızca cases içeriği alınacak."
+    if (-not $SkipStorageCheck) {
+        Push-Location (Join-Path $projectRoot "backend")
+        try {
+            & ".\.venv\Scripts\python.exe" -m app.cli.check_storage
+            $storageExitCode = $LASTEXITCODE
+        } finally {
+            Pop-Location
+        }
+        if ($storageExitCode -eq 2) {
+            throw "Yedekleme durduruldu: veritabanında kayıtlı bir veya daha fazla dosya eksik."
+        }
+        if ($storageExitCode -eq 1) {
+            Write-Warning "Storage içinde sahipsiz dosyalar var; yedeğe yalnızca cases içeriği alınacak."
+        }
+        if ($storageExitCode -notin @(0, 1, 2)) {
+            throw "Yedekleme durduruldu: storage denetimi çalıştırılamadı. Veritabanı şemasını ve bağlantıyı kontrol edin."
+        }
     }
 
     $dumpPath = Join-Path $stagingPath "database.dump"

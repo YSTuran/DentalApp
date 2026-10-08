@@ -78,7 +78,6 @@ def case_visibility_filter(actor: User):
     if has_role(actor, RoleCode.DENTIST):
         conditions.append(
             or_(
-                DentalCase.created_by_user_id == actor.id,
                 DentalCase.responsible_dentist_user_id == actor.id,
                 exists(
                     select(CaseTransfer.id).where(
@@ -103,10 +102,10 @@ def require_case_visibility(actor: User, case: DentalCase) -> None:
         return
 
     clinic_access = case.clinic_id in clinic_ids_for_roles(actor, CLINIC_CASE_VIEW_ROLES)
-    dentist_access = has_role(actor, RoleCode.DENTIST) and actor.id in {
-        case.created_by_user_id,
-        case.responsible_dentist_user_id,
-    }
+    dentist_access = (
+        has_role(actor, RoleCode.DENTIST)
+        and actor.id == case.responsible_dentist_user_id
+    )
     pending_transfer_access = has_role(actor, RoleCode.DENTIST) and any(
         transfer.to_dentist_user_id == actor.id
         and transfer.status == CaseTransferStatus.PENDING
@@ -125,10 +124,10 @@ def require_create_access(actor: User, clinic_id: UUID) -> None:
 
 
 def can_view_patient_name(actor: User, case: DentalCase) -> bool:
-    if has_any_role(actor, RoleCode.DENTIST, RoleCode.MANAGING_DENTIST) and actor.id in {
-        case.created_by_user_id,
-        case.responsible_dentist_user_id,
-    }:
+    if (
+        has_any_role(actor, RoleCode.DENTIST, RoleCode.MANAGING_DENTIST)
+        and actor.id == case.responsible_dentist_user_id
+    ):
         return True
     return has_clinic_role(
         actor,

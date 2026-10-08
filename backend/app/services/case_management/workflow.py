@@ -19,6 +19,7 @@ from app.models import (
 )
 from app.schemas.case import ManagerDecisionRequest
 from app.services.audit import record_audit_event
+from app.services.case_management.access import require_case_visibility
 from app.services.case_management.exceptions import (
     CaseConflictError,
     CaseValidationError,
@@ -49,6 +50,7 @@ def submit_case(
     request: Request,
 ) -> DentalCase:
     case = load_case(db, case_id, for_update=True)
+    require_case_visibility(actor, case)
     next_status = authorize_transition(case, actor, CaseAction.SUBMIT, reason=None)
     validate_clinic(db, case.clinic_id)
     validate_submit_requirements(db, case)
@@ -96,6 +98,7 @@ def cancel_case(
     request: Request,
 ) -> DentalCase:
     case = load_case(db, case_id, for_update=True)
+    require_case_visibility(actor, case)
     next_status = authorize_transition(case, actor, CaseAction.CANCEL, reason=reason)
     previous_status = case.status
 

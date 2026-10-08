@@ -9,6 +9,10 @@ const createRoles = new Set(["managing_dentist", "dentist", "clinic_staff"]);
 export function OperationsHeader() {
   const { logout, user } = useAuth();
   const canCreate = user?.clinic_roles.some((item) => createRoles.has(item.role)) === true;
+  const canReadReports = user?.global_roles.includes("system_admin") === true
+    || user?.clinic_roles.some((item) => (
+      item.role === "clinic_manager" || item.role === "managing_dentist"
+    )) === true;
 
   return (
     <header className="topbar management-topbar">
@@ -19,7 +23,7 @@ export function OperationsHeader() {
       <nav className="management-nav" aria-label="Vaka navigasyonu">
         <NavLink to="/vakalar" end>Vakalar</NavLink>
         {canCreate && <NavLink to="/vakalar/yeni">Yeni vaka</NavLink>}
-        <NavLink to="/raporlar">Raporlar</NavLink>
+        {canReadReports && <NavLink to="/raporlar">Raporlar</NavLink>}
       </nav>
       <div className="topbar-actions">
         <ActiveClinicSelector />

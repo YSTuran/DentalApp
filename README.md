@@ -106,6 +106,17 @@ PostgreSQL'deki sistem yöneticisi duruyor ancak emulator kullanıcısı silinmi
 `python -m app.cli.create_admin` komutunu tekrar çalıştırın. Komut mevcut kaydın
 `firebase_uid` değerini koruyarak emulator hesabını yeniden oluşturur.
 
+Sistem yöneticisi dışındaki bir PostgreSQL kullanıcısı emulator export'unda yoksa
+proje kökünde aşağıdaki komutla aynı `firebase_uid` korunarak hesap onarılır:
+
+```powershell
+npm run firebase:user:repair -- --email kullanici@example.test
+```
+
+Hesap emulator içinde mevcut olduğu halde parolası yenilenecekse komuta
+`--reset-password` eklenir. Bu kurtarma aracı gerçek Firebase ortamında çalışmaz ve
+başarılı onarım işlemini audit kaydına ekler.
+
 Authentication endpoint'leri:
 
 - `GET /api/auth/csrf`
@@ -247,7 +258,7 @@ kurulum akışıyla yönetilir.
 ## Kullanıcı ve rol API'si
 
 - `GET /api/users`: sistem yöneticisi tüm kullanıcıları görür. Klinik yöneticisi
-  yalnızca sorumlu olduğu kliniklerdeki hekim ve yönetici hekimleri görür; diğer
+  yalnızca sorumlu olduğu kliniklerdeki hekim, yönetici hekim ve klinik personelini görür; diğer
   kliniklere ait rol atamaları yanıtta gösterilmez.
 - `GET /api/users/{user_id}`: aynı görünürlük kurallarıyla kullanıcı detayı.
 - `POST /api/users`: Firebase hesabını, PostgreSQL kullanıcısını, ilk rolü ve başlangıç
@@ -475,7 +486,8 @@ ayrı güvenli yedeği bulunmadan veritabanı yedeği tek başına geri yüklene
 izi içermeyen eski manifestler geriye dönük uyumluluk için uyarı verilerek doğrulanır.
 
 Gerçek geri yükleme için `-Apply` eklenir ve ekranda `RESTORE` onayı verilir. Betik
-geri yükleme öncesinde otomatik yeni yedek alır; mevcut dosyaları silmek yerine
+geri yükleme öncesinde, henüz DentalApp şeması kurulmamış boş bir hedef veritabanında
+da çalışabilen otomatik güvenlik yedeği alır; mevcut dosyaları silmek yerine
 `storage\restore-rollback-*` altında geri dönüş noktası olarak saklar.
 Geri yükleme sırasında API, worker, beat ve Firebase Emulator kapalı olmalıdır.
 

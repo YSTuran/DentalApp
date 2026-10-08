@@ -82,6 +82,30 @@ def user_ids_with_roles(
     )
 
 
+def case_stakeholder_user_ids(db: Session, case: DentalCase) -> set[UUID]:
+    """Return current clinical owners without reviving a transferred dentist's access."""
+    recipients = {case.responsible_dentist_user_id}
+    if case.created_by_user_id == case.responsible_dentist_user_id:
+        return recipients
+
+    creator_is_clinic_staff = db.scalar(
+        select(User.id)
+        .join(UserRoleAssignment, UserRoleAssignment.user_id == User.id)
+        .join(UserClinicAssignment, UserClinicAssignment.user_id == User.id)
+        .where(
+            User.id == case.created_by_user_id,
+            User.is_active.is_(True),
+            UserRoleAssignment.role == RoleCode.CLINIC_STAFF,
+            UserRoleAssignment.is_active.is_(True),
+            UserClinicAssignment.clinic_id == case.clinic_id,
+            UserClinicAssignment.is_active.is_(True),
+        )
+    )
+    if creator_is_clinic_staff is not None:
+        recipients.add(case.created_by_user_id)
+    return recipients
+
+
 def _recipients_for_action(db: Session, case: DentalCase, action: str) -> set[UUID]:
     if action in MANAGER_ACTIONS:
         return user_ids_with_roles(
@@ -100,7 +124,7 @@ def _recipients_for_action(db: Session, case: DentalCase, action: str) -> set[UU
             clinic_id=case.clinic_id,
         ) | {case.responsible_dentist_user_id}
     if action in STAKEHOLDER_ACTIONS:
-        return {case.created_by_user_id, case.responsible_dentist_user_id}
+        return case_stakeholder_user_ids(db, case)
     return set()
 
 

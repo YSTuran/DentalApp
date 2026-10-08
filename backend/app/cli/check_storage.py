@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -62,7 +63,20 @@ def main() -> int:
         help="Sahipsiz dosyaları silmeden storage/quarantine altına taşır.",
     )
     args = parser.parse_args()
-    report = storage_report()
+    try:
+        report = storage_report()
+    except Exception as error:
+        print(
+            json.dumps(
+                {
+                    "error": "storage_check_unavailable",
+                    "error_type": type(error).__name__,
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        return 3
     if args.quarantine_orphans:
         target = quarantine_orphans(report["orphaned"])
         report["quarantined_to"] = [str(target)] if target else []

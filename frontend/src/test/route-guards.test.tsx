@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { AuthContext, type AuthContextValue } from "../auth/AuthContext";
-import { ManagementReadRoute, ProtectedRoute } from "../auth/RouteGuards";
+import { ManagementReadRoute, ProtectedRoute, ReportsRoute } from "../auth/RouteGuards";
 import type { CurrentUser } from "../types/auth";
 
 const baseUser: CurrentUser = {
@@ -70,4 +70,46 @@ it("klinik yöneticisinin salt okunur yönetim rotasına girmesine izin verir", 
 
   expect(screen.getByText("Klinik personeli")).toBeInTheDocument();
   expect(screen.queryByText("Yetkisiz")).not.toBeInTheDocument();
+});
+
+it("rapor rotasını yalnızca yönetim rollerine açar", () => {
+  const dentist: CurrentUser = {
+    ...baseUser,
+    clinic_roles: [{ ...baseUser.clinic_roles[0], role: "dentist" }],
+  };
+  const { unmount } = render(
+    <MemoryRouter initialEntries={["/raporlar"]}>
+      <AuthContext.Provider value={authValue({ user: dentist })}>
+        <Routes>
+          <Route element={<ReportsRoute />}>
+            <Route path="/raporlar" element={<p>Rapor içeriği</p>} />
+          </Route>
+          <Route path="/yetkisiz" element={<p>Yetkisiz</p>} />
+        </Routes>
+      </AuthContext.Provider>
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByText("Yetkisiz")).toBeInTheDocument();
+  unmount();
+
+  render(
+    <MemoryRouter initialEntries={["/raporlar"]}>
+      <AuthContext.Provider value={authValue({
+        user: {
+          ...baseUser,
+          clinic_roles: [{ ...baseUser.clinic_roles[0], role: "managing_dentist" }],
+        },
+      })}>
+        <Routes>
+          <Route element={<ReportsRoute />}>
+            <Route path="/raporlar" element={<p>Rapor içeriği</p>} />
+          </Route>
+          <Route path="/yetkisiz" element={<p>Yetkisiz</p>} />
+        </Routes>
+      </AuthContext.Provider>
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByText("Rapor içeriği")).toBeInTheDocument();
 });

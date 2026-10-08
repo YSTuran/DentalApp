@@ -6,6 +6,7 @@ import {
   ManagementReadRoute,
   ProtectedRoute,
   PublicOnlyRoute,
+  ReportsRoute,
   SystemAdminRoute,
 } from "./auth/RouteGuards";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -39,7 +40,9 @@ export default function App() {
               <Route path="/vakalar" element={<CasesPage />} />
               <Route path="/vakalar/yeni" element={<NewCasePage />} />
               <Route path="/vakalar/:caseId" element={<CaseDetailPage />} />
-              <Route path="/raporlar" element={<ReportsPage />} />
+              <Route element={<ReportsRoute />}>
+                <Route path="/raporlar" element={<ReportsPage />} />
+              </Route>
               <Route path="/yetkisiz" element={<AccessDeniedPage />} />
               <Route element={<ManagementReadRoute />}>
                 <Route path="/yonetim/klinikler" element={<ClinicsPage />} />

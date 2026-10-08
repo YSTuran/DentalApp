@@ -39,7 +39,8 @@ if (-not $Force) {
     if ($confirmation -cne "RESTORE") { throw "Geri yükleme iptal edildi." }
 }
 
-& (Join-Path $PSScriptRoot "backup.ps1") | Write-Output
+Write-Output "Geri yükleme öncesi güvenlik yedeği oluşturuluyor."
+& (Join-Path $PSScriptRoot "backup.ps1") -SkipStorageCheck | Write-Output
 
 $databaseUrl = (Get-EnvValue $envPath "DATABASE_URL").Replace(
     "postgresql+psycopg://",

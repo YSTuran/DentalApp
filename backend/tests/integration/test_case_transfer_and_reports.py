@@ -14,11 +14,13 @@ from app.models import (
     CaseDetail,
     CaseStatus,
     DentalCase,
+    Notification,
     RoleCode,
     User,
     UserPreference,
     UserRoleAssignment,
 )
+from app.services.case_notifications import create_case_notifications
 from tests.integration.case_test_support import create_clinic, create_user, csrf_headers
 
 pytestmark = [
@@ -160,6 +162,12 @@ def test_case_transfer_requires_target_acceptance_and_is_immutable(
         assert accepted.status_code == 200
         assert accepted.json()["status"] == "accepted"
 
+        app.dependency_overrides[get_current_user] = lambda: source
+        assert client.get(f"/api/cases/{case.id}").status_code == 403
+
+        app.dependency_overrides[get_current_user] = lambda: target
+        assert client.get(f"/api/cases/{case.id}").status_code == 200
+
     with case_session_factory() as session:
         stored_case = session.get(DentalCase, case.id)
         event = session.scalar(
@@ -171,6 +179,24 @@ def test_case_transfer_requires_target_acceptance_and_is_immutable(
         assert stored_case is not None
         assert stored_case.responsible_dentist_user_id == target.id
         assert event is not None
+
+        create_case_notifications(
+            session,
+            case=stored_case,
+            action="case.reproduction_requested",
+            actor=manager,
+        )
+        session.commit()
+        reproduction_recipients = set(
+            session.scalars(
+                select(Notification.recipient_user_id).where(
+                    Notification.case_id == case.id,
+                    Notification.kind == "case.reproduction_requested",
+                )
+            ).all()
+        )
+        assert target.id in reproduction_recipients
+        assert source.id not in reproduction_recipients
 
     with case_session_factory() as session:
         with pytest.raises(DBAPIError, match="cannot be deleted"):
@@ -188,7 +214,13 @@ def test_report_respects_clinic_scope_and_contains_no_patient_identity(
     own = create_clinic(case_session_factory, "REPORT-OWN")
     other = create_clinic(case_session_factory, "REPORT-OTHER")
     manager = create_user(case_session_factory, RoleCode.CLINIC_MANAGER, own.id)
+    managing_dentist = create_user(
+        case_session_factory,
+        RoleCode.MANAGING_DENTIST,
+        own.id,
+    )
     dentist = create_user(case_session_factory, RoleCode.DENTIST, own.id)
+    technician = create_user(case_session_factory, RoleCode.TECHNICIAN)
     other_dentist = create_user(case_session_factory, RoleCode.DENTIST, other.id)
     with case_session_factory.begin() as session:
         session.add_all(
@@ -222,3 +254,15 @@ def test_report_respects_clinic_scope_and_contains_no_patient_identity(
     assert response.json()["clinic_counts"][0]["id"] == str(own.id)
     assert "patient" not in response.text.lower()
     assert forbidden.status_code == 403
+
+    app.dependency_overrides[get_current_user] = lambda: managing_dentist
+    with TestClient(app) as client:
+        assert client.get("/api/reports/cases").status_code == 200
+
+    app.dependency_overrides[get_current_user] = lambda: dentist
+    with TestClient(app) as client:
+        assert client.get("/api/reports/cases").status_code == 403
+
+    app.dependency_overrides[get_current_user] = lambda: technician
+    with TestClient(app) as client:
+        assert client.get("/api/reports/cases").status_code == 403
