@@ -1,5 +1,5 @@
 {
-  "name": "dentalapp",
+  "name": "dentflow",
   "version": "1.0.0",
   "description": "Diş klinikleri ile laboratuvar arasındaki vaka, tasarım, onay, üretim ve teslim süreçlerini yöneten demo uygulaması.",
   "main": "index.js",

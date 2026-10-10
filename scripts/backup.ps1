@@ -22,7 +22,7 @@ New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
 $backupRoot = (Resolve-Path -LiteralPath $backupRoot).Path
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$finalPath = Join-Path $backupRoot "dentalapp-$stamp"
+$finalPath = Join-Path $backupRoot "dentflow-$stamp"
 $stagingPath = Join-Path $backupRoot (".incomplete-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $stagingPath | Out-Null
 

@@ -1,6 +1,6 @@
-# DentalApp
+# DentFlow
 
-DentalApp; diş klinikleri ile laboratuvar arasındaki dijital vaka, STL tarama,
+DentFlow; diş klinikleri ile laboratuvar arasındaki dijital vaka, STL tarama,
 tasarım onayı, üretim, teslim ve iade süreçlerini tek bir iş akışında yöneten web
 uygulamasıdır. Proje yerel geliştirme ve eğitim amacıyla hazırlanmıştır.
 
@@ -111,7 +111,7 @@ nedeniyle hasta adına otomatik erişim kazanmaz.
 ## Proje yapısı
 
 ```text
-DentalApp/
+DentFlow/
 ├── backend/
 │   ├── app/                 FastAPI, servisler, modeller ve CLI araçları
 │   ├── migrations/          Alembic veritabanı migration dosyaları
@@ -203,7 +203,7 @@ ekran görüntülerine ya da commit geçmişine eklemeyin.
 Örnek backend yapılandırması:
 
 ```dotenv
-APP_NAME=DentalApp API
+APP_NAME=DentFlow API
 APP_ENV=development
 APP_DEBUG=true
 DEMO_MODE=true
@@ -239,6 +239,12 @@ VITE_FIREBASE_AUTH_EMULATOR_URL=http://127.0.0.1:9099
 
 `FIREBASE_PROJECT_ID` ve `VITE_FIREBASE_PROJECT_ID`, projenin Firebase Emulator
 yapılandırmasındaki proje kimliğiyle aynı olmalıdır.
+
+> **Uyumluluk notu:** Uygulamanın görünen ürün adı **DentFlow**'dur. Mevcut yerel
+> kurulumları ve kayıtları bozmamak için `dentalapp` veritabanı/kullanıcı adı,
+> Redis konteyner adı ve Firebase proje kimliği örneklerde korunmuştur. Bunlar ürün
+> adı değil, çalışan ortama bağlı teknik kimliklerdir; ancak planlı bir veri ve
+> altyapı geçişiyle değiştirilebilir.
 
 Güvenli rastgele değer üretmek için aşağıdaki komutlar kullanılabilir:
 
@@ -434,19 +440,19 @@ Yedekler Git dışında kalan `backups` klasörüne yazılır.
 Bir yedeği veri değiştirmeden doğrulamak için:
 
 ```powershell
-.\scripts\restore.ps1 -BackupPath .\backups\dentalapp-YYYYMMDD-HHMMSS
+.\scripts\restore.ps1 -BackupPath .\backups\dentflow-YYYYMMDD-HHMMSS
 ```
 
 Geri yüklemeyi uygulamak için API, worker, beat ve Firebase Emulator süreçlerini
 kapatın, ardından:
 
 ```powershell
-.\scripts\restore.ps1 -BackupPath .\backups\dentalapp-YYYYMMDD-HHMMSS -Apply
+.\scripts\restore.ps1 -BackupPath .\backups\dentflow-YYYYMMDD-HHMMSS -Apply
 ```
 
 Betik kullanıcıdan `RESTORE` onayı ister, mevcut durum için otomatik güvenlik yedeği
 oluşturur ve önceki dosyaları `storage/restore-rollback-*` altında saklar. Boş ve henüz
-DentalApp tabloları oluşturulmamış hedef veritabanına geri yükleme desteklenir.
+DentFlow tabloları oluşturulmamış hedef veritabanına geri yükleme desteklenir.
 
 Veritabanı ile fiziksel dosyaların uyumunu değiştirme yapmadan denetlemek için:
 

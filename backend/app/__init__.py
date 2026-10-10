@@ -1,1 +1,1 @@
-"""DentalApp backend package."""
+"""DentFlow backend package."""

@@ -15,7 +15,7 @@ def _email_bodies(title: str, message: str, target_path: str | None) -> tuple[st
         if target_path is not None
         else None
     )
-    text_lines = ["DentalApp", "", title, message]
+    text_lines = ["DentFlow", "", title, message]
     if target_url:
         text_lines.extend(["", f"Vakayı görüntüle: {target_url}"])
     text_lines.extend(["", "DEMO — Bu e-posta gerçek hasta bilgisi içermez."])
@@ -30,7 +30,7 @@ def _email_bodies(title: str, message: str, target_path: str | None) -> tuple[st
     )
     html = (
         '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;'
-        'color:#163b3f"><h1 style="font-size:20px">DentalApp</h1>'
+        'color:#163b3f"><h1 style="font-size:20px">DentFlow</h1>'
         f"<h2>{escape(title)}</h2><p>{escape(message)}</p>{link}"
         '<p style="color:#697b7e;font-size:12px">'
         "DEMO — Bu e-posta gerçek hasta bilgisi içermez.</p></div>"
@@ -72,7 +72,7 @@ def add_user_notification(
                 notification_id=notification.id,
                 recipient_user_id=recipient.id,
                 recipient_email=recipient.email,
-                subject=f"DentalApp · {title}",
+                subject=f"DentFlow · {title}",
                 body_text=body_text,
                 body_html=body_html,
                 next_attempt_at=datetime.now(UTC),

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "DentalApp API"
+    app_name: str = "DentFlow API"
     app_env: str = "development"
     app_debug: bool = True
     demo_mode: bool = True
@@ -56,8 +56,8 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     smtp_username: str | None = None
     smtp_password: str | None = None
-    email_from_address: str = "dentalapp@example.test"
-    email_from_name: str = "DentalApp"
+    email_from_address: str = "dentflow@example.test"
+    email_from_name: str = "DentFlow"
     email_max_attempts: int = Field(default=5, ge=1, le=20)
     email_retry_base_seconds: int = Field(default=60, ge=1, le=3600)
     frontend_base_url: str = "http://localhost:5173"

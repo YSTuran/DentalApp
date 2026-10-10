@@ -80,7 +80,7 @@ class LocalFileStorage:
                 if len(header) >= 84:
                     triangle_count = int.from_bytes(header[80:84], "little")
                     if size == 84 + triangle_count * 50:
-                        sanitized_header = b"DentalApp sanitized STL".ljust(80, b" ")
+                        sanitized_header = b"DentFlow sanitized STL".ljust(80, b" ")
                         changed = header[:80] != sanitized_header
                         if changed:
                             handle.seek(0)
@@ -146,7 +146,7 @@ class LocalFileStorage:
         if not current.strip():
             return False
         replacement = bytearray(b" " * len(current))
-        label = b" dentalapp"[: len(replacement)]
+        label = b" dentflow"[: len(replacement)]
         replacement[: len(label)] = label
         handle.seek(block_offset + name_start)
         handle.write(replacement)

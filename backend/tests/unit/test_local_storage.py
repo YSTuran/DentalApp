@@ -46,7 +46,7 @@ def test_storage_sanitizes_binary_stl_header_without_changing_size(tmp_path: Pat
     sanitized = storage.path_for(key).read_bytes()
     assert len(sanitized) == len(original)
     assert b"Patient Name" not in sanitized
-    assert sanitized.startswith(b"DentalApp sanitized STL")
+    assert sanitized.startswith(b"DentFlow sanitized STL")
 
 
 def test_storage_sanitizes_ascii_stl_names_without_changing_size(tmp_path: Path) -> None:
@@ -61,4 +61,4 @@ def test_storage_sanitizes_ascii_stl_names_without_changing_size(tmp_path: Path)
     sanitized = storage.path_for(key).read_bytes()
     assert len(sanitized) == len(original)
     assert b"Patient Name" not in sanitized
-    assert sanitized.startswith(b"solid dentalapp")
+    assert sanitized.startswith(b"solid dentflow")

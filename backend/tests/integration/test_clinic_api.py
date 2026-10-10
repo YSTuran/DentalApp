@@ -104,7 +104,7 @@ def test_system_admin_can_manage_clinic_lifecycle_and_writes_audit(
             headers=headers,
             json={
                 "code": code.lower(),
-                "name": "  DentalApp İstanbul  ",
+                "name": "  DentFlow İstanbul  ",
                 "address": "Kadıköy",
                 "reason": "Yeni demo şubesi",
             },
@@ -113,7 +113,7 @@ def test_system_admin_can_manage_clinic_lifecycle_and_writes_audit(
         clinic = create_response.json()
         clinic_id = clinic["id"]
         assert clinic["code"] == code.upper()
-        assert clinic["name"] == "DentalApp İstanbul"
+        assert clinic["name"] == "DentFlow İstanbul"
 
         duplicate_response = client.post(
             "/api/clinics",
@@ -126,10 +126,10 @@ def test_system_admin_can_manage_clinic_lifecycle_and_writes_audit(
         update_response = client.patch(
             f"/api/clinics/{clinic_id}",
             headers=headers,
-            json={"name": "DentalApp Kadıköy", "reason": "Şube adı düzeltildi"},
+            json={"name": "DentFlow Kadıköy", "reason": "Şube adı düzeltildi"},
         )
         assert update_response.status_code == 200
-        assert update_response.json()["name"] == "DentalApp Kadıköy"
+        assert update_response.json()["name"] == "DentFlow Kadıköy"
 
         missing_reason = client.post(
             f"/api/clinics/{clinic_id}/deactivate",
@@ -175,8 +175,8 @@ def test_system_admin_can_manage_clinic_lifecycle_and_writes_audit(
         "clinic.reactivated",
     }
     update_event = next(event for event in events if event.action == "clinic.updated")
-    assert update_event.before_data == {"name": "DentalApp İstanbul"}
-    assert update_event.after_data == {"name": "DentalApp Kadıköy"}
+    assert update_event.before_data == {"name": "DentFlow İstanbul"}
+    assert update_event.after_data == {"name": "DentFlow Kadıköy"}
     assert update_event.reason == "Şube adı düzeltildi"
 
 

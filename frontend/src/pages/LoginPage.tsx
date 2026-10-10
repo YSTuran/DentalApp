@@ -35,7 +35,7 @@ export function LoginPage() {
           D
         </div>
         <p className="eyebrow">KLİNİK · LABORATUVAR</p>
-        <h1 id="product-title">DentalApp</h1>
+        <h1 id="product-title">DentFlow</h1>
         <p className="auth-intro-copy">
           Dijital vakaları, tasarım onaylarını ve üretim sürecini tek bir güvenli akışta
           yönetin.

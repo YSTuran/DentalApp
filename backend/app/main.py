@@ -13,7 +13,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         debug=settings.app_debug,
         version="0.1.0",
-        description="DentalApp demo API — gerçek hasta verisi girmeyiniz.",
+        description="DentFlow demo API — gerçek hasta verisi girmeyiniz.",
     )
 
     application.add_middleware(

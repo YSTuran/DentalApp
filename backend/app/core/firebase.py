@@ -8,7 +8,7 @@ from firebase_admin import App, credentials
 
 from app.core.config import get_settings
 
-FIREBASE_APP_NAME = "dentalapp"
+FIREBASE_APP_NAME = "dentflow"
 
 
 @lru_cache

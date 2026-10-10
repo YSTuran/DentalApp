@@ -1,4 +1,4 @@
-# DentalApp vaka iş akışı kararı
+# DentFlow vaka iş akışı kararı
 
 Bu belge, uygulanmış MVP vaka iş kurallarını tek yerde açıklar. Durum makinesinin
 çalışan karşılığı `backend/app/domain/case_workflow.py`; kalıcı veri yapıları ise

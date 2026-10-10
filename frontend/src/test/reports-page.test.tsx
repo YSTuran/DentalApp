@@ -12,7 +12,7 @@ const getCaseReport = vi.hoisted(() => vi.fn());
 
 vi.mock("../lib/reports-api", () => ({ getCaseReport }));
 vi.mock("../components/OperationsHeader", () => ({
-  OperationsHeader: () => <header>DentalApp</header>,
+  OperationsHeader: () => <header>DentFlow</header>,
 }));
 
 const report: CaseReport = {

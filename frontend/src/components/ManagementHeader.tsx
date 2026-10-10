@@ -12,7 +12,7 @@ export function ManagementHeader() {
     <header className="topbar management-topbar">
       <Link className="brand-inline brand-link" to="/">
         <div className="brand-mark brand-mark-small" aria-hidden="true">D</div>
-        <div><strong>DentalApp</strong><span>{isSystemAdmin ? "Sistem yönetimi" : "Klinik görünümü"}</span></div>
+        <div><strong>DentFlow</strong><span>{isSystemAdmin ? "Sistem yönetimi" : "Klinik görünümü"}</span></div>
       </Link>
       <nav
         className="management-nav"

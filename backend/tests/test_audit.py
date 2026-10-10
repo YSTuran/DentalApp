@@ -31,7 +31,7 @@ def test_record_audit_event_captures_actor_request_and_json_data() -> None:
             "type": "http",
             "method": "POST",
             "path": "/test",
-            "headers": [(b"user-agent", b"DentalApp test")],
+            "headers": [(b"user-agent", b"DentFlow test")],
             "client": ("127.0.0.1", 50000),
         }
     )
@@ -56,7 +56,7 @@ def test_record_audit_event_captures_actor_request_and_json_data() -> None:
     assert event.after_data == {"status": "new", "at": "2026-09-24T00:00:00+00:00"}
     assert event.context_data == {"source": "unit_test"}
     assert event.ip_address == "127.0.0.1"
-    assert event.user_agent == "DentalApp test"
+    assert event.user_agent == "DentFlow test"
 
 
 def test_audit_event_has_no_updated_at_column() -> None:
@@ -71,7 +71,7 @@ def test_record_audit_event_supports_system_actor() -> None:
         session,  # type: ignore[arg-type]
         action="system.started",
         entity_type="system",
-        entity_id="dentalapp",
+        entity_id="dentflow",
         context={"source": "scheduler"},
     )
 

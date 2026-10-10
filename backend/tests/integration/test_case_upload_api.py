@@ -162,7 +162,7 @@ def test_resumable_upload_validation_download_and_submit(
             )
             assert download_response.status_code == 200
             assert len(download_response.content) == len(stl_bytes)
-            assert download_response.content.startswith(b"DentalApp sanitized STL")
+            assert download_response.content.startswith(b"DentFlow sanitized STL")
             assert "demo-scan.stl" not in download_response.headers["content-disposition"]
             assert download_response.headers["cache-control"] == "private, no-store"
 

@@ -18,9 +18,9 @@ def _build_email(item: EmailOutbox, settings: Settings) -> EmailMessage:
     message["From"] = f"{settings.email_from_name} <{settings.email_from_address}>"
     message["To"] = item.recipient_email
     message["Subject"] = item.subject
-    message_id_domain = settings.email_from_address.rsplit("@", 1)[-1] or "dentalapp.local"
+    message_id_domain = settings.email_from_address.rsplit("@", 1)[-1] or "dentflow.local"
     message["Message-ID"] = f"<outbox-{item.id}@{message_id_domain}>"
-    message["X-DentalApp-Outbox-ID"] = str(item.id)
+    message["X-DentFlow-Outbox-ID"] = str(item.id)
     message.set_content(item.body_text)
     message.add_alternative(item.body_html, subtype="html")
     return message

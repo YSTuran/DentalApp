@@ -47,7 +47,7 @@ export function DashboardPage() {
             D
           </div>
           <div>
-            <strong>DentalApp</strong>
+            <strong>DentFlow</strong>
             <span>Operasyon paneli</span>
           </div>
         </div>

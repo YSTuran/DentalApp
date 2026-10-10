@@ -114,7 +114,7 @@ def reset_emulator_admin_password(user: User) -> None:
 
 def main() -> None:
     parser = ArgumentParser(
-        description="DentalApp sistem yöneticisi oluşturma ve yerel hesap kurtarma aracı."
+        description="DentFlow sistem yöneticisi oluşturma ve yerel hesap kurtarma aracı."
     )
     parser.add_argument("--email", help="İşlem yapılacak sistem yöneticisi e-postası.")
     parser.add_argument(
@@ -124,7 +124,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    print("DentalApp sistem yöneticisi oluşturma / kurtarma")
+    print("DentFlow sistem yöneticisi oluşturma / kurtarma")
     email = (args.email or prompt_non_empty("E-posta: ")).strip().lower()
 
     with SessionLocal() as session:

@@ -14,7 +14,7 @@ export function CaseReportDocument({ report }: Props) {
   return (
     <article className="case-report-document">
       <header>
-        <div><span>DENTALAPP</span><h1>Vaka operasyon raporu</h1></div>
+        <div><span>DENTFLOW</span><h1>Vaka operasyon raporu</h1></div>
         <dl>
           <div><dt>Oluşturulma</dt><dd>{formatDate(report.generated_at)}</dd></div>
           <div><dt>Klinik</dt><dd>{clinic ?? "Yetkili tüm klinikler"}</dd></div>

@@ -52,7 +52,7 @@ def preview_path(
     temporary = target.with_name(f".{target.name}.{uuid4().hex}.tmp")
     try:
         with source.open("rb") as source_handle, temporary.open("xb") as output:
-            output.write(b"DentalApp browser preview".ljust(80, b" "))
+            output.write(b"DentFlow browser preview".ljust(80, b" "))
             output.write(struct.pack("<I", displayed_count))
             with mmap.mmap(source_handle.fileno(), 0, access=mmap.ACCESS_READ) as mapped:
                 batch = bytearray()

@@ -11,7 +11,7 @@ def test_outbox_message_id_is_stable_across_retries() -> None:
         id=item_id,
         recipient_user_id=uuid4(),
         recipient_email="recipient@example.test",
-        subject="DentalApp test",
+        subject="DentFlow test",
         body_text="Test",
         body_html="<p>Test</p>",
     )
@@ -20,4 +20,4 @@ def test_outbox_message_id_is_stable_across_retries() -> None:
     second = _build_email(item, get_settings())
 
     assert first["Message-ID"] == second["Message-ID"]
-    assert first["X-DentalApp-Outbox-ID"] == str(item_id)
+    assert first["X-DentFlow-Outbox-ID"] == str(item_id)

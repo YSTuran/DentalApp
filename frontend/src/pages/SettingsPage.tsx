@@ -23,7 +23,7 @@ export function SettingsPage() {
       <header className="topbar">
         <Link className="brand-inline brand-link" to="/">
           <div className="brand-mark brand-mark-small" aria-hidden="true">D</div>
-          <div><strong>DentalApp</strong><span>Hesap ayarları</span></div>
+          <div><strong>DentFlow</strong><span>Hesap ayarları</span></div>
         </Link>
         <div className="topbar-actions">
           <NotificationBell />

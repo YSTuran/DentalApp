@@ -35,7 +35,7 @@ export function AuditReportDocument({ events, filters, clinicNames }: Props) {
   return (
     <article className="audit-report-document">
       <header className="audit-report-header">
-        <div><span>DENTALAPP</span><h1>Audit kayıtları raporu</h1></div>
+        <div><span>DENTFLOW</span><h1>Audit kayıtları raporu</h1></div>
         <dl>
           <div><dt>Oluşturulma</dt><dd>{formatDate(new Date().toISOString())}</dd></div>
           <div><dt>Kayıt sayısı</dt><dd>{events.length}</dd></div>

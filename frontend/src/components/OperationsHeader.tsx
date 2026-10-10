@@ -18,7 +18,7 @@ export function OperationsHeader() {
     <header className="topbar management-topbar">
       <Link className="brand-inline brand-link" to="/">
         <div className="brand-mark brand-mark-small" aria-hidden="true">D</div>
-        <div><strong>DentalApp</strong><span>Vaka operasyonu</span></div>
+        <div><strong>DentFlow</strong><span>Vaka operasyonu</span></div>
       </Link>
       <nav className="management-nav" aria-label="Vaka navigasyonu">
         <NavLink to="/vakalar" end>Vakalar</NavLink>

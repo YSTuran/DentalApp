@@ -11,13 +11,13 @@ from app.schemas.clinic import (
 def test_clinic_create_normalizes_code_and_text() -> None:
     payload = ClinicCreateRequest(
         code=" ist-001 ",
-        name="  DentalApp İstanbul  ",
+        name="  DentFlow İstanbul  ",
         address="   ",
         phone=" +90 212 000 00 00 ",
     )
 
     assert payload.code == "IST-001"
-    assert payload.name == "DentalApp İstanbul"
+    assert payload.name == "DentFlow İstanbul"
     assert payload.address is None
     assert payload.phone == "+90 212 000 00 00"
 

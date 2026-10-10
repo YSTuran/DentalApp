@@ -56,7 +56,7 @@ function friendlyAuthError(error: unknown): Error {
   if (error instanceof ApiError) {
     const messages: Record<string, string> = {
       account_inactive: "Hesabınız pasif durumda. Sistem yöneticisiyle iletişime geçin.",
-      account_not_provisioned: "Bu Firebase hesabı DentalApp kullanıcısı olarak tanımlanmamış.",
+      account_not_provisioned: "Bu Firebase hesabı DentFlow kullanıcısı olarak tanımlanmamış.",
       csrf_validation_failed: "Güvenlik doğrulaması başarısız oldu. Sayfayı yenileyip tekrar deneyin.",
       authentication_service_unavailable: "Kimlik doğrulama servisine şu anda ulaşılamıyor.",
     };
